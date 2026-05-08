@@ -1,0 +1,23 @@
+# Google Drive / cloud sync files
+desktop.ini
+*.tmp
+~$*
+
+# Sensitive files
+.env
+*.key
+credentials.*
+*.pem
+*.p12
+service-account*.json
+
+# Local assistant settings
+.claude/
+.codex/
+
+# Node.js
+node_modules/
+package-lock.json
+
+# macOS
+.DS_Store
