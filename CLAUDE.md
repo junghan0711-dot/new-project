@@ -1,7 +1,7 @@
 # New project — 我的班級工具總專案
 
 ## 對話開始時請先讀
-進度與最近更動記錄在 Obsidian 工作筆記；若尚未建立 Obsidian 對應資料夾，請先詢問 vault 路徑再建立 `New project/工作筆記.md`。
+進度與最近更動記錄在 Obsidian：`/Users/junghanchiu/Library/Mobile Documents/iCloud~md~obsidian/Documents/New project/工作筆記.md`。
 
 ## 工作模式
 - **加新工具**：使用者說「我想做一個 XXX 工具」時，建立 `tools/<工具名>/` 子資料夾，並用可預覽、可上線的方式完成工具。
@@ -10,8 +10,8 @@
 
 ## 工作桌 + 三個家
 - 工作桌：`/Users/junghanchiu/Documents/New project`
-- GitHub repo：尚未建立或尚未連線；`gh` token 需重新登入後才能建立/推送。
-- Obsidian 駕駛艙：尚待填入 vault 路徑。
+- GitHub repo：`junghan0711-dot/new-project`（公開，網頁的家）
+- Obsidian 駕駛艙：`/Users/junghanchiu/Library/Mobile Documents/iCloud~md~obsidian/Documents/New project/工作筆記.md`
 - Firebase 專案：`my-teaching-tools-ea0ed`
 
 ## Firebase
