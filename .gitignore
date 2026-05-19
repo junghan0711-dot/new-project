@@ -21,3 +21,6 @@ package-lock.json
 
 # macOS
 .DS_Store
+
+# Generated presentation work directories
+outputs/manual-*/
