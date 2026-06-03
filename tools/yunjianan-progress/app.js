@@ -14,6 +14,7 @@
   };
 
   const $ = (id) => document.getElementById(id);
+  const excludedPersonLabels = new Set(["主責", "協辦", "主責及協辦", "負責同仁", "各項主責同仁"]);
 
   function init() {
     $("sheetLink").href = embedded.sourceUrl || config.sheetUrl || "#";
@@ -155,23 +156,38 @@
     const select = $("personFilter");
     const currentValue = select.value;
     const names = new Set();
-    state.tasks.forEach((task) => splitNames(task.owner).forEach((name) => names.add(name)));
     state.items.forEach((item) => splitNames(item.owner).forEach((name) => names.add(name)));
     select.innerHTML = '<option value="">全部</option>';
-    [...names].sort((a, b) => a.localeCompare(b, "zh-Hant")).forEach((name) => {
+    const sortedNames = [...names].sort((a, b) => a.localeCompare(b, "zh-Hant"));
+    sortedNames.forEach((name) => {
       const option = document.createElement("option");
       option.value = name;
       option.textContent = name;
       select.appendChild(option);
     });
-    select.value = currentValue;
+    select.value = sortedNames.includes(currentValue) ? currentValue : "";
   }
 
   function splitNames(value) {
     return String(value || "")
       .split(/[\n、,，/]+/)
       .map((name) => name.trim().replace(/\(.+?\)/g, ""))
-      .filter(Boolean);
+      .filter((name) => name && !excludedPersonLabels.has(name));
+  }
+
+  function findItemForTask(task) {
+    return state.items.find((item) => item.itemId === task.itemId)
+      || state.items.find((item) => item.itemName === task.itemName)
+      || null;
+  }
+
+  function itemOwnerForTask(task) {
+    const item = findItemForTask(task);
+    return item && item.owner ? item.owner : "";
+  }
+
+  function displayNames(value) {
+    return splitNames(value).join("、");
   }
 
   function applyFilters() {
@@ -179,12 +195,14 @@
     const status = $("statusFilter").value;
     const query = $("searchInput").value.trim().toLowerCase();
     state.filteredTasks = state.tasks.filter((task) => {
-      const matchesPerson = !person || splitNames(task.owner).includes(person);
+      const itemOwner = itemOwnerForTask(task);
+      const matchesPerson = !person || splitNames(itemOwner).includes(person);
       const matchesStatus = !status || task.status === status;
       const haystack = [
         task.itemName,
         task.taskName,
         task.progress,
+        itemOwner,
         task.owner,
         task.sourceSheet,
         task.expenseDetail,
@@ -218,12 +236,13 @@
     }
     state.filteredTasks.forEach((task) => {
       const node = template.content.firstElementChild.cloneNode(true);
+      const itemOwner = itemOwnerForTask(task);
       node.dataset.taskId = task.taskId;
       node.classList.toggle("active", task.taskId === state.selectedTaskId);
       node.querySelector(".task-title").textContent = task.taskName || "未命名任務";
       node.querySelector(".task-item").textContent = `${task.itemName || "未指定工項"} / ${task.sourceSheet || "來源未填"}`;
       node.querySelector(".task-meta").textContent = [
-        task.owner ? `負責：${task.owner.replace(/\n/g, "、")}` : "",
+        itemOwner ? `主責及協辦：${displayNames(itemOwner) || itemOwner.replace(/\n/g, "、")}` : "",
         task.dueDate ? `期限：${task.dueDate}` : "",
       ].filter(Boolean).join("  ");
       setStatusPill(node.querySelector(".task-status"), task.status);
@@ -244,12 +263,13 @@
   function selectTask(taskId) {
     const task = state.tasks.find((item) => item.taskId === taskId);
     if (!task) return;
+    const itemOwner = itemOwnerForTask(task);
     state.selectedTaskId = taskId;
     $("emptyState").classList.add("hidden");
     $("progressForm").classList.remove("hidden");
     $("selectedItem").textContent = `${task.itemName || "未指定工項"} / ${task.sourceSheet || "來源未填"}`;
     $("selectedTask").textContent = task.taskName || "未命名任務";
-    $("selectedOwner").textContent = task.owner || "未填";
+    $("selectedOwner").textContent = displayNames(itemOwner) || itemOwner || "未填";
     $("selectedDue").textContent = task.dueDate || "未填";
     $("selectedFee").textContent = formatMoney(task.expense);
     $("selectedProgressText").textContent = task.progress || "未填";
