@@ -6,9 +6,17 @@
 
 ## 架構
 
-- GitHub Pages：員工填報網頁
+- GitHub Pages：員工填報網頁、完整來源資料瀏覽
 - Google Apps Script：接收填報資料，寫入 Google Sheets
 - Google Sheets：即時彙整資料，必要時可下載為 Excel
+
+## 來源資料
+
+使用者指定的來源表：
+
+`https://docs.google.com/spreadsheets/d/13Gx27AAXDy-30Dt_-GBcCIzc_Ea_5VKC/edit?gid=1521629118#gid=1521629118`
+
+這份在 Google Drive 上是 Office Excel 檔，不是原生 Google Sheets，因此 Apps Script / Sheets API 不能直接用試算表 API 讀取。網頁的 `data.js` 已由該 Excel 產生完整快照，包含 9 張工作表、117 筆任務、進度更新與費用紀錄；員工可在網頁「原始資料總覽」檢視所有來源工作表內容。
 
 ## Google Sheet
 

@@ -15,10 +15,61 @@ function doGet(e) {
     if (action === "listTasks") {
       return jsonp_(params.callback, { ok: true, tasks: listTasks_() });
     }
+    if (action === "listData") {
+      return jsonp_(params.callback, listData_());
+    }
     return jsonp_(params.callback, { ok: false, error: "Unknown action" });
   } catch (error) {
     return jsonp_(params.callback, { ok: false, error: error.message });
   }
+}
+
+function listData_() {
+  return {
+    ok: true,
+    items: listItems_(),
+    tasks: listTasks_(),
+    updates: listRecords_(SHEETS.updates),
+    expenses: listRecords_(SHEETS.expenses),
+  };
+}
+
+function listItems_() {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = spreadsheet.getSheetByName("工項主檔") || spreadsheet.getSheetByName("工項總表");
+  if (!sheet) return [];
+  const values = sheet.getDataRange().getDisplayValues();
+  if (values.length < 2) return [];
+  const headers = values[0];
+  return values.slice(1)
+    .filter((row) => row[0])
+    .map((row) => {
+      const record = rowToObject_(headers, row);
+      return {
+        itemId: record["工項ID"],
+        itemName: record["工作項目"],
+        performance: record["執行績效及內容"] || record["履約標的及績效"],
+        budget: record["核定/預估經費"] || record["經費"],
+        progressRatio: record["執行進度比例"] || record["工作進度"],
+        owner: record["主責及協辦"],
+        period: record["預計執行時程"],
+        schedule: record["表定時間摘要"] || record["工作執行時程規劃"],
+        currentStatus: record["執行現況說明"],
+        expenseNote: record["經費項目"] || record["費用說明"],
+      };
+    });
+}
+
+function listRecords_(sheetName) {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = spreadsheet.getSheetByName(sheetName);
+  if (!sheet) return [];
+  const values = sheet.getDataRange().getDisplayValues();
+  if (values.length < 2) return [];
+  const headers = values[0];
+  return values.slice(1)
+    .filter((row) => row.some((cell) => cell !== ""))
+    .map((row) => rowToObject_(headers, row));
 }
 
 function doPost(e) {
