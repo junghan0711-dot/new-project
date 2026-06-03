@@ -21,7 +21,7 @@
     <main class="layout">
       <section class="panel summary-panel" aria-label="進度摘要">
         <div class="metric">
-          <span>全部任務</span>
+          <span>全部工項</span>
           <strong id="totalTasks">0</strong>
         </div>
         <div class="metric">
@@ -61,7 +61,7 @@
         </label>
         <label class="search-field">
           <span>搜尋</span>
-          <input id="searchInput" type="search" placeholder="工項、細項、進度關鍵字" />
+          <input id="searchInput" type="search" placeholder="工項、進度、時程關鍵字" />
         </label>
       </section>
 
@@ -74,7 +74,7 @@
       <section id="tasksView" class="workspace view-section active">
         <aside class="panel task-list-panel" aria-label="任務清單">
           <div class="section-heading">
-            <h2>任務清單</h2>
+            <h2>工項清單</h2>
             <span id="visibleCount">0 筆</span>
           </div>
           <div id="taskList" class="task-list"></div>
@@ -82,8 +82,8 @@
 
         <section class="panel detail-panel" aria-label="填報表單">
           <div id="emptyState" class="empty-state">
-            <h2>選擇左側任務</h2>
-            <p>選到任務後即可更新進度、完成狀態、下次追蹤日期與費用。</p>
+            <h2>選擇左側工項</h2>
+            <p>選到工項後即可更新進度、完成狀態、下次追蹤日期與費用。</p>
           </div>
 
           <form id="progressForm" class="progress-form hidden">
@@ -101,11 +101,11 @@
                 <p id="selectedOwner"></p>
               </div>
               <div>
-                <span class="field-label">預定完成日期</span>
+                <span class="field-label">預計執行時程</span>
                 <p id="selectedDue"></p>
               </div>
               <div>
-                <span class="field-label">目前費用</span>
+                <span class="field-label">核定/預估經費</span>
                 <p id="selectedFee"></p>
               </div>
             </div>
@@ -116,7 +116,7 @@
             </div>
 
             <div class="source-detail">
-              <span class="field-label">費用明細 / 備註 / 場地</span>
+              <span class="field-label">履約內容 / 時程 / 經費說明</span>
               <p id="selectedSourceNote"></p>
             </div>
 
@@ -210,6 +210,6 @@
 
     <script src="./config.js"></script>
     <script src="./data.js"></script>
-    <script src="./app.js?v=owners-20260603"></script>
+    <script src="./app.js?v=items-20260603"></script>
   </body>
 </html>

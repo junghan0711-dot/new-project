@@ -7,8 +7,8 @@
     updates: [],
     expenses: [],
     sheets: [],
-    filteredTasks: [],
-    selectedTaskId: "",
+    filteredItems: [],
+    selectedItemId: "",
     selectedSheetName: "",
     loading: false,
   };
@@ -104,9 +104,16 @@
     return {
       itemId: item.itemId || item["工項ID"] || "",
       itemName: item.itemName || item["工作項目"] || "",
+      performance: item.performance || item["執行績效及內容"] || item["履約標的及績效"] || "",
+      budget: item.budget || item["核定/預估經費"] || item["經費"] || "",
+      progressRatio: item.progressRatio || item["執行進度比例"] || item["工作進度"] || "",
       owner: item.owner || item["主責及協辦"] || "",
       period: item.period || item["預計執行時程"] || "",
+      schedule: item.schedule || item["表定時間摘要"] || item["工作執行時程規劃"] || "",
       currentStatus: item.currentStatus || item["執行現況說明"] || "",
+      expenseNote: item.expenseNote || item["經費項目"] || item["費用說明"] || "",
+      updatedBy: item.updatedBy || item["最後更新人"] || "",
+      updatedAt: item.updatedAt || item["最後更新時間"] || "",
     };
   }
 
@@ -138,7 +145,7 @@
     const meta = [
       `來源更新快照：${embedded.generatedAt || "未記錄"}`,
       `${state.sheets.length} 張工作表`,
-      `${state.tasks.length} 筆任務`,
+      `${state.items.length} 筆工項 / ${state.tasks.length} 筆明細`,
     ];
     $("sourceMeta").textContent = meta.join(" / ");
   }
@@ -194,19 +201,17 @@
     const person = $("personFilter").value;
     const status = $("statusFilter").value;
     const query = $("searchInput").value.trim().toLowerCase();
-    state.filteredTasks = state.tasks.filter((task) => {
-      const itemOwner = itemOwnerForTask(task);
-      const matchesPerson = !person || splitNames(itemOwner).includes(person);
-      const matchesStatus = !status || task.status === status;
+    state.filteredItems = state.items.filter((item) => {
+      const matchesPerson = !person || splitNames(item.owner).includes(person);
+      const matchesStatus = !status || itemStatus(item) === status;
       const haystack = [
-        task.itemName,
-        task.taskName,
-        task.progress,
-        itemOwner,
-        task.owner,
-        task.sourceSheet,
-        task.expenseDetail,
-        task.note,
+        item.itemName,
+        item.performance,
+        item.owner,
+        item.period,
+        item.schedule,
+        item.currentStatus,
+        item.expenseNote,
       ].join(" ").toLowerCase();
       return matchesPerson && matchesStatus && (!query || haystack.includes(query));
     });
@@ -215,40 +220,49 @@
   }
 
   function renderSummary() {
-    const total = state.tasks.length;
-    const done = state.tasks.filter((task) => task.status === "已完成").length;
+    const total = state.items.length;
+    const done = state.items.filter((item) => itemStatus(item) === "已完成").length;
     $("totalTasks").textContent = total;
     $("doneTasks").textContent = done;
     $("openTasks").textContent = Math.max(total - done, 0);
-    $("visibleCount").textContent = `${state.filteredTasks.length} 筆`;
+    $("visibleCount").textContent = `${state.filteredItems.length} 筆`;
   }
 
   function renderTasks() {
     const list = $("taskList");
     const template = $("taskTemplate");
     list.innerHTML = "";
-    if (!state.filteredTasks.length) {
+    if (!state.filteredItems.length) {
       const empty = document.createElement("p");
       empty.className = "task-meta";
-      empty.textContent = "沒有符合條件的任務";
+      empty.textContent = "沒有符合條件的工項";
       list.appendChild(empty);
       return;
     }
-    state.filteredTasks.forEach((task) => {
+    state.filteredItems.forEach((item) => {
       const node = template.content.firstElementChild.cloneNode(true);
-      const itemOwner = itemOwnerForTask(task);
-      node.dataset.taskId = task.taskId;
-      node.classList.toggle("active", task.taskId === state.selectedTaskId);
-      node.querySelector(".task-title").textContent = task.taskName || "未命名任務";
-      node.querySelector(".task-item").textContent = `${task.itemName || "未指定工項"} / ${task.sourceSheet || "來源未填"}`;
+      node.dataset.itemId = item.itemId;
+      node.classList.toggle("active", item.itemId === state.selectedItemId);
+      node.querySelector(".task-title").textContent = item.itemName || "未命名工項";
+      node.querySelector(".task-item").textContent = "總工項追蹤 / 工作項目";
       node.querySelector(".task-meta").textContent = [
-        itemOwner ? `主責及協辦：${displayNames(itemOwner) || itemOwner.replace(/\n/g, "、")}` : "",
-        task.dueDate ? `期限：${task.dueDate}` : "",
+        item.owner ? `主責及協辦：${displayNames(item.owner) || item.owner.replace(/\n/g, "、")}` : "",
+        item.period ? `時程：${item.period}` : "",
       ].filter(Boolean).join("  ");
-      setStatusPill(node.querySelector(".task-status"), task.status);
-      node.addEventListener("click", () => selectTask(task.taskId));
+      setStatusPill(node.querySelector(".task-status"), itemStatus(item));
+      node.addEventListener("click", () => selectItem(item.itemId));
       list.appendChild(node);
     });
+  }
+
+  function itemStatus(item) {
+    const rawProgress = String(item.progressRatio || "").trim();
+    const isPercent = rawProgress.endsWith("%");
+    const progress = Number(rawProgress.replace("%", ""));
+    if (Number.isFinite(progress) && (isPercent ? progress >= 100 : progress >= 1)) return "已完成";
+    if (Number.isFinite(progress) && progress > 0) return "進行中";
+    if (item.currentStatus || item.schedule) return "進行中";
+    return "未確認";
   }
 
   function setStatusPill(element, status) {
@@ -260,23 +274,26 @@
     else element.classList.add("unknown");
   }
 
-  function selectTask(taskId) {
-    const task = state.tasks.find((item) => item.taskId === taskId);
-    if (!task) return;
-    const itemOwner = itemOwnerForTask(task);
-    state.selectedTaskId = taskId;
+  function selectItem(itemId) {
+    const item = state.items.find((entry) => entry.itemId === itemId);
+    if (!item) return;
+    state.selectedItemId = itemId;
     $("emptyState").classList.add("hidden");
     $("progressForm").classList.remove("hidden");
-    $("selectedItem").textContent = `${task.itemName || "未指定工項"} / ${task.sourceSheet || "來源未填"}`;
-    $("selectedTask").textContent = task.taskName || "未命名任務";
-    $("selectedOwner").textContent = displayNames(itemOwner) || itemOwner || "未填";
-    $("selectedDue").textContent = task.dueDate || "未填";
-    $("selectedFee").textContent = formatMoney(task.expense);
-    $("selectedProgressText").textContent = task.progress || "未填";
-    $("selectedSourceNote").textContent = [task.expenseDetail, task.note].filter(Boolean).join("\n\n") || "未填";
-    setStatusPill($("selectedStatus"), task.status);
-    $("progressInput").value = task.progress || "";
-    $("completeInput").value = statusOption(task.status);
+    $("selectedItem").textContent = "總工項追蹤 / 工作項目";
+    $("selectedTask").textContent = item.itemName || "未命名工項";
+    $("selectedOwner").textContent = displayNames(item.owner) || item.owner || "未填";
+    $("selectedDue").textContent = item.period || "未填";
+    $("selectedFee").textContent = formatMoney(item.budget);
+    $("selectedProgressText").textContent = item.currentStatus || "未填";
+    $("selectedSourceNote").textContent = [
+      item.performance ? `履約內容：\n${item.performance}` : "",
+      item.schedule ? `工作執行時程規劃：\n${item.schedule}` : "",
+      item.expenseNote ? `經費說明：\n${item.expenseNote}` : "",
+    ].filter(Boolean).join("\n\n") || "未填";
+    setStatusPill($("selectedStatus"), itemStatus(item));
+    $("progressInput").value = item.currentStatus || "";
+    $("completeInput").value = statusOption(itemStatus(item));
     $("nextDateInput").value = "";
     $("expenseInput").value = "";
     $("expenseDetailInput").value = "";
@@ -430,14 +447,14 @@
   async function submitProgress(event) {
     event.preventDefault();
     const reporter = $("reporterInput").value.trim();
-    const task = state.tasks.find((item) => item.taskId === state.selectedTaskId);
+    const item = state.items.find((entry) => entry.itemId === state.selectedItemId);
     if (!reporter) {
       renderMessage("請先填寫填報人姓名。", "error");
       $("reporterInput").focus();
       return;
     }
-    if (!task) {
-      renderMessage("請先選擇任務。", "error");
+    if (!item) {
+      renderMessage("請先選擇工項。", "error");
       return;
     }
     if (!config.apiUrl) {
@@ -445,11 +462,9 @@
       return;
     }
     const payload = {
-      action: "submitProgress",
-      taskId: task.taskId,
-      itemId: task.itemId,
-      itemName: task.itemName,
-      taskName: task.taskName,
+      action: "submitItemProgress",
+      itemId: item.itemId,
+      itemName: item.itemName,
       reporter,
       progress: $("progressInput").value.trim(),
       status: $("completeInput").value,
@@ -465,7 +480,7 @@
       renderMessage("已送出更新。系統會重新讀取最新資料。", "success");
       await wait(900);
       await loadData();
-      selectTask(task.taskId);
+      selectItem(item.itemId);
     } catch (error) {
       renderMessage(`送出失敗：${error.message}`, "error");
     } finally {

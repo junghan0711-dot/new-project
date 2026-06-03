@@ -77,6 +77,10 @@ function doPost(e) {
   lock.waitLock(20000);
   try {
     const params = parsePost_(e);
+    if (params.action === "submitItemProgress") {
+      const result = submitItemProgress_(params);
+      return json_({ ok: true, result });
+    }
     if (params.action !== "submitProgress") {
       return json_({ ok: false, error: "Unknown action" });
     }
@@ -87,6 +91,53 @@ function doPost(e) {
   } finally {
     lock.releaseLock();
   }
+}
+
+function submitItemProgress_(params) {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const itemSheet = spreadsheet.getSheetByName("工項主檔") || spreadsheet.getSheetByName("工項總表");
+  const updateSheet = spreadsheet.getSheetByName(SHEETS.updates);
+  const expenseSheet = spreadsheet.getSheetByName(SHEETS.expenses);
+  const timestamp = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
+
+  const itemRow = findItemRow_(itemSheet, params.itemId);
+  if (!itemRow) throw new Error("找不到工項ID：" + params.itemId);
+
+  const itemHeaders = itemSheet.getRange(1, 1, 1, itemSheet.getLastColumn()).getValues()[0];
+  setByHeader_(itemSheet, itemHeaders, itemRow, "執行現況說明", params.progress);
+  setByHeader_(itemSheet, itemHeaders, itemRow, "最後更新人", params.reporter);
+  setByHeader_(itemSheet, itemHeaders, itemRow, "最後更新時間", timestamp);
+
+  const updateId = "UPD" + Utilities.formatDate(new Date(), "Asia/Taipei", "yyyyMMddHHmmss");
+  updateSheet.appendRow([
+    updateId,
+    "",
+    params.itemId,
+    timestamp.slice(0, 10),
+    params.reporter,
+    params.progress,
+    params.status || "未確認",
+    params.nextDate || "",
+    params.note || "",
+  ]);
+
+  if (Number(params.expense) > 0 || params.expenseDetail) {
+    const expenseId = "EXP" + Utilities.formatDate(new Date(), "Asia/Taipei", "yyyyMMddHHmmss");
+    expenseSheet.appendRow([
+      expenseId,
+      "",
+      params.itemId,
+      params.itemName || "",
+      Number(params.expense) || 0,
+      params.expenseDetail || "",
+      timestamp.slice(0, 10),
+      params.reporter,
+      "",
+      params.note || "",
+    ]);
+  }
+
+  return { itemId: params.itemId, updatedAt: timestamp };
 }
 
 function listTasks_() {
@@ -180,6 +231,14 @@ function findTaskRow_(sheet, taskId) {
   const values = sheet.getRange(1, 1, sheet.getLastRow(), 1).getValues();
   for (let i = 1; i < values.length; i++) {
     if (values[i][0] === taskId) return i + 1;
+  }
+  return 0;
+}
+
+function findItemRow_(sheet, itemId) {
+  const values = sheet.getRange(1, 1, sheet.getLastRow(), 1).getValues();
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] === itemId) return i + 1;
   }
   return 0;
 }
