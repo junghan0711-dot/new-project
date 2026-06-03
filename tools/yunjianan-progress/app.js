@@ -7,6 +7,7 @@
     updates: [],
     expenses: [],
     sheets: [],
+    originalSheetCount: 0,
     filteredItems: [],
     selectedItemId: "",
     selectedSheetName: "",
@@ -96,8 +97,11 @@
     state.tasks = (payload.tasks || []).map(normalizeTask);
     state.updates = payload.updates || [];
     state.expenses = payload.expenses || [];
-    state.sheets = payload.sheets || [];
-    state.selectedSheetName = state.selectedSheetName || (state.sheets[0] && state.sheets[0].name) || "";
+    const originalSheets = payload.sheets && payload.sheets.length ? payload.sheets : [];
+    state.originalSheetCount = originalSheets.length;
+    state.sheets = buildOverviewSheets(originalSheets);
+    const hasSelectedSheet = state.sheets.some((sheet) => sheet.name === state.selectedSheetName);
+    state.selectedSheetName = hasSelectedSheet ? state.selectedSheetName : (state.sheets[0] && state.sheets[0].name) || "";
   }
 
   function normalizeItem(item) {
@@ -143,11 +147,20 @@
     renderSourceTable();
     renderRecords();
     const meta = [
-      `來源更新快照：${embedded.generatedAt || "未記錄"}`,
-      `${state.sheets.length} 張工作表`,
+      `資料更新時間：${latestDataTime()}`,
+      `即時彙整 3 張 / 原始快照 ${state.originalSheetCount} 張`,
       `${state.items.length} 筆工項 / ${state.tasks.length} 筆明細`,
     ];
     $("sourceMeta").textContent = meta.join(" / ");
+  }
+
+  function latestDataTime() {
+    const times = [
+      ...state.items.map((item) => item.updatedAt),
+      ...state.tasks.map((task) => task.updatedAt),
+      ...state.updates.map((record) => record.updatedAt || record["最後更新時間"]),
+    ].filter(Boolean);
+    return times.length ? times[times.length - 1] : embedded.generatedAt || "未記錄";
   }
 
   function switchView(viewId) {
@@ -195,6 +208,99 @@
 
   function displayNames(value) {
     return splitNames(value).join("、");
+  }
+
+  function buildOverviewSheets(originalSheets) {
+    const liveSheets = [
+      buildSheet("即時-工項主檔", [
+        "工項ID",
+        "工作項目",
+        "主責及協辦",
+        "預計執行時程",
+        "執行進度比例",
+        "核定/預估經費",
+        "執行現況說明",
+        "表定時間摘要",
+        "經費項目",
+        "最後更新人",
+        "最後更新時間",
+      ], state.items.map((item) => [
+        item.itemId,
+        item.itemName,
+        displayNames(item.owner) || item.owner,
+        item.period,
+        item.progressRatio,
+        item.budget,
+        item.currentStatus,
+        item.schedule,
+        item.expenseNote,
+        item.updatedBy,
+        item.updatedAt,
+      ])),
+      buildSheet("即時-進度更新紀錄", [
+        "更新ID",
+        "任務ID",
+        "工項ID",
+        "更新日期",
+        "更新人",
+        "進度內容",
+        "完成狀態",
+        "下次追蹤日期",
+        "備註",
+      ], state.updates.map((record) => [
+        record.updateId || record["更新ID"],
+        record.taskId || record["任務ID"],
+        record.itemId || record["工項ID"],
+        record.date || record["更新日期"],
+        record.reporter || record["更新人"],
+        record.progress || record["進度內容"],
+        record.status || record["完成狀態"],
+        record.nextDate || record["下次追蹤日期"],
+        record.note || record["備註"],
+      ])),
+      buildSheet("即時-經費支出紀錄", [
+        "經費ID",
+        "任務ID",
+        "工項ID",
+        "來源工作表/工項",
+        "金額",
+        "費用明細",
+        "支出日期",
+        "填報人",
+        "憑證連結",
+        "備註",
+      ], state.expenses.map((record) => [
+        record.expenseId || record["經費ID"],
+        record.taskId || record["任務ID"],
+        record.itemId || record["工項ID"],
+        record.sourceSheet || record["來源工作表"] || record.itemName || record["工項名稱"],
+        record.amount || record["金額"],
+        record.detail || record["費用明細"],
+        record.date || record["支出日期"],
+        record.reporter || record["填報人"],
+        record.voucher || record["憑證連結"],
+        record.note || record["備註"],
+      ])),
+    ];
+    return [...liveSheets, ...originalSheets.map((sheet) => ({
+      ...sheet,
+      name: `原始-${sheet.name}`,
+    }))];
+  }
+
+  function buildSheet(name, headers, dataRows) {
+    return {
+      name,
+      headerRow: 1,
+      maxColumn: headers.length,
+      rows: [
+        { rowNumber: 1, values: headers },
+        ...dataRows.map((values, index) => ({
+          rowNumber: index + 2,
+          values,
+        })),
+      ],
+    };
   }
 
   function applyFilters() {

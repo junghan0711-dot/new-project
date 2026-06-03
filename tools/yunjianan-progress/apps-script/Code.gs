@@ -56,6 +56,8 @@ function listItems_() {
         schedule: record["表定時間摘要"] || record["工作執行時程規劃"],
         currentStatus: record["執行現況說明"],
         expenseNote: record["經費項目"] || record["費用說明"],
+        updatedBy: record["最後更新人"],
+        updatedAt: record["最後更新時間"],
       };
     });
 }
