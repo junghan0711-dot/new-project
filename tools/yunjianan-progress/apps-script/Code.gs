@@ -34,6 +34,15 @@ function listData_() {
   };
 }
 
+function authorize_() {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  return {
+    ok: true,
+    spreadsheetName: spreadsheet.getName(),
+    spreadsheetId: SPREADSHEET_ID,
+  };
+}
+
 function listItems_() {
   const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
   const sheet = spreadsheet.getSheetByName("工項主檔") || spreadsheet.getSheetByName("工項總表");

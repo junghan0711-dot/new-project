@@ -24,18 +24,23 @@
 
 `https://docs.google.com/spreadsheets/d/1jF8XdfhtbOI22kJ0GbAU69-NuWHQLAgHLQMIhhynSF0`
 
+## Apps Script API
+
+目前連接的 Web App API：
+
+`https://script.google.com/macros/s/AKfycbzHMQY_u3n7rRIieye3qk21FvbHlPc-f3R11iVhydUB_u51HuMWZEn-qXtLdFQEuQLh/exec`
+
+Apps Script 專案：
+
+`https://script.google.com/d/1eNCAio-SX2IcxY1cu6Rme_-hQxqG6utZb4RJ5iz6gEKitokF1VAyg9C9/edit`
+
 ## 部署 Apps Script
 
-1. 開啟 Google Sheet。
-2. 點選「擴充功能」>「Apps Script」。
-3. 將 `apps-script/Code.gs` 內容貼到 Apps Script 編輯器。
-4. 點選「部署」>「新增部署作業」。
-5. 類型選「網頁應用程式」。
-6. 執行身分選「我」。
-7. 存取權限依團隊需求選「任何擁有 Google 帳戶的使用者」或「知道連結的所有人」。
-8. 複製部署後的 Web App URL。
-9. 將 `config.js` 的 `apiUrl` 改成該 Web App URL。
-10. commit 並 push 到 GitHub，GitHub Pages 會自動更新。
+1. Apps Script 程式碼放在 `apps-script/`。
+2. 若用 clasp 更新，先在 `apps-script/` 目錄執行 `npx -y @google/clasp push --force`。
+3. 修改程式後建立新版本並更新既有部署，避免 Web App URL 改變。
+4. Web App 設定為「以我執行」與「任何人，即使是匿名使用者」可存取。
+5. 若首次部署或更換帳號，請在 Apps Script 編輯器執行 `authorize_()` 完成試算表存取授權。
 
 ## 注意
 
