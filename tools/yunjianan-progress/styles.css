@@ -406,7 +406,8 @@ textarea:focus {
 }
 
 .source-panel,
-.updates-panel {
+.updates-panel,
+.cases-panel {
   overflow: hidden;
 }
 
@@ -494,18 +495,115 @@ textarea:focus {
   font-size: 13px;
 }
 
-#formMessage {
+#formMessage,
+#caseFormMessage {
   color: var(--muted);
   font-size: 13px;
   flex: 1;
 }
 
-#formMessage.error {
+#formMessage.error,
+#caseFormMessage.error {
   color: var(--accent);
 }
 
-#formMessage.success {
+#formMessage.success,
+#caseFormMessage.success {
   color: var(--ok);
+}
+
+.case-workspace {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.92fr) minmax(420px, 1.08fr);
+  gap: 16px;
+  padding: 16px;
+  align-items: start;
+}
+
+.case-form,
+.case-board {
+  display: grid;
+  gap: 14px;
+}
+
+.case-form {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fbfcfd;
+}
+
+.case-form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.case-note-field {
+  grid-column: span 2;
+}
+
+.case-toolbar {
+  display: grid;
+  grid-template-columns: 160px 160px 1fr;
+  gap: 10px;
+}
+
+.case-list {
+  display: grid;
+  gap: 10px;
+  max-height: 68vh;
+  overflow: auto;
+}
+
+.case-card {
+  display: grid;
+  gap: 10px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #ffffff;
+}
+
+.case-card-header,
+.case-card-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.case-card-title {
+  display: grid;
+  gap: 4px;
+}
+
+.case-card-title strong {
+  font-size: 15px;
+}
+
+.case-card-title span,
+.case-card-meta,
+.case-field span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.case-card-body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.case-field {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid #e3e8ef;
+  border-radius: 6px;
+  background: #fbfcfd;
+}
+
+.case-field p {
+  white-space: pre-wrap;
 }
 
 @media (max-width: 960px) {
@@ -526,8 +624,16 @@ textarea:focus {
   .workspace.view-section.active,
   .detail-grid,
   .form-grid,
-  .records-grid {
+  .records-grid,
+  .case-workspace,
+  .case-form-grid,
+  .case-toolbar,
+  .case-card-body {
     grid-template-columns: 1fr;
+  }
+
+  .case-note-field {
+    grid-column: auto;
   }
 
   .section-heading {

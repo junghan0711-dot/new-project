@@ -9,6 +9,7 @@
 - GitHub Pages：員工填報網頁、完整來源資料瀏覽
 - Google Apps Script：接收填報資料，寫入 Google Sheets
 - Google Sheets：即時彙整資料，必要時可下載為 Excel
+- 案件追蹤列管：臨時交辦事項、指定同事、查核點、Deadline 與進度回報寫入 `案件追蹤列管` 工作表
 
 ## 來源資料
 

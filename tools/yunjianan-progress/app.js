@@ -6,9 +6,11 @@
     tasks: [],
     updates: [],
     expenses: [],
+    cases: [],
     sheets: [],
     originalSheetCount: 0,
     filteredItems: [],
+    filteredCases: [],
     selectedItemId: "",
     selectedSheetName: "",
     loading: false,
@@ -25,10 +27,18 @@
     $("searchInput").addEventListener("input", applyFilters);
     $("sourceSearchInput").addEventListener("input", renderSourceTable);
     $("progressForm").addEventListener("submit", submitProgress);
+    $("caseForm").addEventListener("submit", submitCaseTracking);
+    $("caseAssigneeFilter").addEventListener("change", applyCaseFilters);
+    $("caseStatusFilter").addEventListener("change", applyCaseFilters);
+    $("caseSearchInput").addEventListener("input", applyCaseFilters);
     $("reporterInput").value = localStorage.getItem("yunjianan.reporter") || "";
     $("reporterInput").addEventListener("input", (event) => {
       localStorage.setItem("yunjianan.reporter", event.target.value.trim());
+      if (!$("caseReporterInput").value.trim()) {
+        $("caseReporterInput").value = event.target.value.trim();
+      }
     });
+    $("caseReporterInput").value = $("reporterInput").value;
     document.querySelectorAll(".tab-button").forEach((button) => {
       button.addEventListener("click", () => switchView(button.dataset.view));
     });
@@ -74,6 +84,7 @@
           tasks: payload.tasks || embedded.tasks || [],
           updates: payload.updates || embedded.updates || [],
           expenses: payload.expenses || embedded.expenses || [],
+          cases: payload.cases || embedded.cases || [],
           sheets: payload.sheets || embedded.sheets || [],
         });
         $("dataMode").textContent = "已連線";
@@ -97,6 +108,7 @@
     state.tasks = (payload.tasks || []).map(normalizeTask);
     state.updates = payload.updates || [];
     state.expenses = payload.expenses || [];
+    state.cases = (payload.cases || []).map(normalizeCase);
     const originalSheets = payload.sheets && payload.sheets.length ? payload.sheets : [];
     state.originalSheetCount = originalSheets.length;
     state.sheets = buildOverviewSheets(originalSheets);
@@ -140,12 +152,31 @@
     };
   }
 
+  function normalizeCase(record) {
+    return {
+      caseId: record.caseId || record["案件ID"] || "",
+      title: record.title || record["案件名稱"] || "",
+      assignee: record.assignee || record["指定同事"] || "",
+      instruction: record.instruction || record["交辦內容"] || "",
+      checkpoint: record.checkpoint || record["查核點"] || "",
+      deadline: record.deadline || record["Deadline"] || record["期限"] || "",
+      progress: record.progress || record["目前進度說明"] || record["進度說明"] || "",
+      status: record.status || record["狀態"] || "待執行",
+      priority: record.priority || record["優先序"] || "一般",
+      reporter: record.reporter || record["回報人"] || "",
+      reportedAt: record.reportedAt || record["回報時間"] || record["最後更新時間"] || "",
+      note: record.note || record["備註"] || "",
+    };
+  }
+
   function renderAll() {
     populatePeople();
     applyFilters();
     renderSheetTabs();
     renderSourceTable();
     renderRecords();
+    populateCaseAssignees();
+    applyCaseFilters();
     const meta = [
       `資料更新時間：${latestDataTime()}`,
       `即時彙整 3 張 / 原始快照 ${state.originalSheetCount} 張`,
@@ -159,6 +190,7 @@
       ...state.items.map((item) => item.updatedAt),
       ...state.tasks.map((task) => task.updatedAt),
       ...state.updates.map((record) => record.updatedAt || record["最後更新時間"]),
+      ...state.cases.map((record) => record.reportedAt),
     ].filter(Boolean);
     return times.length ? times[times.length - 1] : embedded.generatedAt || "未記錄";
   }
@@ -186,6 +218,32 @@
       select.appendChild(option);
     });
     select.value = sortedNames.includes(currentValue) ? currentValue : "";
+  }
+
+  function populateCaseAssignees() {
+    const assigneeInput = $("caseAssigneeInput");
+    const assigneeOptions = $("caseAssigneeOptions");
+    const assigneeFilter = $("caseAssigneeFilter");
+    const currentInput = assigneeInput.value;
+    const currentFilter = assigneeFilter.value;
+    const names = new Set();
+    state.items.forEach((item) => splitNames(item.owner).forEach((name) => names.add(name)));
+    state.cases.forEach((record) => {
+      if (record.assignee) names.add(record.assignee);
+    });
+    const sortedNames = [...names].sort((a, b) => a.localeCompare(b, "zh-Hant"));
+
+    assigneeOptions.innerHTML = "";
+    assigneeFilter.innerHTML = '<option value="">全部</option>';
+    sortedNames.forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      assigneeOptions.appendChild(option.cloneNode(true));
+      assigneeFilter.appendChild(option);
+    });
+    assigneeInput.value = currentInput;
+    assigneeFilter.value = sortedNames.includes(currentFilter) ? currentFilter : "";
   }
 
   function splitNames(value) {
@@ -280,6 +338,33 @@
         record.reporter || record["填報人"],
         record.voucher || record["憑證連結"],
         record.note || record["備註"],
+      ])),
+      buildSheet("即時-案件追蹤列管", [
+        "案件ID",
+        "案件名稱",
+        "指定同事",
+        "交辦內容",
+        "查核點",
+        "Deadline",
+        "目前進度說明",
+        "狀態",
+        "優先序",
+        "回報人",
+        "回報時間",
+        "備註",
+      ], state.cases.map((record) => [
+        record.caseId,
+        record.title,
+        record.assignee,
+        record.instruction,
+        record.checkpoint,
+        record.deadline,
+        record.progress,
+        record.status,
+        record.priority,
+        record.reporter,
+        record.reportedAt,
+        record.note,
       ])),
     ];
     return [...liveSheets, ...originalSheets.map((sheet) => ({
@@ -522,6 +607,116 @@
     $("recordCount").textContent = `${state.updates.length + state.expenses.length} 筆`;
   }
 
+  function applyCaseFilters() {
+    const assignee = $("caseAssigneeFilter").value;
+    const status = $("caseStatusFilter").value;
+    const query = $("caseSearchInput").value.trim().toLowerCase();
+    state.filteredCases = state.cases.filter((record) => {
+      const matchesAssignee = !assignee || record.assignee === assignee;
+      const matchesStatus = !status || record.status === status;
+      const haystack = [
+        record.title,
+        record.assignee,
+        record.instruction,
+        record.checkpoint,
+        record.deadline,
+        record.progress,
+        record.status,
+        record.priority,
+        record.reporter,
+        record.note,
+      ].join(" ").toLowerCase();
+      return matchesAssignee && matchesStatus && (!query || haystack.includes(query));
+    });
+    renderCases();
+  }
+
+  function renderCases() {
+    const list = $("caseList");
+    list.innerHTML = "";
+    $("caseCount").textContent = `${state.filteredCases.length} 筆`;
+    if (!state.filteredCases.length) {
+      const empty = document.createElement("p");
+      empty.className = "task-meta";
+      empty.textContent = "目前沒有符合條件的案件。";
+      list.appendChild(empty);
+      return;
+    }
+    [...state.filteredCases].reverse().slice(0, 160).forEach((record) => {
+      const card = document.createElement("article");
+      card.className = "case-card";
+      const status = document.createElement("span");
+      status.className = "status-pill";
+      setCaseStatusPill(status, record.status);
+      card.appendChild(caseHeader(record, status));
+      card.appendChild(caseBody(record));
+      card.appendChild(caseMeta(record));
+      list.appendChild(card);
+    });
+  }
+
+  function caseHeader(record, status) {
+    const header = document.createElement("div");
+    header.className = "case-card-header";
+    const title = document.createElement("div");
+    title.className = "case-card-title";
+    const strong = document.createElement("strong");
+    strong.textContent = record.title || "未命名案件";
+    const span = document.createElement("span");
+    span.textContent = [
+      record.assignee ? `指定同事：${record.assignee}` : "",
+      record.deadline ? `Deadline：${record.deadline}` : "",
+      record.priority ? `優先序：${record.priority}` : "",
+    ].filter(Boolean).join(" / ");
+    title.appendChild(strong);
+    title.appendChild(span);
+    header.appendChild(title);
+    header.appendChild(status);
+    return header;
+  }
+
+  function caseBody(record) {
+    const body = document.createElement("div");
+    body.className = "case-card-body";
+    [
+      ["交辦內容", record.instruction],
+      ["查核點", record.checkpoint],
+      ["目前進度說明", record.progress],
+      ["備註", record.note],
+    ].forEach(([label, value]) => {
+      const field = document.createElement("div");
+      field.className = "case-field";
+      const span = document.createElement("span");
+      span.textContent = label;
+      const p = document.createElement("p");
+      p.textContent = value || "未填";
+      field.appendChild(span);
+      field.appendChild(p);
+      body.appendChild(field);
+    });
+    return body;
+  }
+
+  function caseMeta(record) {
+    const meta = document.createElement("div");
+    meta.className = "case-card-meta";
+    meta.textContent = [
+      record.caseId,
+      record.reporter ? `回報人：${record.reporter}` : "",
+      record.reportedAt ? `回報時間：${record.reportedAt}` : "",
+    ].filter(Boolean).join(" / ");
+    return meta;
+  }
+
+  function setCaseStatusPill(element, status) {
+    const value = status || "待執行";
+    element.textContent = value;
+    element.classList.remove("done", "open", "unknown");
+    if (value === "已完成") element.classList.add("done");
+    else if (value === "進行中" || value === "待查核") element.classList.add("open");
+    else element.classList.add("unknown");
+  }
+
   function renderRecordList(id, records, mapper) {
     const list = $(id);
     list.innerHTML = "";
@@ -592,6 +787,53 @@
     } finally {
       $("submitButton").disabled = false;
     }
+  }
+
+  async function submitCaseTracking(event) {
+    event.preventDefault();
+    if (!config.apiUrl) {
+      renderCaseMessage("目前尚未設定 Apps Script API URL，無法寫入案件列管。", "error");
+      return;
+    }
+    const reporter = $("caseReporterInput").value.trim() || $("reporterInput").value.trim();
+    if (!reporter) {
+      renderCaseMessage("請填寫回報人。", "error");
+      $("caseReporterInput").focus();
+      return;
+    }
+    const payload = {
+      action: "submitCaseTracking",
+      title: $("caseTitleInput").value.trim(),
+      assignee: $("caseAssigneeInput").value,
+      deadline: $("caseDeadlineInput").value,
+      status: $("caseStatusInput").value,
+      instruction: $("caseInstructionInput").value.trim(),
+      checkpoint: $("caseCheckpointInput").value.trim(),
+      progress: $("caseProgressInput").value.trim(),
+      reporter,
+      priority: $("casePriorityInput").value,
+      note: $("caseNoteInput").value.trim(),
+    };
+    $("caseSubmitButton").disabled = true;
+    renderCaseMessage("送出中...", "");
+    try {
+      await postNoCors(config.apiUrl, payload);
+      renderCaseMessage("已送出列管紀錄。系統會重新讀取最新資料。", "success");
+      $("caseForm").reset();
+      $("caseReporterInput").value = reporter;
+      await wait(900);
+      await loadData();
+    } catch (error) {
+      renderCaseMessage(`送出失敗：${error.message}`, "error");
+    } finally {
+      $("caseSubmitButton").disabled = false;
+    }
+  }
+
+  function renderCaseMessage(message, type) {
+    const element = $("caseFormMessage");
+    element.textContent = message;
+    element.className = type || "";
   }
 
   function postNoCors(url, payload) {

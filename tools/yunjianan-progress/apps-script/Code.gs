@@ -3,6 +3,7 @@ const SHEETS = {
   tasks: "任務明細",
   updates: "進度更新紀錄",
   expenses: "經費支出紀錄",
+  cases: "案件追蹤列管",
 };
 
 function doGet(e) {
@@ -31,6 +32,7 @@ function listData_() {
     tasks: listTasks_(),
     updates: listRecords_(SHEETS.updates),
     expenses: listRecords_(SHEETS.expenses),
+    cases: listRecords_(SHEETS.cases),
   };
 }
 
@@ -92,6 +94,10 @@ function doPost(e) {
       const result = submitItemProgress_(params);
       return json_({ ok: true, result });
     }
+    if (params.action === "submitCaseTracking") {
+      const result = submitCaseTracking_(params);
+      return json_({ ok: true, result });
+    }
     if (params.action !== "submitProgress") {
       return json_({ ok: false, error: "Unknown action" });
     }
@@ -102,6 +108,43 @@ function doPost(e) {
   } finally {
     lock.releaseLock();
   }
+}
+
+function submitCaseTracking_(params) {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const caseSheet = ensureSheet_(spreadsheet, SHEETS.cases, [
+    "案件ID",
+    "案件名稱",
+    "指定同事",
+    "交辦內容",
+    "查核點",
+    "Deadline",
+    "目前進度說明",
+    "狀態",
+    "優先序",
+    "回報人",
+    "回報時間",
+    "備註",
+  ]);
+  const timestamp = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
+  const caseId = "CASE" + Utilities.formatDate(new Date(), "Asia/Taipei", "yyyyMMddHHmmss");
+
+  caseSheet.appendRow([
+    caseId,
+    params.title || "",
+    params.assignee || "",
+    params.instruction || "",
+    params.checkpoint || "",
+    params.deadline || "",
+    params.progress || "",
+    params.status || "待執行",
+    params.priority || "一般",
+    params.reporter || "",
+    timestamp,
+    params.note || "",
+  ]);
+
+  return { caseId, updatedAt: timestamp };
 }
 
 function submitItemProgress_(params) {
@@ -270,6 +313,22 @@ function getByHeader_(sheet, headers, row, header) {
   const index = headers.indexOf(header);
   if (index < 0) return "";
   return sheet.getRange(row, index + 1).getValue();
+}
+
+function ensureSheet_(spreadsheet, sheetName, headers) {
+  let sheet = spreadsheet.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(sheetName);
+  }
+  const currentHeaders = sheet.getLastRow() > 0
+    ? sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), headers.length)).getValues()[0]
+    : [];
+  const hasHeaders = headers.every((header, index) => currentHeaders[index] === header);
+  if (!hasHeaders) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
 }
 
 function parsePost_(e) {
