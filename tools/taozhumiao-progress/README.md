@@ -38,7 +38,11 @@ Google Drive 對應檔案：
 
 ## Apps Script API
 
-目前 `config.js` 的 `apiUrl` 尚未設定，因此前端會使用 `data.js` 快照完整預覽；若要正式填報寫回 Google Sheet，需部署 `apps-script/Code.gs` 並把 Web App URL 寫入 `config.js`。
+目前 `config.js` 的 `apiUrl` 已設定為桃竹苗 Apps Script Web App，前端會優先讀取線上 Google Sheet；若線上 API 讀取失敗，會退回 `data.js` 快照預覽。
+
+Web App URL：
+
+`https://script.google.com/macros/s/AKfycbwfKqJFhWytjFp4UO0tfK2h5d2yvhZbz04GGqRSaLWxqrRhcN9P-dRvwP6Hl2lpOJyi/exec`
 
 Apps Script 會使用以下工作表：
 
@@ -54,7 +58,7 @@ Apps Script 會使用以下工作表：
 1. Apps Script 程式碼放在 `apps-script/`。
 2. 若用 clasp 更新，需先建立或綁定桃竹苗 Apps Script 專案，再補 `.clasp.json` 的 `scriptId`。
 3. 修改程式後建立新版本並更新既有部署，避免 Web App URL 改變。
-4. Web App 建議設定為「以我執行」與「任何人，即使是匿名使用者」可存取。
+4. Web App 建議設定為「以我執行」與「任何 Google 帳戶」或「任何人，即使是匿名使用者」可存取。
 5. 若首次部署或更換帳號，請在 Apps Script 編輯器執行 `authorize_()` 完成試算表存取授權。
 
 ## 注意
