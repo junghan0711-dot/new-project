@@ -21,6 +21,14 @@
 
   const $ = (id) => document.getElementById(id);
   const excludedPersonLabels = new Set(["主責", "協辦", "主責及協辦", "負責同仁", "各項主責同仁"]);
+  const personAliases = {
+    hank: "Hank",
+    Hank: "Hank",
+    邱榮漢: "Hank",
+    榮漢: "Hank",
+    榮漢哥: "Hank",
+    邱委: "Hank",
+  };
 
   function init() {
     $("sheetLink").href = embedded.sourceUrl || config.sheetUrl || "#";
@@ -326,6 +334,11 @@
     return splitNames(value).join("、");
   }
 
+  function displayPersonName(value) {
+    const name = String(value || "").trim();
+    return personAliases[name] || name;
+  }
+
   function buildOverviewSheets(originalSheets) {
     const liveSheets = [
       buildSheet("即時-工項主檔", [
@@ -369,7 +382,7 @@
         record.taskId || record["任務ID"],
         record.itemId || record["工項ID"],
         record.date || record["更新日期"],
-        record.reporter || record["更新人"],
+        displayPersonName(record.reporter || record["更新人"]),
         record.progress || record["進度內容"],
         record.status || record["完成狀態"],
         record.nextDate || record["下次追蹤日期"],
@@ -395,7 +408,7 @@
         record.amount || record["金額"],
         record.detail || record["費用明細"],
         record.date || record["支出日期"],
-        record.reporter || record["填報人"],
+        displayPersonName(record.reporter || record["填報人"]),
         record.voucher || record["憑證連結"],
         record.note || record["備註"],
       ])),
@@ -702,7 +715,7 @@
       meta: [
         record.updateId || record["更新ID"],
         record.date || record["更新日期"],
-        record.reporter || record["更新人"],
+        displayPersonName(record.reporter || record["更新人"]),
         record.note || record["備註"],
         record.voucher || record["佐證資料連結"] || record["憑證連結"],
       ].filter(Boolean).join(" / "),
@@ -714,7 +727,7 @@
         record.expenseId || record["經費ID"],
         record.sourceSheet || record["來源工作表"],
         record.date || record["支出日期"],
-        record.reporter || record["填報人"],
+        displayPersonName(record.reporter || record["填報人"]),
         record.note || record["備註"],
       ].filter(Boolean).join(" / "),
     }));
@@ -744,7 +757,7 @@
           String(person.total),
           String(person.updatedRecently),
           String(person.needsFollowUp),
-          person.latestDate ? `${person.latestDate} / ${person.latestReporter || "未填"}` : "尚無紀錄",
+          person.latestDate ? `${person.latestDate} / ${displayPersonName(person.latestReporter) || "未填"}` : "尚無紀錄",
           person.needsFollowUp > 0 ? "需追蹤" : "OK",
         ].forEach((value) => {
           const cell = document.createElement("td");
@@ -772,7 +785,7 @@
       article.querySelector("p").textContent = [
         `主責：${displayNames(item.owner) || "未填"}`,
         `目前狀態：${item.status}`,
-        item.latestDate ? `最近更新：${item.latestDate} / ${item.latestReporter || "未填更新人"}` : "最近更新：尚無紀錄",
+        item.latestDate ? `最近更新：${item.latestDate} / ${displayPersonName(item.latestReporter) || "未填更新人"}` : "最近更新：尚無紀錄",
       ].join(" / ");
       article.querySelector("span").textContent = item.reason;
       list.appendChild(article);
@@ -846,7 +859,7 @@
       if (recordItemId !== itemId) return;
       const candidate = {
         date: record.date || record["更新日期"] || record.updatedAt || record["最後更新時間"] || "",
-        reporter: record.reporter || record["更新人"] || "",
+        reporter: displayPersonName(record.reporter || record["更新人"] || ""),
         status: String(record.status || record["完成狀態"] || "").trim(),
         index,
       };
@@ -1189,7 +1202,7 @@
     if (!updates.length) {
       const p = document.createElement("p");
       p.textContent = record.reportedAt
-        ? `${record.reportedAt} / ${record.reporter || "未填回報人"} / ${record.status || "未填狀態"}\n${record.progress || "未填最新進度"}`
+        ? `${record.reportedAt} / ${displayPersonName(record.reporter) || "未填回報人"} / ${record.status || "未填狀態"}\n${record.progress || "未填最新進度"}`
         : "尚無回報紀錄";
       field.appendChild(p);
       return field;
@@ -1201,7 +1214,7 @@
       const meta = document.createElement("strong");
       meta.textContent = [
         caseUpdateValue(update, "date", "回報日期"),
-        caseUpdateValue(update, "reporter", "回報人"),
+        displayPersonName(caseUpdateValue(update, "reporter", "回報人")),
         caseUpdateValue(update, "status", "狀態"),
       ].filter(Boolean).join(" / ");
       const progress = document.createElement("p");
@@ -1240,7 +1253,7 @@
       meta.textContent = [
         record.assignee ? `指定同事：${record.assignee}` : "",
         record.releasedAt ? `解除時間：${record.releasedAt}` : "",
-        record.reporter ? `回報人：${record.reporter}` : "",
+        record.reporter ? `回報人：${displayPersonName(record.reporter)}` : "",
       ].filter(Boolean).join(" / ");
       header.appendChild(title);
       header.appendChild(meta);
@@ -1284,7 +1297,7 @@
     meta.className = "case-card-meta";
     meta.textContent = [
       record.caseId,
-      record.reporter ? `回報人：${record.reporter}` : "",
+      record.reporter ? `回報人：${displayPersonName(record.reporter)}` : "",
       record.reportedAt ? `回報時間：${record.reportedAt}` : "",
     ].filter(Boolean).join(" / ");
     return meta;
