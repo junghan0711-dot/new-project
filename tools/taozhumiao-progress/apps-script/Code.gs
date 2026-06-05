@@ -5,6 +5,7 @@ const SHEETS = {
   expenses: "經費支出紀錄",
   cases: "案件追蹤列管",
   caseUpdates: "案件進度紀錄",
+  consultations: "諮詢輔導場次",
 };
 const ALLOWED_REPORTERS = [];
 const UPDATE_HEADERS = [
@@ -59,6 +60,28 @@ const CASE_HEADERS = [
   "完成/解除列管說明",
   "解除列管時間",
 ];
+const CONSULTATION_HEADERS = [
+  "場次ID",
+  "工項ID",
+  "月份",
+  "單位名稱",
+  "輔導日期",
+  "開始時間",
+  "結束時間",
+  "地點",
+  "輔導老師",
+  "分署人員",
+  "單位人員",
+  "相關人員",
+  "負責同仁",
+  "狀態",
+  "輔導主題",
+  "會議紀錄/備註",
+  "佐證資料連結",
+  "建立人",
+  "建立時間",
+  "最後更新時間",
+];
 
 function doGet(e) {
   const params = e && e.parameter ? e.parameter : {};
@@ -72,6 +95,9 @@ function doGet(e) {
     }
     if (action === "listData") {
       return jsonp_(params.callback, listData_());
+    }
+    if (action === "prepareConsultations") {
+      return jsonp_(params.callback, prepareConsultations_());
     }
     return jsonp_(params.callback, { ok: false, error: "Unknown action" });
   } catch (error) {
@@ -88,6 +114,7 @@ function listData_() {
     expenses: listRecords_(SHEETS.expenses),
     cases: listRecords_(SHEETS.cases),
     caseUpdates: listRecords_(SHEETS.caseUpdates),
+    consultations: listRecords_(SHEETS.consultations),
   };
 }
 
@@ -102,6 +129,15 @@ function authorize_() {
 
 function authorize() {
   return authorize_();
+}
+
+function prepareConsultations_() {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  ensureSheet_(spreadsheet, SHEETS.consultations, CONSULTATION_HEADERS);
+  return {
+    ok: true,
+    sheetName: SHEETS.consultations,
+  };
 }
 
 function listItems_() {
@@ -165,6 +201,11 @@ function doPost(e) {
       const result = submitCaseProgress_(params);
       return json_({ ok: true, result });
     }
+    if (params.action === "submitConsultationSession") {
+      checkReporter_(params.reporter);
+      const result = submitConsultationSession_(params);
+      return json_({ ok: true, result });
+    }
     if (params.action !== "submitProgress") {
       return json_({ ok: false, error: "Unknown action" });
     }
@@ -176,6 +217,38 @@ function doPost(e) {
   } finally {
     lock.releaseLock();
   }
+}
+
+function submitConsultationSession_(params) {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ensureSheet_(spreadsheet, SHEETS.consultations, CONSULTATION_HEADERS);
+  const timestamp = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
+  const sessionId = nextConsultationId_(sheet, params.month || timestamp.slice(0, 7));
+
+  sheet.appendRow([
+    sessionId,
+    params.itemId || "ITEM001",
+    params.month || "",
+    params.unitName || "",
+    params.date || "",
+    params.startTime || "",
+    params.endTime || "",
+    params.location || "",
+    params.teacher || "",
+    params.branchStaff || "",
+    params.unitStaff || "",
+    params.relatedStaff || "",
+    params.owner || "",
+    params.status || "預排",
+    params.topic || "",
+    params.note || "",
+    params.attachment || "",
+    params.reporter || "",
+    timestamp,
+    timestamp,
+  ]);
+
+  return { sessionId, updatedAt: timestamp };
 }
 
 function submitCaseTracking_(params) {
@@ -427,6 +500,24 @@ function nextCaseId_(sheet) {
   });
   const nextSerial = Math.max(maxSerial, values.length) + 1;
   return "CASE-" + String(nextSerial).padStart(4, "0");
+}
+
+function nextConsultationId_(sheet, month) {
+  const normalizedMonth = String(month || "")
+    .replace(/[^0-9]/g, "")
+    .slice(0, 6) || Utilities.formatDate(new Date(), "Asia/Taipei", "yyyyMM");
+  const prefix = "CONS-" + normalizedMonth + "-";
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return prefix + "001";
+  const values = sheet.getRange(2, 1, lastRow - 1, 1).getDisplayValues();
+  let maxSerial = 0;
+  values.forEach((row) => {
+    const value = String(row[0] || "");
+    if (!value.startsWith(prefix)) return;
+    const serial = Number(value.slice(prefix.length));
+    if (Number.isFinite(serial)) maxSerial = Math.max(maxSerial, serial);
+  });
+  return prefix + String(maxSerial + 1).padStart(3, "0");
 }
 
 function rowToObject_(headers, row) {
