@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>115 雲嘉南多元計畫進度填報</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=released-cases-20260605" />
   </head>
   <body>
     <header class="topbar">
@@ -237,125 +237,135 @@
         </div>
 
         <div class="case-workspace">
-          <form id="caseForm" class="case-form">
-            <div class="form-caption">
-              <h3>新增列管案件</h3>
-              <p>送出後系統會自動建立案件編號，後續可用編號查詢與回報進度。</p>
-            </div>
-            <div class="form-grid case-form-grid">
-              <label>
-                <span>案件名稱</span>
-                <input id="caseTitleInput" type="text" required placeholder="例：多元團隊研習成果彙整" />
-              </label>
-              <label>
-                <span>指定同事</span>
-                <input id="caseAssigneeInput" list="caseAssigneeOptions" type="text" required placeholder="輸入或選擇同事" />
-                <datalist id="caseAssigneeOptions"></datalist>
-              </label>
-              <label>
-                <span>Deadline</span>
-                <input id="caseDeadlineInput" type="datetime-local" required />
-              </label>
-              <label>
-                <span>狀態</span>
-                <select id="caseStatusInput" required>
-                  <option value="待執行">待執行</option>
-                  <option value="進行中">進行中</option>
-                  <option value="待查核">待查核</option>
-                  <option value="已完成">已完成</option>
-                </select>
-              </label>
-            </div>
+          <div class="case-forms-stack">
+            <form id="caseForm" class="case-form">
+              <div class="form-caption">
+                <h3>新增列管案件</h3>
+                <p>送出後系統會自動建立案件編號，後續可用編號查詢與回報進度。</p>
+              </div>
+              <div class="form-grid case-form-grid">
+                <label>
+                  <span>案件名稱</span>
+                  <input id="caseTitleInput" type="text" required placeholder="例：多元團隊研習成果彙整" />
+                </label>
+                <label>
+                  <span>指定同事</span>
+                  <input id="caseAssigneeInput" list="caseAssigneeOptions" type="text" required placeholder="輸入或選擇同事" />
+                  <datalist id="caseAssigneeOptions"></datalist>
+                </label>
+                <label>
+                  <span>Deadline</span>
+                  <input id="caseDeadlineInput" type="datetime-local" required />
+                </label>
+                <label>
+                  <span>狀態</span>
+                  <select id="caseStatusInput" required>
+                    <option value="待執行">待執行</option>
+                    <option value="進行中">進行中</option>
+                    <option value="待查核">待查核</option>
+                    <option value="已完成">已完成</option>
+                  </select>
+                </label>
+              </div>
 
-            <label>
-              <span>交辦內容</span>
-              <textarea id="caseInstructionInput" rows="4" required placeholder="請寫清楚交辦事項、交付格式、需要協調的人或資料"></textarea>
-            </label>
-
-            <label>
-              <span>查核點</span>
-              <textarea id="caseCheckpointInput" rows="3" required placeholder="例：6/5 12:00 前回報初稿；6/6 前確認照片與簽到資料"></textarea>
-            </label>
-
-            <label>
-              <span>目前進度說明</span>
-              <textarea id="caseProgressInput" rows="4" required placeholder="填寫目前執行到哪裡、卡關事項、下一步"></textarea>
-            </label>
-
-            <div class="form-grid case-form-grid">
               <label>
-                <span>回報人</span>
-                <input id="caseReporterInput" type="text" autocomplete="name" placeholder="預設帶入上方填報人" />
+                <span>交辦內容</span>
+                <textarea id="caseInstructionInput" rows="4" required placeholder="請寫清楚交辦事項、交付格式、需要協調的人或資料"></textarea>
+              </label>
+
+              <label>
+                <span>查核點</span>
+                <textarea id="caseCheckpointInput" rows="3" required placeholder="例：6/5 12:00 前回報初稿；6/6 前確認照片與簽到資料"></textarea>
+              </label>
+
+              <label>
+                <span>目前進度說明</span>
+                <textarea id="caseProgressInput" rows="4" required placeholder="填寫目前執行到哪裡、卡關事項、下一步"></textarea>
+              </label>
+
+              <div class="form-grid case-form-grid">
+                <label>
+                  <span>回報人</span>
+                  <input id="caseReporterInput" type="text" autocomplete="name" placeholder="預設帶入上方填報人" />
+                </label>
+                <label>
+                  <span>優先序</span>
+                  <select id="casePriorityInput">
+                    <option value="一般">一般</option>
+                    <option value="高">高</option>
+                    <option value="急件">急件</option>
+                  </select>
+                </label>
+                <label class="case-note-field">
+                  <span>備註</span>
+                  <input id="caseNoteInput" type="text" placeholder="補充連結、檔案位置或管理提醒" />
+                </label>
+                <label class="case-note-field">
+                  <span>佐證資料連結</span>
+                  <input id="caseAttachmentInput" type="url" placeholder="貼上雲端資料夾、照片、簽到表、會議紀錄或交付檔案連結" />
+                </label>
+              </div>
+
+              <div class="form-actions">
+                <p id="caseFormMessage" role="status"></p>
+                <button id="caseSubmitButton" class="button primary" type="submit">送出列管</button>
+              </div>
+            </form>
+
+            <form id="caseProgressForm" class="case-form">
+              <div class="form-caption">
+                <h3>補最新進度 / 解除列管</h3>
+                <p>指定同事可用案件編號回報最新進度；狀態改為已完成並填寫完成內容後，即可解除列管。</p>
+              </div>
+              <div class="form-grid case-form-grid">
+                <label>
+                  <span>案件編號</span>
+                  <input id="caseProgressIdInput" list="caseIdOptions" type="text" required placeholder="例：CASE-0001" />
+                  <datalist id="caseIdOptions"></datalist>
+                </label>
+                <label>
+                  <span>回報人</span>
+                  <input id="caseProgressReporterInput" type="text" autocomplete="name" placeholder="預設帶入上方填報人" />
+                </label>
+                <label>
+                  <span>狀態 / 解除列管</span>
+                  <select id="caseProgressStatusInput" required>
+                    <option value="進行中">進行中</option>
+                    <option value="待查核">待查核</option>
+                    <option value="已完成">已完成</option>
+                  </select>
+                </label>
+                <label>
+                  <span>佐證資料連結</span>
+                  <input id="caseProgressAttachmentInput" type="url" placeholder="貼上完成成果、照片、文件或資料夾連結" />
+                </label>
+              </div>
+              <label>
+                <span>最新進度</span>
+                <textarea id="caseProgressUpdateInput" rows="4" required placeholder="填寫目前完成事項、卡關問題、下一步或需要協助的內容"></textarea>
               </label>
               <label>
-                <span>優先序</span>
-                <select id="casePriorityInput">
-                  <option value="一般">一般</option>
-                  <option value="高">高</option>
-                  <option value="急件">急件</option>
-                </select>
+                <span>完成 / 解除列管說明</span>
+                <textarea id="caseCompletionInput" rows="3" placeholder="狀態為已完成時，請填寫完成內容、交付成果與可解除列管原因"></textarea>
               </label>
-              <label class="case-note-field">
+              <label>
                 <span>備註</span>
-                <input id="caseNoteInput" type="text" placeholder="補充連結、檔案位置或管理提醒" />
+                <input id="caseProgressNoteInput" type="text" placeholder="補充提醒、檔案位置或主管查核意見" />
               </label>
-              <label class="case-note-field">
-                <span>佐證資料連結</span>
-                <input id="caseAttachmentInput" type="url" placeholder="貼上雲端資料夾、照片、簽到表、會議紀錄或交付檔案連結" />
-              </label>
-            </div>
+              <div class="form-actions">
+                <p id="caseProgressMessage" role="status"></p>
+                <button id="caseProgressSubmitButton" class="button primary" type="submit">送出進度</button>
+              </div>
+            </form>
 
-            <div class="form-actions">
-              <p id="caseFormMessage" role="status"></p>
-              <button id="caseSubmitButton" class="button primary" type="submit">送出列管</button>
-            </div>
-          </form>
-
-          <form id="caseProgressForm" class="case-form">
-            <div class="form-caption">
-              <h3>補最新進度 / 解除列管</h3>
-              <p>指定同事可用案件編號回報最新進度；狀態改為已完成並填寫完成內容後，即可解除列管。</p>
-            </div>
-            <div class="form-grid case-form-grid">
-              <label>
-                <span>案件編號</span>
-                <input id="caseProgressIdInput" list="caseIdOptions" type="text" required placeholder="例：CASE-0001" />
-                <datalist id="caseIdOptions"></datalist>
-              </label>
-              <label>
-                <span>回報人</span>
-                <input id="caseProgressReporterInput" type="text" autocomplete="name" placeholder="預設帶入上方填報人" />
-              </label>
-              <label>
-                <span>狀態 / 解除列管</span>
-                <select id="caseProgressStatusInput" required>
-                  <option value="進行中">進行中</option>
-                  <option value="待查核">待查核</option>
-                  <option value="已完成">已完成</option>
-                </select>
-              </label>
-              <label>
-                <span>佐證資料連結</span>
-                <input id="caseProgressAttachmentInput" type="url" placeholder="貼上完成成果、照片、文件或資料夾連結" />
-              </label>
-            </div>
-            <label>
-              <span>最新進度</span>
-              <textarea id="caseProgressUpdateInput" rows="4" required placeholder="填寫目前完成事項、卡關問題、下一步或需要協助的內容"></textarea>
-            </label>
-            <label>
-              <span>完成 / 解除列管說明</span>
-              <textarea id="caseCompletionInput" rows="3" placeholder="狀態為已完成時，請填寫完成內容、交付成果與可解除列管原因"></textarea>
-            </label>
-            <label>
-              <span>備註</span>
-              <input id="caseProgressNoteInput" type="text" placeholder="補充提醒、檔案位置或主管查核意見" />
-            </label>
-            <div class="form-actions">
-              <p id="caseProgressMessage" role="status"></p>
-              <button id="caseProgressSubmitButton" class="button primary" type="submit">送出進度</button>
-            </div>
-          </form>
+            <section class="released-cases-panel" aria-label="已解除列管紀錄">
+              <div class="form-caption">
+                <h3>已解除列管紀錄</h3>
+                <p>狀態為已完成的案件會集中顯示在這裡，方便查詢完成內容與最近回報。</p>
+              </div>
+              <div id="releasedCaseList" class="released-case-list"></div>
+            </section>
+          </div>
 
           <div class="case-board">
             <div class="case-toolbar">
@@ -412,6 +422,6 @@
 
     <script src="./config.js?v=api-20260603"></script>
     <script src="./data.js"></script>
-    <script src="./app.js?v=case-progress-live-20260605"></script>
+    <script src="./app.js?v=released-cases-20260605"></script>
   </body>
 </html>

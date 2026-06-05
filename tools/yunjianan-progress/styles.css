@@ -610,13 +610,20 @@ textarea:focus {
   align-items: start;
 }
 
-.case-form,
-.case-board {
+.case-forms-stack {
   display: grid;
   gap: 14px;
 }
 
-.case-form {
+.case-form,
+.case-board,
+.released-cases-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.case-form,
+.released-cases-panel {
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: 7px;
@@ -675,6 +682,13 @@ textarea:focus {
   display: grid;
   gap: 10px;
   max-height: 68vh;
+  overflow: auto;
+}
+
+.released-case-list {
+  display: grid;
+  gap: 10px;
+  max-height: 420px;
   overflow: auto;
 }
 
@@ -800,6 +814,34 @@ textarea:focus {
 
 .case-history-list strong {
   font-size: 13px;
+}
+
+.released-case-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #dce8df;
+  border-radius: 7px;
+  background: #ffffff;
+}
+
+.released-case-header {
+  display: grid;
+  gap: 4px;
+}
+
+.released-case-header strong {
+  font-size: 15px;
+}
+
+.released-case-header span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.released-case-body {
+  display: grid;
+  gap: 10px;
 }
 
 @media (max-width: 960px) {
