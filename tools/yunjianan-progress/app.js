@@ -213,6 +213,7 @@
     renderSheetTabs();
     renderSourceTable();
     renderRecords();
+    renderSupervisor();
     renderManagement();
     populateCaseAssignees();
     populateCaseIds();
@@ -230,11 +231,12 @@
     const times = [
       ...state.items.map((item) => item.updatedAt),
       ...state.tasks.map((task) => task.updatedAt),
-      ...state.updates.map((record) => record.updatedAt || record["最後更新時間"]),
+      ...state.updates.map((record) => record.updatedAt || record["最後更新時間"] || record.date || record["更新日期"]),
       ...state.cases.map((record) => record.reportedAt),
       ...state.caseUpdates.map((record) => record.reportedAt || record["回報日期"]),
     ].filter(Boolean);
-    return times.length ? times[times.length - 1] : embedded.generatedAt || "未記錄";
+    if (!times.length) return embedded.generatedAt || "未記錄";
+    return times.reduce((latest, value) => (dateValue(value) >= dateValue(latest) ? value : latest), times[0]);
   }
 
   function switchView(viewId) {
@@ -546,14 +548,8 @@
   }
 
   function latestItemUpdateStatus(itemId) {
-    if (!itemId) return "";
-    for (let index = state.updates.length - 1; index >= 0; index -= 1) {
-      const record = state.updates[index];
-      const recordItemId = record.itemId || record["工項ID"] || "";
-      const status = String(record.status || record["完成狀態"] || "").trim();
-      if (recordItemId === itemId && statusOption(status) === status) return status;
-    }
-    return "";
+    const latest = latestItemUpdate(itemId);
+    return latest && statusOption(latest.status) === latest.status ? latest.status : "";
   }
 
   function matchesItemStatus(item, selectedStatus) {
@@ -577,6 +573,8 @@
     state.itemStatusDrafts[state.selectedItemId] = $("completeInput").value;
     setStatusPill($("selectedStatus"), $("completeInput").value);
     applyFilters();
+    renderSupervisor();
+    renderManagement();
   }
 
   function selectItem(itemId) {
@@ -721,6 +719,157 @@
       ].filter(Boolean).join(" / "),
     }));
     $("recordCount").textContent = `${state.updates.length + state.expenses.length} 筆`;
+  }
+
+  function renderSupervisor() {
+    const summary = supervisorSummary();
+    $("supervisorMeta").textContent = `資料時間：${latestDataTime()} / 近 7 日更新 ${summary.recentUpdateCount} 筆`;
+    $("supervisorNeedsCount").textContent = `${summary.needs.length} 筆需追蹤`;
+
+    const tbody = $("supervisorPeopleRows");
+    tbody.innerHTML = "";
+    if (!summary.people.length) {
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.colSpan = 6;
+      cell.textContent = "目前沒有主責同仁資料。";
+      row.appendChild(cell);
+      tbody.appendChild(row);
+    } else {
+      summary.people.forEach((person) => {
+        const row = document.createElement("tr");
+        if (person.needsFollowUp > 0) row.classList.add("needs-follow-up");
+        [
+          person.name,
+          String(person.total),
+          String(person.updatedRecently),
+          String(person.needsFollowUp),
+          person.latestDate ? `${person.latestDate} / ${person.latestReporter || "未填"}` : "尚無紀錄",
+          person.needsFollowUp > 0 ? "需追蹤" : "OK",
+        ].forEach((value) => {
+          const cell = document.createElement("td");
+          cell.textContent = value;
+          row.appendChild(cell);
+        });
+        tbody.appendChild(row);
+      });
+    }
+
+    const list = $("supervisorNeedsList");
+    list.innerHTML = "";
+    if (!summary.needs.length) {
+      const empty = document.createElement("p");
+      empty.className = "task-meta";
+      empty.textContent = "目前沒有超過 7 天未更新或未確認的工項。";
+      list.appendChild(empty);
+      return;
+    }
+    summary.needs.slice(0, 80).forEach((item) => {
+      const article = document.createElement("article");
+      article.className = "supervisor-need-card";
+      article.innerHTML = "<strong></strong><p></p><span></span>";
+      article.querySelector("strong").textContent = item.itemName || "未命名工項";
+      article.querySelector("p").textContent = [
+        `主責：${displayNames(item.owner) || "未填"}`,
+        `目前狀態：${item.status}`,
+        item.latestDate ? `最近更新：${item.latestDate} / ${item.latestReporter || "未填更新人"}` : "最近更新：尚無紀錄",
+      ].join(" / ");
+      article.querySelector("span").textContent = item.reason;
+      list.appendChild(article);
+    });
+  }
+
+  function supervisorSummary() {
+    const peopleMap = new Map();
+    const needs = [];
+    let recentUpdateCount = 0;
+
+    state.items.forEach((item) => {
+      const owners = splitNames(item.owner);
+      const latest = latestItemUpdate(item.itemId);
+      const recent = latest && isRecentRecord(latest.date, 7);
+      const status = itemStatus(item);
+      const needsFollowUp = !recent && status !== "已完成";
+      if (latest && isRecentRecord(latest.date, 7)) recentUpdateCount += 1;
+
+      owners.forEach((owner) => {
+        if (!peopleMap.has(owner)) {
+          peopleMap.set(owner, {
+            name: owner,
+            total: 0,
+            updatedRecently: 0,
+            needsFollowUp: 0,
+            latestDate: "",
+            latestReporter: "",
+          });
+        }
+        const person = peopleMap.get(owner);
+        person.total += 1;
+        if (recent) person.updatedRecently += 1;
+        if (needsFollowUp) person.needsFollowUp += 1;
+        if (latest && isLaterDate(latest.date, person.latestDate)) {
+          person.latestDate = latest.date;
+          person.latestReporter = latest.reporter;
+        }
+      });
+
+      if (needsFollowUp) {
+        needs.push({
+          itemName: item.itemName,
+          owner: item.owner,
+          status,
+          latestDate: latest ? latest.date : "",
+          latestReporter: latest ? latest.reporter : "",
+          reason: latest ? "超過 7 天未更新" : "尚無更新紀錄",
+        });
+      }
+    });
+
+    const people = [...peopleMap.values()].sort((a, b) => {
+      if (b.needsFollowUp !== a.needsFollowUp) return b.needsFollowUp - a.needsFollowUp;
+      return a.name.localeCompare(b.name, "zh-Hant");
+    });
+    needs.sort((a, b) => {
+      if (!a.latestDate && b.latestDate) return -1;
+      if (a.latestDate && !b.latestDate) return 1;
+      return dateValue(a.latestDate) - dateValue(b.latestDate);
+    });
+
+    return { people, needs, recentUpdateCount };
+  }
+
+  function latestItemUpdate(itemId) {
+    if (!itemId) return null;
+    let latest = null;
+    state.updates.forEach((record, index) => {
+      const recordItemId = record.itemId || record["工項ID"] || "";
+      if (recordItemId !== itemId) return;
+      const candidate = {
+        date: record.date || record["更新日期"] || record.updatedAt || record["最後更新時間"] || "",
+        reporter: record.reporter || record["更新人"] || "",
+        status: String(record.status || record["完成狀態"] || "").trim(),
+        index,
+      };
+      if (!latest || isLaterUpdate(candidate, latest)) latest = candidate;
+    });
+    return latest;
+  }
+
+  function isLaterUpdate(candidate, current) {
+    const candidateTime = dateValue(candidate.date);
+    const currentTime = dateValue(current.date);
+    if (candidateTime !== currentTime) return candidateTime > currentTime;
+    return candidate.index > current.index;
+  }
+
+  function isLaterDate(candidate, current) {
+    if (!current) return Boolean(candidate);
+    return dateValue(candidate) > dateValue(current);
+  }
+
+  function dateValue(value) {
+    const date = parseDeadline(value);
+    return date ? date.getTime() : 0;
   }
 
   function renderManagement() {
