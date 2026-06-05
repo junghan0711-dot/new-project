@@ -100,6 +100,10 @@ function authorize_() {
   };
 }
 
+function authorize() {
+  return authorize_();
+}
+
 function listItems_() {
   const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
   const sheet = spreadsheet.getSheetByName("工項主檔") || spreadsheet.getSheetByName("工項總表");

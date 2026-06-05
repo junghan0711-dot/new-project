@@ -42,7 +42,7 @@ Google Drive 對應檔案：
 
 Web App URL：
 
-`https://script.google.com/macros/s/AKfycbwfKqJFhWytjFp4UO0tfK2h5d2yvhZbz04GGqRSaLWxqrRhcN9P-dRvwP6Hl2lpOJyi/exec`
+`https://script.google.com/macros/s/AKfycbzfv-OJBRCF3ADFljrT5h0qxOpXdE0rPAqd3GbKmmIPPvPHYPfrsqwvLteWqf3MfElMaA/exec`
 
 Apps Script 會使用以下工作表：
 
@@ -59,7 +59,7 @@ Apps Script 會使用以下工作表：
 2. 若用 clasp 更新，需先建立或綁定桃竹苗 Apps Script 專案，再補 `.clasp.json` 的 `scriptId`。
 3. 修改程式後建立新版本並更新既有部署，避免 Web App URL 改變。
 4. Web App 建議設定為「以我執行」與「任何 Google 帳戶」或「任何人，即使是匿名使用者」可存取。
-5. 若首次部署或更換帳號，請在 Apps Script 編輯器執行 `authorize_()` 完成試算表存取授權。
+5. 若首次部署或更換帳號，請在 Apps Script 編輯器執行 `authorize` 完成試算表存取授權。
 
 ## 注意
 
