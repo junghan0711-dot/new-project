@@ -630,6 +630,10 @@ textarea:focus {
   background: #fbfcfd;
 }
 
+.released-cases-panel {
+  margin: 0 16px 16px;
+}
+
 .form-caption {
   display: grid;
   gap: 4px;
@@ -688,7 +692,7 @@ textarea:focus {
 .released-case-list {
   display: grid;
   gap: 10px;
-  max-height: 420px;
+  max-height: 520px;
   overflow: auto;
 }
 
