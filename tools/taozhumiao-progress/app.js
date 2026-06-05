@@ -20,6 +20,7 @@
 
   const $ = (id) => document.getElementById(id);
   const excludedPersonLabels = new Set(["主責", "協辦", "主責及協辦", "負責同仁", "各項主責同仁"]);
+  const inactivePeople = new Set(["嘉祺", "嘉褀"]);
   const extraPeople = ["芷安", "昱碩"];
 
   function init() {
@@ -268,7 +269,7 @@
     state.items.forEach((item) => splitNames(itemPeopleText(item)).forEach((name) => names.add(name)));
     state.tasks.forEach((task) => splitNames(task.owner).forEach((name) => names.add(name)));
     state.cases.forEach((record) => {
-      if (record.assignee) names.add(record.assignee);
+      splitNames(record.assignee).forEach((name) => names.add(name));
     });
     const sortedNames = [...names].sort((a, b) => a.localeCompare(b, "zh-Hant"));
 
@@ -303,7 +304,7 @@
     return String(value || "")
       .split(/[\n、,，/]+/)
       .map((name) => name.trim().replace(/\(.+?\)/g, ""))
-      .filter((name) => name && !excludedPersonLabels.has(name));
+      .filter((name) => name && !excludedPersonLabels.has(name) && !inactivePeople.has(name));
   }
 
   function itemPeopleText(item) {
