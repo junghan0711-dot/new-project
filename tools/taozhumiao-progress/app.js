@@ -212,6 +212,7 @@
     populateCaseAssignees();
     populateCaseIds();
     applyCaseFilters();
+    renderReleasedCases();
     const meta = [
       `資料更新時間：${latestDataTime()}`,
       `即時彙整 5 張 / 原始快照 ${state.originalSheetCount} 張`,
@@ -1037,6 +1038,71 @@
     });
     field.appendChild(list);
     return field;
+  }
+
+  function renderReleasedCases() {
+    const list = $("releasedCaseList");
+    if (!list) return;
+    list.innerHTML = "";
+    const releasedCases = state.cases
+      .filter((record) => record.status === "已完成")
+      .sort((a, b) => String(b.releasedAt || b.reportedAt || "").localeCompare(String(a.releasedAt || a.reportedAt || ""), "zh-Hant"));
+    if (!releasedCases.length) {
+      const empty = document.createElement("p");
+      empty.className = "task-meta";
+      empty.textContent = "目前尚無解除列管紀錄。";
+      list.appendChild(empty);
+      return;
+    }
+    releasedCases.slice(0, 30).forEach((record) => {
+      const card = document.createElement("article");
+      card.className = "released-case-card";
+
+      const header = document.createElement("div");
+      header.className = "released-case-header";
+      const title = document.createElement("strong");
+      title.textContent = `${record.caseId ? `${record.caseId} ` : ""}${record.title || "未命名案件"}`;
+      const meta = document.createElement("span");
+      meta.textContent = [
+        record.assignee ? `指定同事：${record.assignee}` : "",
+        record.releasedAt ? `解除時間：${record.releasedAt}` : "",
+        record.reporter ? `回報人：${record.reporter}` : "",
+      ].filter(Boolean).join(" / ");
+      header.appendChild(title);
+      header.appendChild(meta);
+
+      const body = document.createElement("div");
+      body.className = "released-case-body";
+      [
+        ["完成/解除列管說明", record.completion],
+        ["最新進度", record.progress],
+        ["佐證資料連結", record.attachment],
+      ].forEach(([label, value]) => {
+        const field = document.createElement("div");
+        field.className = "case-field";
+        const span = document.createElement("span");
+        span.textContent = label;
+        const p = document.createElement("p");
+        if (isUrl(value)) {
+          const link = document.createElement("a");
+          link.href = value;
+          link.target = "_blank";
+          link.rel = "noreferrer";
+          link.textContent = "開啟佐證資料";
+          p.appendChild(link);
+        } else {
+          p.textContent = value || "未填";
+        }
+        field.appendChild(span);
+        field.appendChild(p);
+        body.appendChild(field);
+      });
+      body.appendChild(caseUpdateHistory(record));
+
+      card.appendChild(header);
+      card.appendChild(body);
+      list.appendChild(card);
+    });
   }
 
   function caseMeta(record) {
