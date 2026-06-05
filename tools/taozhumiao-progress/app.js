@@ -1345,7 +1345,12 @@
   function postNoCors(url, payload) {
     const data = new FormData();
     Object.entries(payload).forEach(([key, value]) => data.append(key, value == null ? "" : value));
-    return fetch(url, { method: "POST", mode: "no-cors", body: data });
+    return fetch(url, {
+      method: "POST",
+      mode: "no-cors",
+      credentials: "include",
+      body: data,
+    });
   }
 
   function wait(ms) {
