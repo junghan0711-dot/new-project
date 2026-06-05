@@ -13,7 +13,7 @@
         <h1>工項進度填報</h1>
       </div>
       <div class="top-actions">
-        <a id="sheetLink" class="button ghost" href="#" target="_blank" rel="noreferrer">開啟彙整表</a>
+        <a id="sheetLink" class="button ghost" href="#" target="_blank" rel="noreferrer">開啟即時底表</a>
         <button id="refreshButton" class="button" type="button">重新整理</button>
       </div>
     </header>
@@ -21,7 +21,7 @@
     <main class="layout">
       <section class="panel summary-panel" aria-label="進度摘要">
         <div class="metric">
-          <span>全部任務</span>
+          <span>全部工項</span>
           <strong id="totalTasks">0</strong>
         </div>
         <div class="metric">
@@ -44,7 +44,7 @@
           <input id="reporterInput" type="text" autocomplete="name" placeholder="請輸入姓名" />
         </label>
         <label>
-          <span>負責同仁</span>
+          <span>主責及協辦</span>
           <select id="personFilter">
             <option value="">全部</option>
           </select>
@@ -54,20 +54,29 @@
           <select id="statusFilter">
             <option value="">全部</option>
             <option value="未確認">未確認</option>
+            <option value="進行中">進行中</option>
             <option value="未完成">未完成</option>
             <option value="已完成">已完成</option>
           </select>
         </label>
         <label class="search-field">
           <span>搜尋</span>
-          <input id="searchInput" type="search" placeholder="工項、細項、進度關鍵字" />
+          <input id="searchInput" type="search" placeholder="工項、進度、時程關鍵字" />
         </label>
       </section>
 
-      <section class="workspace">
+      <nav class="view-tabs" aria-label="資料檢視">
+        <button class="tab-button active" type="button" data-view="tasksView">任務填報</button>
+        <button class="tab-button" type="button" data-view="sourceView">資料總覽</button>
+        <button class="tab-button" type="button" data-view="updatesView">更新與費用紀錄</button>
+        <button class="tab-button" type="button" data-view="managementView">管理摘要</button>
+        <button class="tab-button" type="button" data-view="casesView">案件追蹤列管</button>
+      </nav>
+
+      <section id="tasksView" class="workspace view-section active">
         <aside class="panel task-list-panel" aria-label="任務清單">
           <div class="section-heading">
-            <h2>任務清單</h2>
+            <h2>工項清單</h2>
             <span id="visibleCount">0 筆</span>
           </div>
           <div id="taskList" class="task-list"></div>
@@ -75,8 +84,8 @@
 
         <section class="panel detail-panel" aria-label="填報表單">
           <div id="emptyState" class="empty-state">
-            <h2>選擇左側任務</h2>
-            <p>選到任務後即可更新進度、完成狀態、下次追蹤日期與費用。</p>
+            <h2>選擇左側工項</h2>
+            <p>選到工項後即可更新進度、完成狀態、下次追蹤日期與費用。</p>
           </div>
 
           <form id="progressForm" class="progress-form hidden">
@@ -90,17 +99,27 @@
 
             <div class="detail-grid">
               <div>
-                <span class="field-label">負責同仁</span>
+                <span class="field-label">主責及協辦</span>
                 <p id="selectedOwner"></p>
               </div>
               <div>
-                <span class="field-label">預定完成日期</span>
+                <span class="field-label">預計執行時程</span>
                 <p id="selectedDue"></p>
               </div>
               <div>
-                <span class="field-label">目前費用</span>
+                <span class="field-label">核定/預估經費</span>
                 <p id="selectedFee"></p>
               </div>
+            </div>
+
+            <div class="source-detail">
+              <span class="field-label">原始更新內容</span>
+              <p id="selectedProgressText"></p>
+            </div>
+
+            <div class="source-detail">
+              <span class="field-label">履約內容 / 時程 / 經費說明</span>
+              <p id="selectedSourceNote"></p>
             </div>
 
             <label>
@@ -113,6 +132,7 @@
                 <span>完成狀態</span>
                 <select id="completeInput" required>
                   <option value="未確認">未確認</option>
+                  <option value="進行中">進行中</option>
                   <option value="未完成">未完成</option>
                   <option value="已完成">已完成</option>
                 </select>
@@ -136,12 +156,246 @@
               <textarea id="noteInput" rows="3" placeholder="其他補充、憑證位置或管理提醒"></textarea>
             </label>
 
+            <label>
+              <span>佐證資料連結</span>
+              <input id="voucherInput" type="url" placeholder="貼上雲端資料夾、照片、簽到表、憑證或會議紀錄連結" />
+            </label>
+
             <div class="form-actions">
               <p id="formMessage" role="status"></p>
               <button id="submitButton" class="button primary" type="submit">送出更新</button>
             </div>
           </form>
         </section>
+      </section>
+
+      <section id="sourceView" class="panel source-panel view-section" aria-label="資料總覽">
+        <div class="section-heading">
+          <div>
+            <h2>資料總覽</h2>
+            <p id="sourceMeta" class="subtle"></p>
+          </div>
+          <label class="compact-search">
+            <span>搜尋全部內容</span>
+            <input id="sourceSearchInput" type="search" placeholder="輸入關鍵字" />
+          </label>
+        </div>
+        <div id="sheetTabs" class="sheet-tabs"></div>
+        <div class="source-table-wrap">
+          <table id="sourceTable" class="source-table"></table>
+        </div>
+      </section>
+
+      <section id="updatesView" class="panel updates-panel view-section" aria-label="更新與費用紀錄">
+        <div class="section-heading">
+          <h2>更新與費用紀錄</h2>
+          <span id="recordCount">0 筆</span>
+        </div>
+        <div class="records-grid">
+          <div>
+            <h3>進度更新紀錄</h3>
+            <div id="updatesList" class="record-list"></div>
+          </div>
+          <div>
+            <h3>經費支出紀錄</h3>
+            <div id="expensesList" class="record-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="managementView" class="panel management-panel view-section" aria-label="管理摘要">
+        <div class="section-heading">
+          <div>
+            <h2>管理摘要</h2>
+            <p class="subtle">彙整本週追蹤、資料品質提醒與可貼入會議或月報的文字摘要。</p>
+          </div>
+          <button id="copyReportButton" class="button" type="button">複製摘要</button>
+        </div>
+        <div class="management-grid">
+          <section class="management-block">
+            <h3>追蹤狀態</h3>
+            <div id="managementMetrics" class="mini-metrics"></div>
+          </section>
+          <section class="management-block">
+            <h3>資料品質提醒</h3>
+            <div id="qualityIssues" class="quality-list"></div>
+          </section>
+          <section class="management-block report-block">
+            <h3>週會 / 月報摘要</h3>
+            <textarea id="managementReport" rows="12" readonly></textarea>
+          </section>
+        </div>
+      </section>
+
+      <section id="casesView" class="panel cases-panel view-section" aria-label="案件追蹤列管">
+        <div class="section-heading">
+          <div>
+            <h2>案件追蹤列管</h2>
+            <p class="subtle">交辦任務、指定同事、查核點、Deadline 與進度回報集中追蹤。</p>
+          </div>
+          <span id="caseCount">0 筆</span>
+        </div>
+
+        <div class="case-workspace">
+          <form id="caseForm" class="case-form">
+            <div class="form-caption">
+              <h3>新增列管案件</h3>
+              <p>送出後系統會自動建立案件編號，後續可用編號查詢與回報進度。</p>
+            </div>
+            <div class="form-grid case-form-grid">
+              <label>
+                <span>案件名稱</span>
+                <input id="caseTitleInput" type="text" required placeholder="例：多元團隊研習成果彙整" />
+              </label>
+              <label>
+                <span>指定同事</span>
+                <input id="caseAssigneeInput" list="caseAssigneeOptions" type="text" required placeholder="輸入或選擇同事" />
+                <datalist id="caseAssigneeOptions"></datalist>
+              </label>
+              <label>
+                <span>Deadline</span>
+                <input id="caseDeadlineInput" type="datetime-local" required />
+              </label>
+              <label>
+                <span>狀態</span>
+                <select id="caseStatusInput" required>
+                  <option value="待執行">待執行</option>
+                  <option value="進行中">進行中</option>
+                  <option value="待查核">待查核</option>
+                  <option value="已完成">已完成</option>
+                </select>
+              </label>
+            </div>
+
+            <label>
+              <span>交辦內容</span>
+              <textarea id="caseInstructionInput" rows="4" required placeholder="請寫清楚交辦事項、交付格式、需要協調的人或資料"></textarea>
+            </label>
+
+            <label>
+              <span>查核點</span>
+              <textarea id="caseCheckpointInput" rows="3" required placeholder="例：6/5 12:00 前回報初稿；6/6 前確認照片與簽到資料"></textarea>
+            </label>
+
+            <label>
+              <span>目前進度說明</span>
+              <textarea id="caseProgressInput" rows="4" required placeholder="填寫目前執行到哪裡、卡關事項、下一步"></textarea>
+            </label>
+
+            <div class="form-grid case-form-grid">
+              <label>
+                <span>回報人</span>
+                <input id="caseReporterInput" type="text" autocomplete="name" placeholder="預設帶入上方填報人" />
+              </label>
+              <label>
+                <span>優先序</span>
+                <select id="casePriorityInput">
+                  <option value="一般">一般</option>
+                  <option value="高">高</option>
+                  <option value="急件">急件</option>
+                </select>
+              </label>
+              <label class="case-note-field">
+                <span>備註</span>
+                <input id="caseNoteInput" type="text" placeholder="補充連結、檔案位置或管理提醒" />
+              </label>
+              <label class="case-note-field">
+                <span>佐證資料連結</span>
+                <input id="caseAttachmentInput" type="url" placeholder="貼上雲端資料夾、照片、簽到表、會議紀錄或交付檔案連結" />
+              </label>
+            </div>
+
+            <div class="form-actions">
+              <p id="caseFormMessage" role="status"></p>
+              <button id="caseSubmitButton" class="button primary" type="submit">送出列管</button>
+            </div>
+          </form>
+
+          <form id="caseProgressForm" class="case-form">
+            <div class="form-caption">
+              <h3>補最新進度 / 解除列管</h3>
+              <p>指定同事可用案件編號回報最新進度；狀態改為已完成並填寫完成內容後，即可解除列管。</p>
+            </div>
+            <div class="form-grid case-form-grid">
+              <label>
+                <span>案件編號</span>
+                <input id="caseProgressIdInput" list="caseIdOptions" type="text" required placeholder="例：CASE-0001" />
+                <datalist id="caseIdOptions"></datalist>
+              </label>
+              <label>
+                <span>回報人</span>
+                <input id="caseProgressReporterInput" type="text" autocomplete="name" placeholder="預設帶入上方填報人" />
+              </label>
+              <label>
+                <span>狀態 / 解除列管</span>
+                <select id="caseProgressStatusInput" required>
+                  <option value="進行中">進行中</option>
+                  <option value="待查核">待查核</option>
+                  <option value="已完成">已完成</option>
+                </select>
+              </label>
+              <label>
+                <span>佐證資料連結</span>
+                <input id="caseProgressAttachmentInput" type="url" placeholder="貼上完成成果、照片、文件或資料夾連結" />
+              </label>
+            </div>
+            <label>
+              <span>最新進度</span>
+              <textarea id="caseProgressUpdateInput" rows="4" required placeholder="填寫目前完成事項、卡關問題、下一步或需要協助的內容"></textarea>
+            </label>
+            <label>
+              <span>完成 / 解除列管說明</span>
+              <textarea id="caseCompletionInput" rows="3" placeholder="狀態為已完成時，請填寫完成內容、交付成果與可解除列管原因"></textarea>
+            </label>
+            <label>
+              <span>備註</span>
+              <input id="caseProgressNoteInput" type="text" placeholder="補充提醒、檔案位置或主管查核意見" />
+            </label>
+            <div class="form-actions">
+              <p id="caseProgressMessage" role="status"></p>
+              <button id="caseProgressSubmitButton" class="button primary" type="submit">送出進度</button>
+            </div>
+          </form>
+
+          <div class="case-board">
+            <div class="case-toolbar">
+              <label>
+                <span>負責同事</span>
+                <select id="caseAssigneeFilter">
+                  <option value="">全部</option>
+                </select>
+              </label>
+              <label>
+                <span>案件狀態</span>
+                <select id="caseStatusFilter">
+                  <option value="">全部</option>
+                  <option value="待執行">待執行</option>
+                  <option value="進行中">進行中</option>
+                  <option value="待查核">待查核</option>
+                  <option value="已完成">已完成</option>
+                </select>
+              </label>
+              <label>
+                <span>優先序</span>
+                <select id="casePriorityFilter">
+                  <option value="">全部</option>
+                  <option value="急件">急件</option>
+                  <option value="高">高</option>
+                  <option value="一般">一般</option>
+                </select>
+              </label>
+              <label class="checkbox-field">
+                <input id="caseOpenOnlyFilter" type="checkbox" checked />
+                <span>只看未完成</span>
+              </label>
+              <label>
+                <span>搜尋</span>
+                <input id="caseSearchInput" type="search" placeholder="案件、查核點、進度" />
+              </label>
+            </div>
+            <div id="caseList" class="case-list"></div>
+          </div>
+        </div>
       </section>
     </main>
 
@@ -156,7 +410,8 @@
       </button>
     </template>
 
-    <script src="./config.js"></script>
-    <script src="./app.js"></script>
+    <script src="./config.js?v=api-20260605"></script>
+    <script src="./data.js"></script>
+    <script src="./app.js?v=taozhumiao-20260605"></script>
   </body>
 </html>

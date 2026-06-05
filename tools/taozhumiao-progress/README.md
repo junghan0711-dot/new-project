@@ -6,31 +6,61 @@
 
 ## 架構
 
-- GitHub Pages：員工填報網頁
+- GitHub Pages：員工填報網頁、完整來源資料瀏覽、管理摘要
 - Google Apps Script：接收填報資料，寫入 Google Sheets
 - Google Sheets：即時彙整資料，必要時可下載為 Excel
+- 案件追蹤列管：新增案件、案件編號、指定同事、查核點、Deadline、最新進度、完成/解除列管
+- 管理摘要：彙整逾期、急件、待查核、近 7 日更新、經費支出與資料品質提醒，可直接複製成週會或月報文字
+
+## 來源資料
+
+使用者指定的來源表：
+
+`/Users/junghanchiu/Downloads/115年桃竹苗多元計畫工項追蹤及列管1150603更新.xlsx`
+
+Google Drive 對應檔案：
+
+原使用者指定 Excel 檔：
+
+`https://docs.google.com/spreadsheets/d/1ri9xT_MKK6OxbjixNOJMJznzKljbeLU0/edit?gid=786390987#gid=786390987`
+
+已轉換為原生 Google Sheet，供網頁即時更新使用：
+
+`https://docs.google.com/spreadsheets/d/1_vblpEZtfs7oj7yH2EXzOUMZYI_8OmG9hdc4ASQd3e8`
+
+`data.js` 已由該 Excel 產生快照，包含 19 筆總工項、44 筆任務明細與 14 張原始工作表。
 
 ## Google Sheet
 
 目前連接的底表：
 
-`https://docs.google.com/spreadsheets/d/1vM-WVW-yCpJ8kCDXO06KRG0vbnpmDHMjgQnMsw2kYDg`
+`https://docs.google.com/spreadsheets/d/1_vblpEZtfs7oj7yH2EXzOUMZYI_8OmG9hdc4ASQd3e8`
+
+## Apps Script API
+
+目前 `config.js` 的 `apiUrl` 尚未設定，因此前端會使用 `data.js` 快照完整預覽；若要正式填報寫回 Google Sheet，需部署 `apps-script/Code.gs` 並把 Web App URL 寫入 `config.js`。
+
+Apps Script 會使用以下工作表：
+
+- `工項主檔`
+- `任務明細`
+- `進度更新紀錄`
+- `經費支出紀錄`
+- `案件追蹤列管`
+- `案件進度紀錄`
 
 ## 部署 Apps Script
 
-1. 開啟 Google Sheet。
-2. 點選「擴充功能」>「Apps Script」。
-3. 將 `apps-script/Code.gs` 內容貼到 Apps Script 編輯器。
-4. 點選「部署」>「新增部署作業」。
-5. 類型選「網頁應用程式」。
-6. 執行身分選「我」。
-7. 存取權限依團隊需求選「任何擁有 Google 帳戶的使用者」或「知道連結的所有人」。
-8. 複製部署後的 Web App URL。
-9. 將 `config.js` 的 `apiUrl` 改成該 Web App URL。
-10. commit 並 push 到 GitHub，GitHub Pages 會自動更新。
+1. Apps Script 程式碼放在 `apps-script/`。
+2. 若用 clasp 更新，需先建立或綁定桃竹苗 Apps Script 專案，再補 `.clasp.json` 的 `scriptId`。
+3. 修改程式後建立新版本並更新既有部署，避免 Web App URL 改變。
+4. Web App 建議設定為「以我執行」與「任何人，即使是匿名使用者」可存取。
+5. 若首次部署或更換帳號，請在 Apps Script 編輯器執行 `authorize_()` 完成試算表存取授權。
 
 ## 注意
 
 - 不要把 Google 帳號憑證、金鑰或 token 放進 repo。
 - GitHub Pages 是公開靜態網站；真正的寫入權限由 Apps Script 控制。
-- 若要限制填報人，建議在 Apps Script 加上 Google Workspace 網域或白名單檢查。
+- 本版 Apps Script 已提供 `ALLOWED_REPORTERS` 選用白名單；維持空陣列代表不限制，填入姓名後只有名單內填報人可寫入。
+- 新增案件會自動產生 `CASE-0001` 這類案件編號；指定同事可用案件編號補最新進度，狀態改為 `已完成` 並填寫完成/解除列管說明後即可解除列管。
+- 案件卡片會顯示最近 3 筆 `案件進度紀錄`，同事送出最新進度後，可直接回到案件列表查看最新回報內容。

@@ -100,6 +100,12 @@ h2 {
   cursor: not-allowed;
 }
 
+.button.compact {
+  min-height: 30px;
+  padding: 5px 9px;
+  font-size: 12px;
+}
+
 .layout {
   width: min(1380px, 100%);
   margin: 0 auto;
@@ -150,6 +156,50 @@ h2 {
   margin-bottom: 16px;
 }
 
+.view-tabs {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+
+.tab-button,
+.sheet-tab {
+  border: 1px solid var(--line);
+  background: #ffffff;
+  color: var(--muted);
+  border-radius: 6px;
+  padding: 9px 12px;
+  min-height: 38px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 760;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tab-button:hover,
+.sheet-tab:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.tab-button.active,
+.sheet-tab.active {
+  border-color: var(--brand);
+  background: #eaf6f7;
+  color: var(--brand-dark);
+}
+
+.view-section {
+  display: none;
+}
+
+.view-section.active {
+  display: block;
+}
+
 label {
   display: grid;
   gap: 6px;
@@ -186,6 +236,14 @@ textarea:focus {
   grid-template-columns: minmax(320px, 420px) 1fr;
   gap: 16px;
   align-items: start;
+}
+
+.workspace.view-section {
+  display: none;
+}
+
+.workspace.view-section.active {
+  display: grid;
 }
 
 .task-list-panel,
@@ -322,6 +380,19 @@ textarea:focus {
   min-height: 78px;
 }
 
+.source-detail {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fbfcfd;
+}
+
+.source-detail p,
+.record-card p,
+.source-table td {
+  white-space: pre-wrap;
+}
+
 .field-label {
   display: block;
   color: var(--muted);
@@ -330,18 +401,405 @@ textarea:focus {
   margin-bottom: 5px;
 }
 
-#formMessage {
+.subtle {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.compact-search {
+  width: min(360px, 100%);
+}
+
+.source-panel,
+.updates-panel,
+.cases-panel {
+  overflow: hidden;
+}
+
+.sheet-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+}
+
+.source-table-wrap {
+  max-height: 68vh;
+  overflow: auto;
+}
+
+.source-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.source-table caption {
+  caption-side: bottom;
+  padding: 10px 12px;
+  color: var(--muted);
+  text-align: left;
+}
+
+.source-table th,
+.source-table td {
+  max-width: 320px;
+  min-width: 92px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  vertical-align: top;
+  text-align: left;
+}
+
+.source-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f1f4f8;
+  color: #435064;
+  font-weight: 800;
+}
+
+.source-table tbody th {
+  left: 0;
+  z-index: 2;
+  min-width: 54px;
+  width: 54px;
+}
+
+.records-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 16px;
+}
+
+.records-grid h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+
+.record-list {
+  display: grid;
+  gap: 10px;
+}
+
+.record-card {
+  display: grid;
+  gap: 7px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fbfcfd;
+}
+
+.record-card span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+#formMessage,
+#caseFormMessage,
+#caseProgressMessage {
   color: var(--muted);
   font-size: 13px;
   flex: 1;
 }
 
-#formMessage.error {
+#formMessage.error,
+#caseFormMessage.error,
+#caseProgressMessage.error {
   color: var(--accent);
 }
 
-#formMessage.success {
+#formMessage.success,
+#caseFormMessage.success,
+#caseProgressMessage.success {
   color: var(--ok);
+}
+
+.management-panel {
+  overflow: hidden;
+}
+
+.management-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(320px, 1fr);
+  gap: 16px;
+  padding: 16px;
+}
+
+.management-block {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.management-block h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.report-block {
+  grid-column: 1 / -1;
+}
+
+.mini-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mini-metric,
+.quality-item {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fbfcfd;
+}
+
+.mini-metric span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.mini-metric strong {
+  font-size: 22px;
+}
+
+.quality-list {
+  display: grid;
+  gap: 10px;
+}
+
+.quality-item p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.quality-item.critical {
+  border-color: #d14b32;
+  background: #fffafa;
+}
+
+.quality-item.warning {
+  border-color: #d8841b;
+  background: #fffaf1;
+}
+
+.quality-item.notice {
+  border-color: #e6b04a;
+}
+
+#managementReport {
+  min-height: 260px;
+  background: #fbfcfd;
+}
+
+.case-workspace {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.92fr) minmax(420px, 1.08fr);
+  gap: 16px;
+  padding: 16px;
+  align-items: start;
+}
+
+.case-form,
+.case-board {
+  display: grid;
+  gap: 14px;
+}
+
+.case-form {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fbfcfd;
+}
+
+.form-caption {
+  display: grid;
+  gap: 4px;
+}
+
+.form-caption h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.form-caption p {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.case-form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.case-note-field {
+  grid-column: span 2;
+}
+
+.case-toolbar {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+
+.case-toolbar label:last-child {
+  grid-column: 1 / -1;
+}
+
+.checkbox-field {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 42px;
+  padding: 0 2px 1px;
+}
+
+.checkbox-field input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--brand);
+}
+
+.case-list {
+  display: grid;
+  gap: 10px;
+  max-height: 68vh;
+  overflow: auto;
+}
+
+.case-card {
+  display: grid;
+  gap: 10px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #ffffff;
+}
+
+.case-card.case-overdue {
+  border-color: #d14b32;
+  background: #fffafa;
+}
+
+.case-card.case-today {
+  border-color: #d8841b;
+  background: #fffaf1;
+}
+
+.case-card.case-soon {
+  border-color: #e6b04a;
+}
+
+.case-card-header,
+.case-card-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.case-card-title {
+  display: grid;
+  gap: 4px;
+}
+
+.case-card-title strong {
+  font-size: 15px;
+}
+
+.case-card-title span,
+.case-card-meta,
+.case-field span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.status-stack {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+
+.deadline-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.deadline-pill.overdue {
+  background: #feece8;
+  color: #b8321f;
+}
+
+.deadline-pill.today {
+  background: #fff0d7;
+  color: #9a5600;
+}
+
+.deadline-pill.soon {
+  background: #fff7df;
+  color: #876100;
+}
+
+.case-card-body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.case-field {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid #e3e8ef;
+  border-radius: 6px;
+  background: #fbfcfd;
+}
+
+.case-field p {
+  white-space: pre-wrap;
+}
+
+.case-field a {
+  color: var(--brand);
+  font-weight: 800;
+}
+
+.case-history-field {
+  grid-column: 1 / -1;
+}
+
+.case-history-list {
+  display: grid;
+  gap: 8px;
+}
+
+.case-history-list article {
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border-left: 3px solid var(--brand);
+  background: #ffffff;
+}
+
+.case-history-list strong {
+  font-size: 13px;
 }
 
 @media (max-width: 960px) {
@@ -359,9 +817,34 @@ textarea:focus {
   .summary-panel,
   .controls-panel,
   .workspace,
+  .workspace.view-section.active,
   .detail-grid,
-  .form-grid {
+  .form-grid,
+    .records-grid,
+    .management-grid,
+    .mini-metrics,
+    .case-workspace,
+  .case-form-grid,
+  .case-toolbar,
+  .case-card-body {
     grid-template-columns: 1fr;
+  }
+
+  .case-note-field {
+    grid-column: auto;
+  }
+
+  .checkbox-field {
+    min-height: auto;
+    padding: 4px 0;
+  }
+
+  .status-stack {
+    justify-items: start;
+  }
+
+  .section-heading {
+    flex-direction: column;
   }
 
   .task-list {
