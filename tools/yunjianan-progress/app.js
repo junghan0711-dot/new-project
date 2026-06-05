@@ -8,11 +8,13 @@
     expenses: [],
     cases: [],
     caseUpdates: [],
+    consultations: [],
     localCaseUpdates: [],
     sheets: [],
     originalSheetCount: 0,
     filteredItems: [],
     filteredCases: [],
+    filteredConsultations: [],
     itemStatusDrafts: {},
     selectedItemId: "",
     selectedSheetName: "",
@@ -41,6 +43,7 @@
     $("completeInput").addEventListener("change", updateSelectedItemStatusDraft);
     $("caseForm").addEventListener("submit", submitCaseTracking);
     $("caseProgressForm").addEventListener("submit", submitCaseProgress);
+    $("consultationForm").addEventListener("submit", submitConsultationSession);
     $("copyReportButton").addEventListener("click", copyManagementReport);
     $("caseAssigneeFilter").addEventListener("change", applyCaseFilters);
     $("caseStatusFilter").addEventListener("change", () => {
@@ -52,6 +55,10 @@
     $("casePriorityFilter").addEventListener("change", applyCaseFilters);
     $("caseOpenOnlyFilter").addEventListener("change", applyCaseFilters);
     $("caseSearchInput").addEventListener("input", applyCaseFilters);
+    $("consultationMonthFilter").addEventListener("change", applyConsultationFilters);
+    $("consultationOwnerFilter").addEventListener("change", applyConsultationFilters);
+    $("consultationStatusFilter").addEventListener("change", applyConsultationFilters);
+    $("consultationSearchInput").addEventListener("input", applyConsultationFilters);
     $("reporterInput").value = localStorage.getItem("yunjianan.reporter") || "";
     $("reporterInput").addEventListener("input", (event) => {
       localStorage.setItem("yunjianan.reporter", event.target.value.trim());
@@ -64,6 +71,8 @@
     });
     $("caseReporterInput").value = $("reporterInput").value;
     $("caseProgressReporterInput").value = $("reporterInput").value;
+    $("consultationMonthInput").value = currentMonthValue();
+    $("consultationDateInput").value = currentDateValue();
     document.querySelectorAll(".tab-button").forEach((button) => {
       button.addEventListener("click", () => switchView(button.dataset.view));
     });
@@ -111,6 +120,7 @@
           expenses: payload.expenses || embedded.expenses || [],
           cases: payload.cases || embedded.cases || [],
           caseUpdates: payload.caseUpdates || embedded.caseUpdates || [],
+          consultations: payload.consultations || embedded.consultations || [],
           sheets: payload.sheets || embedded.sheets || [],
         });
         $("dataMode").textContent = "已連線";
@@ -136,6 +146,7 @@
     state.expenses = payload.expenses || [];
     state.cases = (payload.cases || []).map(normalizeCase);
     state.caseUpdates = mergeCaseUpdates(payload.caseUpdates || [], state.localCaseUpdates);
+    state.consultations = (payload.consultations || []).map(normalizeConsultation);
     state.itemStatusDrafts = {};
     const originalSheets = payload.sheets && payload.sheets.length ? payload.sheets : [];
     state.originalSheetCount = originalSheets.length;
@@ -215,6 +226,31 @@
     };
   }
 
+  function normalizeConsultation(record) {
+    return {
+      sessionId: record.sessionId || record["場次ID"] || "",
+      itemId: record.itemId || record["工項ID"] || "ITEM001",
+      month: record.month || record["月份"] || record["月分"] || "",
+      unitName: record.unitName || record["單位名稱"] || "",
+      date: record.date || record["輔導日期"] || "",
+      startTime: record.startTime || record["開始時間"] || "",
+      endTime: record.endTime || record["結束時間"] || "",
+      location: record.location || record["地點"] || "",
+      teacher: record.teacher || record["輔導老師"] || "",
+      branchStaff: record.branchStaff || record["分署人員"] || "",
+      unitStaff: record.unitStaff || record["單位人員"] || "",
+      relatedStaff: record.relatedStaff || record["相關人員"] || "",
+      owner: record.owner || record["負責同仁"] || "",
+      status: record.status || record["狀態"] || "預排",
+      topic: record.topic || record["輔導主題"] || "",
+      note: record.note || record["會議紀錄/備註"] || record["會議紀錄 / 備註"] || record["備註"] || "",
+      attachment: record.attachment || record["佐證資料連結"] || "",
+      reporter: record.reporter || record["建立人"] || "",
+      createdAt: record.createdAt || record["建立時間"] || "",
+      updatedAt: record.updatedAt || record["最後更新時間"] || "",
+    };
+  }
+
   function renderAll() {
     populatePeople();
     applyFilters();
@@ -227,9 +263,11 @@
     populateCaseIds();
     applyCaseFilters();
     renderReleasedCases();
+    populateConsultationOwners();
+    applyConsultationFilters();
     const meta = [
       `資料更新時間：${latestDataTime()}`,
-      `即時彙整 3 張 / 原始快照 ${state.originalSheetCount} 張`,
+      `即時彙整 6 張 / 原始快照 ${state.originalSheetCount} 張`,
       `${state.items.length} 筆工項 / ${state.tasks.length} 筆明細`,
     ];
     $("sourceMeta").textContent = meta.join(" / ");
@@ -242,6 +280,7 @@
       ...state.updates.map((record) => record.updatedAt || record["最後更新時間"] || record.date || record["更新日期"]),
       ...state.cases.map((record) => record.reportedAt),
       ...state.caseUpdates.map((record) => record.reportedAt || record["回報日期"]),
+      ...state.consultations.map((record) => record.updatedAt || record.createdAt || record.date),
     ].filter(Boolean);
     if (!times.length) return embedded.generatedAt || "未記錄";
     return times.reduce((latest, value) => (dateValue(value) >= dateValue(latest) ? value : latest), times[0]);
@@ -310,6 +349,31 @@
       options.appendChild(option);
     });
     $("caseProgressIdInput").value = currentValue;
+  }
+
+  function populateConsultationOwners() {
+    const ownerInput = $("consultationOwnerInput");
+    const ownerOptions = $("consultationOwnerOptions");
+    const ownerFilter = $("consultationOwnerFilter");
+    const currentInput = ownerInput.value;
+    const currentFilter = ownerFilter.value;
+    const names = new Set();
+    state.items.forEach((item) => splitNames(item.owner).forEach((name) => names.add(name)));
+    state.tasks.forEach((task) => splitNames(task.owner).forEach((name) => names.add(name)));
+    state.consultations.forEach((record) => splitNames(record.owner).forEach((name) => names.add(name)));
+    const sortedNames = [...names].sort((a, b) => a.localeCompare(b, "zh-Hant"));
+
+    ownerOptions.innerHTML = "";
+    ownerFilter.innerHTML = '<option value="">全部</option>';
+    sortedNames.forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      ownerOptions.appendChild(option.cloneNode(true));
+      ownerFilter.appendChild(option);
+    });
+    ownerInput.value = currentInput;
+    ownerFilter.value = sortedNames.includes(currentFilter) ? currentFilter : "";
   }
 
   function splitNames(value) {
@@ -465,6 +529,49 @@
         record.completion || record["完成/解除列管說明"],
         record.attachment || record["佐證資料連結"],
         record.note || record["備註"],
+      ])),
+      buildSheet("即時-諮詢輔導場次", [
+        "場次ID",
+        "工項ID",
+        "月份",
+        "單位名稱",
+        "輔導日期",
+        "開始時間",
+        "結束時間",
+        "地點",
+        "輔導老師",
+        "分署人員",
+        "單位人員",
+        "相關人員",
+        "負責同仁",
+        "狀態",
+        "輔導主題",
+        "會議紀錄/備註",
+        "佐證資料連結",
+        "建立人",
+        "建立時間",
+        "最後更新時間",
+      ], state.consultations.map((record) => [
+        record.sessionId,
+        record.itemId,
+        record.month,
+        record.unitName,
+        record.date,
+        record.startTime,
+        record.endTime,
+        record.location,
+        record.teacher,
+        record.branchStaff,
+        record.unitStaff,
+        record.relatedStaff,
+        record.owner,
+        record.status,
+        record.topic,
+        record.note,
+        record.attachment,
+        record.reporter,
+        record.createdAt,
+        record.updatedAt,
       ])),
     ];
     return [...liveSheets, ...originalSheets.map((sheet) => ({
@@ -1003,6 +1110,167 @@
     return diff >= 0 && diff <= days * 24 * 60 * 60 * 1000;
   }
 
+  function applyConsultationFilters() {
+    const month = $("consultationMonthFilter").value;
+    const owner = $("consultationOwnerFilter").value;
+    const status = $("consultationStatusFilter").value;
+    const query = $("consultationSearchInput").value.trim().toLowerCase();
+    state.filteredConsultations = state.consultations.filter((record) => {
+      const matchesMonth = !month || record.month === month || String(record.date || "").startsWith(month);
+      const matchesOwner = !owner || splitNames(record.owner).includes(owner) || record.owner === owner;
+      const matchesStatus = !status || record.status === status;
+      const haystack = [
+        record.sessionId,
+        record.month,
+        record.unitName,
+        record.date,
+        record.location,
+        record.teacher,
+        record.branchStaff,
+        record.unitStaff,
+        record.relatedStaff,
+        record.owner,
+        record.status,
+        record.topic,
+        record.note,
+      ].join(" ").toLowerCase();
+      return matchesMonth && matchesOwner && matchesStatus && (!query || haystack.includes(query));
+    });
+    renderConsultations();
+  }
+
+  function renderConsultations() {
+    $("consultationCount").textContent = `${state.filteredConsultations.length} 筆`;
+    renderConsultationMetrics();
+    const list = $("consultationList");
+    list.innerHTML = "";
+    if (!state.filteredConsultations.length) {
+      const empty = document.createElement("p");
+      empty.className = "task-meta";
+      empty.textContent = "目前沒有符合條件的諮詢輔導場次。";
+      list.appendChild(empty);
+      return;
+    }
+    [...state.filteredConsultations].sort(compareConsultations).slice(0, 160).forEach((record) => {
+      const card = document.createElement("article");
+      card.className = "consultation-card";
+      const status = document.createElement("span");
+      status.className = "status-pill";
+      setConsultationStatusPill(status, record.status);
+
+      const header = document.createElement("div");
+      header.className = "consultation-card-header";
+      const title = document.createElement("div");
+      title.className = "consultation-card-title";
+      const strong = document.createElement("strong");
+      strong.textContent = `${record.sessionId ? `${record.sessionId} ` : ""}${record.unitName || "未填單位"}`;
+      const span = document.createElement("span");
+      span.textContent = [
+        record.month ? `月份：${record.month}` : "",
+        consultationDateTime(record),
+        record.owner ? `負責：${record.owner}` : "",
+      ].filter(Boolean).join(" / ");
+      title.appendChild(strong);
+      title.appendChild(span);
+      header.appendChild(title);
+      header.appendChild(status);
+
+      const body = document.createElement("div");
+      body.className = "consultation-card-body";
+      [
+        ["地點", record.location],
+        ["輔導主題", record.topic],
+        ["輔導老師", record.teacher],
+        ["分署人員", record.branchStaff],
+        ["單位人員", record.unitStaff],
+        ["相關人員", record.relatedStaff],
+        ["會議紀錄 / 備註", record.note],
+        ["佐證資料連結", record.attachment],
+      ].forEach(([label, value]) => {
+        const field = document.createElement("div");
+        field.className = "consultation-field";
+        const fieldLabel = document.createElement("span");
+        fieldLabel.textContent = label;
+        const p = document.createElement("p");
+        if (isUrl(value)) {
+          const link = document.createElement("a");
+          link.href = value;
+          link.target = "_blank";
+          link.rel = "noreferrer";
+          link.textContent = "開啟佐證資料";
+          p.appendChild(link);
+        } else {
+          p.textContent = value || "未填";
+        }
+        field.appendChild(fieldLabel);
+        field.appendChild(p);
+        body.appendChild(field);
+      });
+
+      const meta = document.createElement("div");
+      meta.className = "consultation-card-meta";
+      meta.textContent = [
+        record.reporter ? `建立人：${displayPersonName(record.reporter)}` : "",
+        record.createdAt ? `建立時間：${record.createdAt}` : "",
+        record.updatedAt ? `最後更新：${record.updatedAt}` : "",
+      ].filter(Boolean).join(" / ");
+
+      card.appendChild(header);
+      card.appendChild(body);
+      card.appendChild(meta);
+      list.appendChild(card);
+    });
+  }
+
+  function renderConsultationMetrics() {
+    const metrics = consultationMetrics(state.filteredConsultations);
+    const container = $("consultationMetrics");
+    container.innerHTML = "";
+    [
+      ["預排", metrics.planned],
+      ["已確認", metrics.confirmed],
+      ["已完成", metrics.done],
+      ["本月", metrics.currentMonth],
+    ].forEach(([label, value]) => {
+      const item = document.createElement("div");
+      item.className = "mini-metric";
+      item.innerHTML = "<span></span><strong></strong>";
+      item.querySelector("span").textContent = label;
+      item.querySelector("strong").textContent = String(value);
+      container.appendChild(item);
+    });
+  }
+
+  function consultationMetrics(records) {
+    const currentMonth = currentMonthValue();
+    return {
+      planned: records.filter((record) => record.status === "預排").length,
+      confirmed: records.filter((record) => record.status === "已確認").length,
+      done: records.filter((record) => record.status === "已完成").length,
+      currentMonth: records.filter((record) => record.month === currentMonth || String(record.date || "").startsWith(currentMonth)).length,
+    };
+  }
+
+  function compareConsultations(a, b) {
+    const dateDiff = deadlineTime(b.date || b.createdAt) - deadlineTime(a.date || a.createdAt);
+    if (dateDiff) return dateDiff;
+    return String(b.sessionId || "").localeCompare(String(a.sessionId || ""), "zh-Hant");
+  }
+
+  function consultationDateTime(record) {
+    const time = [record.startTime, record.endTime].filter(Boolean).join("-");
+    return [record.date, time].filter(Boolean).join(" ");
+  }
+
+  function setConsultationStatusPill(element, status) {
+    const value = status || "預排";
+    element.textContent = value;
+    element.classList.remove("done", "open", "unknown");
+    if (value === "已完成") element.classList.add("done");
+    else if (value === "取消") element.classList.add("unknown");
+    else element.classList.add("open");
+  }
+
   function applyCaseFilters() {
     const assignee = $("caseAssigneeFilter").value;
     const status = $("caseStatusFilter").value;
@@ -1506,6 +1774,65 @@
     }
   }
 
+  async function submitConsultationSession(event) {
+    event.preventDefault();
+    if (!config.apiUrl) {
+      renderConsultationMessage("目前尚未設定 Apps Script API URL，無法寫入諮詢輔導場次。", "error");
+      return;
+    }
+    const reporter = $("reporterInput").value.trim();
+    if (!reporter) {
+      renderConsultationMessage("請先填寫上方填報人姓名。", "error");
+      $("reporterInput").focus();
+      return;
+    }
+    const payload = {
+      action: "submitConsultationSession",
+      itemId: "ITEM001",
+      month: $("consultationMonthInput").value,
+      unitName: $("consultationUnitInput").value.trim(),
+      date: $("consultationDateInput").value,
+      startTime: $("consultationStartInput").value,
+      endTime: $("consultationEndInput").value,
+      location: $("consultationLocationInput").value.trim(),
+      teacher: $("consultationTeacherInput").value.trim(),
+      branchStaff: $("consultationBranchStaffInput").value.trim(),
+      unitStaff: $("consultationUnitStaffInput").value.trim(),
+      relatedStaff: $("consultationRelatedStaffInput").value.trim(),
+      owner: $("consultationOwnerInput").value.trim(),
+      status: $("consultationStatusInput").value,
+      topic: $("consultationTopicInput").value.trim(),
+      note: $("consultationNoteInput").value.trim(),
+      attachment: $("consultationAttachmentInput").value.trim(),
+      reporter,
+    };
+    if (!confirmSubmission("請確認本次諮詢輔導場次", [
+      ["月份", payload.month],
+      ["單位名稱", payload.unitName],
+      ["輔導日期", payload.date],
+      ["時間", [payload.startTime, payload.endTime].filter(Boolean).join("-") || "未填"],
+      ["負責同仁", payload.owner],
+      ["狀態", payload.status],
+      ["建立人", reporter],
+    ])) return;
+    $("consultationSubmitButton").disabled = true;
+    renderConsultationMessage("送出中...", "");
+    try {
+      await postNoCors(config.apiUrl, payload);
+      renderConsultationMessage("已送出諮詢輔導場次。系統會重新讀取 Google Sheet。", "success");
+      $("consultationForm").reset();
+      $("consultationMonthInput").value = payload.month || currentMonthValue();
+      $("consultationDateInput").value = currentDateValue();
+      $("consultationOwnerInput").value = payload.owner;
+      await wait(900);
+      await loadData();
+    } catch (error) {
+      renderConsultationMessage(`送出失敗：${error.message}`, "error");
+    } finally {
+      $("consultationSubmitButton").disabled = false;
+    }
+  }
+
   function fillCaseProgressForm(record) {
     $("caseProgressIdInput").value = record.caseId;
     $("caseProgressReporterInput").value = $("reporterInput").value.trim() || record.assignee || "";
@@ -1563,6 +1890,20 @@
     ].join(":");
   }
 
+  function currentDateValue() {
+    const now = new Date();
+    const pad = (value) => String(value).padStart(2, "0");
+    return [
+      now.getFullYear(),
+      pad(now.getMonth() + 1),
+      pad(now.getDate()),
+    ].join("-");
+  }
+
+  function currentMonthValue() {
+    return currentDateValue().slice(0, 7);
+  }
+
   function renderCaseMessage(message, type) {
     const element = $("caseFormMessage");
     element.textContent = message;
@@ -1571,6 +1912,12 @@
 
   function renderCaseProgressMessage(message, type) {
     const element = $("caseProgressMessage");
+    element.textContent = message;
+    element.className = type || "";
+  }
+
+  function renderConsultationMessage(message, type) {
+    const element = $("consultationMessage");
     element.textContent = message;
     element.className = type || "";
   }

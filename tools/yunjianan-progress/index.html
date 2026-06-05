@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>115 雲嘉南多元計畫進度填報</title>
-    <link rel="stylesheet" href="./styles.css?v=released-cases-20260605" />
+    <link rel="stylesheet" href="./styles.css?v=consultation-tracking-20260606" />
   </head>
   <body>
     <header class="topbar">
@@ -70,6 +70,7 @@
         <button class="tab-button" type="button" data-view="sourceView">資料總覽</button>
         <button class="tab-button" type="button" data-view="updatesView">更新與費用紀錄</button>
         <button class="tab-button" type="button" data-view="supervisorView">主管追蹤</button>
+        <button class="tab-button" type="button" data-view="consultationView">諮詢輔導</button>
         <button class="tab-button" type="button" data-view="managementView">管理摘要</button>
         <button class="tab-button" type="button" data-view="casesView">案件追蹤列管</button>
       </nav>
@@ -235,6 +236,137 @@
             <h3>需追蹤工項</h3>
             <div id="supervisorNeedsList" class="supervisor-needs-list"></div>
           </section>
+        </div>
+      </section>
+
+      <section id="consultationView" class="panel consultation-panel view-section" aria-label="諮詢輔導">
+        <div class="section-heading">
+          <div>
+            <h2>諮詢輔導場次</h2>
+            <p class="subtle">每月場次安排、出席人員、地點與佐證集中追蹤。</p>
+          </div>
+          <span id="consultationCount">0 筆</span>
+        </div>
+
+        <div class="consultation-workspace">
+          <form id="consultationForm" class="consultation-form">
+            <div class="form-caption">
+              <h3>新增諮詢輔導場次</h3>
+              <p>送出後會寫入 Google Sheet 的諮詢輔導場次表，供主管依月份與負責同仁查詢。</p>
+            </div>
+            <div class="form-grid consultation-form-grid">
+              <label>
+                <span>月份</span>
+                <input id="consultationMonthInput" type="month" required />
+              </label>
+              <label>
+                <span>單位名稱</span>
+                <input id="consultationUnitInput" type="text" required placeholder="例：某某協會 / 多元單位" />
+              </label>
+              <label>
+                <span>輔導日期</span>
+                <input id="consultationDateInput" type="date" required />
+              </label>
+              <label>
+                <span>負責同仁</span>
+                <input id="consultationOwnerInput" list="consultationOwnerOptions" type="text" required placeholder="輸入或選擇同仁" />
+                <datalist id="consultationOwnerOptions"></datalist>
+              </label>
+              <label>
+                <span>開始時間</span>
+                <input id="consultationStartInput" type="time" />
+              </label>
+              <label>
+                <span>結束時間</span>
+                <input id="consultationEndInput" type="time" />
+              </label>
+              <label>
+                <span>地點</span>
+                <input id="consultationLocationInput" type="text" placeholder="例：單位辦公室、線上會議" />
+              </label>
+              <label>
+                <span>狀態</span>
+                <select id="consultationStatusInput" required>
+                  <option value="預排">預排</option>
+                  <option value="已確認">已確認</option>
+                  <option value="已完成">已完成</option>
+                  <option value="延期">延期</option>
+                  <option value="取消">取消</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="form-grid consultation-form-grid">
+              <label>
+                <span>輔導老師</span>
+                <input id="consultationTeacherInput" type="text" placeholder="可填多位姓名" />
+              </label>
+              <label>
+                <span>分署人員</span>
+                <input id="consultationBranchStaffInput" type="text" placeholder="可填多位姓名" />
+              </label>
+              <label>
+                <span>單位人員</span>
+                <input id="consultationUnitStaffInput" type="text" placeholder="可填多位姓名" />
+              </label>
+              <label>
+                <span>相關人員</span>
+                <input id="consultationRelatedStaffInput" type="text" placeholder="其他出席或列席人員" />
+              </label>
+            </div>
+
+            <label>
+              <span>輔導主題</span>
+              <input id="consultationTopicInput" type="text" placeholder="例：營運財務、行銷通路、成果資料整理" />
+            </label>
+
+            <label>
+              <span>會議紀錄 / 備註</span>
+              <textarea id="consultationNoteInput" rows="4" placeholder="填寫輔導重點、待追蹤事項、主管需掌握事項"></textarea>
+            </label>
+
+            <label>
+              <span>佐證資料連結</span>
+              <input id="consultationAttachmentInput" type="url" placeholder="貼上簽到表、照片、會議紀錄或資料夾連結" />
+            </label>
+
+            <div class="form-actions">
+              <p id="consultationMessage" role="status"></p>
+              <button id="consultationSubmitButton" class="button primary" type="submit">送出場次</button>
+            </div>
+          </form>
+
+          <div class="consultation-board">
+            <div class="consultation-toolbar">
+              <label>
+                <span>月份</span>
+                <input id="consultationMonthFilter" type="month" />
+              </label>
+              <label>
+                <span>負責同仁</span>
+                <select id="consultationOwnerFilter">
+                  <option value="">全部</option>
+                </select>
+              </label>
+              <label>
+                <span>狀態</span>
+                <select id="consultationStatusFilter">
+                  <option value="">全部</option>
+                  <option value="預排">預排</option>
+                  <option value="已確認">已確認</option>
+                  <option value="已完成">已完成</option>
+                  <option value="延期">延期</option>
+                  <option value="取消">取消</option>
+                </select>
+              </label>
+              <label>
+                <span>搜尋</span>
+                <input id="consultationSearchInput" type="search" placeholder="單位、地點、人員、主題" />
+              </label>
+            </div>
+            <div id="consultationMetrics" class="consultation-metrics"></div>
+            <div id="consultationList" class="consultation-list"></div>
+          </div>
         </div>
       </section>
 
@@ -456,8 +588,8 @@
       </button>
     </template>
 
-    <script src="./config.js?v=api-20260603"></script>
+    <script src="./config.js?v=api-consultation-20260606"></script>
     <script src="./data.js"></script>
-    <script src="./app.js?v=hank-aliases-20260606"></script>
+    <script src="./app.js?v=consultation-tracking-20260606"></script>
   </body>
 </html>

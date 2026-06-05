@@ -413,7 +413,8 @@ textarea:focus {
 
 .source-panel,
 .updates-panel,
-.cases-panel {
+.cases-panel,
+.consultation-panel {
   overflow: hidden;
 }
 
@@ -503,7 +504,8 @@ textarea:focus {
 
 #formMessage,
 #caseFormMessage,
-#caseProgressMessage {
+#caseProgressMessage,
+#consultationMessage {
   color: var(--muted);
   font-size: 13px;
   flex: 1;
@@ -511,13 +513,15 @@ textarea:focus {
 
 #formMessage.error,
 #caseFormMessage.error,
-#caseProgressMessage.error {
+#caseProgressMessage.error,
+#consultationMessage.error {
   color: var(--accent);
 }
 
 #formMessage.success,
 #caseFormMessage.success,
-#caseProgressMessage.success {
+#caseProgressMessage.success,
+#consultationMessage.success {
   color: var(--ok);
 }
 
@@ -933,6 +937,112 @@ textarea:focus {
   gap: 10px;
 }
 
+.consultation-workspace {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.92fr) minmax(420px, 1.08fr);
+  gap: 16px;
+  padding: 16px;
+  align-items: start;
+}
+
+.consultation-form,
+.consultation-board {
+  display: grid;
+  gap: 14px;
+}
+
+.consultation-form {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fbfcfd;
+}
+
+.consultation-form-grid,
+.consultation-toolbar {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.consultation-toolbar {
+  display: grid;
+  gap: 10px;
+  align-items: end;
+}
+
+.consultation-toolbar label:last-child {
+  grid-column: 1 / -1;
+}
+
+.consultation-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.consultation-list {
+  display: grid;
+  gap: 10px;
+  max-height: 68vh;
+  overflow: auto;
+}
+
+.consultation-card {
+  display: grid;
+  gap: 10px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #ffffff;
+}
+
+.consultation-card-header,
+.consultation-card-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.consultation-card-title {
+  display: grid;
+  gap: 4px;
+}
+
+.consultation-card-title strong {
+  font-size: 15px;
+}
+
+.consultation-card-title span,
+.consultation-card-meta,
+.consultation-field span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.consultation-card-body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.consultation-field {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid #e3e8ef;
+  border-radius: 6px;
+  background: #fbfcfd;
+}
+
+.consultation-field p {
+  white-space: pre-wrap;
+}
+
+.consultation-field a {
+  color: var(--brand);
+  font-weight: 800;
+}
+
 @media (max-width: 960px) {
   .topbar,
   .top-actions,
@@ -954,6 +1064,11 @@ textarea:focus {
     .records-grid,
     .management-grid,
     .mini-metrics,
+    .consultation-workspace,
+    .consultation-form-grid,
+    .consultation-toolbar,
+    .consultation-metrics,
+    .consultation-card-body,
     .case-workspace,
   .case-form-grid,
   .case-toolbar,
