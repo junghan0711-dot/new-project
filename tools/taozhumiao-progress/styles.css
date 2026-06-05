@@ -525,6 +525,91 @@ textarea:focus {
   overflow: hidden;
 }
 
+.supervisor-panel {
+  overflow: hidden;
+}
+
+.supervisor-grid {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+}
+
+.supervisor-block {
+  display: grid;
+  gap: 12px;
+}
+
+.supervisor-block h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.supervisor-table-wrap {
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #ffffff;
+}
+
+.supervisor-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+}
+
+.supervisor-table th,
+.supervisor-table td {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  font-size: 13px;
+  vertical-align: top;
+}
+
+.supervisor-table th {
+  color: var(--muted);
+  background: #f6f8fb;
+  font-weight: 800;
+}
+
+.supervisor-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.supervisor-table .needs-follow-up td:last-child {
+  color: #b8321f;
+  font-weight: 800;
+}
+
+.supervisor-needs-list {
+  display: grid;
+  gap: 10px;
+  max-height: 520px;
+  overflow: auto;
+}
+
+.supervisor-need-card {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid #e6b04a;
+  border-radius: 7px;
+  background: #fffaf1;
+}
+
+.supervisor-need-card p,
+.supervisor-need-card span {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.supervisor-need-card span {
+  color: #9a5600;
+  font-weight: 800;
+}
+
 .management-grid {
   display: grid;
   grid-template-columns: minmax(260px, 0.8fr) minmax(320px, 1fr);

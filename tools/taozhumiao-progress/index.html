@@ -69,6 +69,7 @@
         <button class="tab-button active" type="button" data-view="tasksView">任務填報</button>
         <button class="tab-button" type="button" data-view="sourceView">資料總覽</button>
         <button class="tab-button" type="button" data-view="updatesView">更新與費用紀錄</button>
+        <button class="tab-button" type="button" data-view="supervisorView">主管追蹤</button>
         <button class="tab-button" type="button" data-view="managementView">管理摘要</button>
         <button class="tab-button" type="button" data-view="casesView">案件追蹤列管</button>
       </nav>
@@ -200,6 +201,40 @@
             <h3>經費支出紀錄</h3>
             <div id="expensesList" class="record-list"></div>
           </div>
+        </div>
+      </section>
+
+      <section id="supervisorView" class="panel supervisor-panel view-section" aria-label="主管追蹤">
+        <div class="section-heading">
+          <div>
+            <h2>主管追蹤</h2>
+            <p id="supervisorMeta" class="subtle">依主責同仁彙整近期更新狀態。</p>
+          </div>
+          <span id="supervisorNeedsCount">0 筆需追蹤</span>
+        </div>
+        <div class="supervisor-grid">
+          <section class="supervisor-block">
+            <h3>同仁更新總覽</h3>
+            <div class="supervisor-table-wrap">
+              <table class="supervisor-table">
+                <thead>
+                  <tr>
+                    <th scope="col">同仁</th>
+                    <th scope="col">負責工項</th>
+                    <th scope="col">近 7 日已更新</th>
+                    <th scope="col">需追蹤</th>
+                    <th scope="col">最近更新</th>
+                    <th scope="col">狀態</th>
+                  </tr>
+                </thead>
+                <tbody id="supervisorPeopleRows"></tbody>
+              </table>
+            </div>
+          </section>
+          <section class="supervisor-block">
+            <h3>需追蹤工項</h3>
+            <div id="supervisorNeedsList" class="supervisor-needs-list"></div>
+          </section>
         </div>
       </section>
 
@@ -422,6 +457,6 @@
 
     <script src="./config.js?v=api-20260605"></script>
     <script src="./data.js"></script>
-    <script src="./app.js?v=released-cases-20260605"></script>
+    <script src="./app.js?v=supervisor-tracking-20260606"></script>
   </body>
 </html>

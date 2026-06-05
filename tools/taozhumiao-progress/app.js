@@ -13,6 +13,7 @@
     originalSheetCount: 0,
     filteredItems: [],
     filteredCases: [],
+    itemStatusDrafts: {},
     selectedItemId: "",
     selectedSheetName: "",
     loading: false,
@@ -22,6 +23,14 @@
   const excludedPersonLabels = new Set(["主責", "協辦", "主責及協辦", "負責同仁", "各項主責同仁"]);
   const inactivePeople = new Set(["嘉祺", "嘉褀"]);
   const extraPeople = ["芷安", "昱碩"];
+  const personAliases = {
+    hank: "Hank",
+    Hank: "Hank",
+    邱榮漢: "Hank",
+    榮漢: "Hank",
+    榮漢哥: "Hank",
+    邱委: "Hank",
+  };
 
   function init() {
     $("sheetLink").href = config.sheetUrl || embedded.sourceUrl || "#";
@@ -31,11 +40,17 @@
     $("searchInput").addEventListener("input", applyFilters);
     $("sourceSearchInput").addEventListener("input", renderSourceTable);
     $("progressForm").addEventListener("submit", submitProgress);
+    $("completeInput").addEventListener("change", updateSelectedItemStatusDraft);
     $("caseForm").addEventListener("submit", submitCaseTracking);
     $("caseProgressForm").addEventListener("submit", submitCaseProgress);
     $("copyReportButton").addEventListener("click", copyManagementReport);
     $("caseAssigneeFilter").addEventListener("change", applyCaseFilters);
-    $("caseStatusFilter").addEventListener("change", applyCaseFilters);
+    $("caseStatusFilter").addEventListener("change", () => {
+      if ($("caseStatusFilter").value === "已完成") {
+        $("caseOpenOnlyFilter").checked = false;
+      }
+      applyCaseFilters();
+    });
     $("casePriorityFilter").addEventListener("change", applyCaseFilters);
     $("caseOpenOnlyFilter").addEventListener("change", applyCaseFilters);
     $("caseSearchInput").addEventListener("input", applyCaseFilters);
@@ -123,6 +138,7 @@
     state.expenses = payload.expenses || [];
     state.cases = (payload.cases || []).map(normalizeCase);
     state.caseUpdates = mergeCaseUpdates(payload.caseUpdates || [], state.localCaseUpdates);
+    state.itemStatusDrafts = {};
     const originalSheets = payload.sheets && payload.sheets.length ? payload.sheets : [];
     state.originalSheetCount = originalSheets.length;
     state.sheets = buildOverviewSheets(originalSheets);
@@ -208,6 +224,7 @@
     renderSheetTabs();
     renderSourceTable();
     renderRecords();
+    renderSupervisor();
     renderManagement();
     populateCaseAssignees();
     populateCaseIds();
@@ -225,11 +242,12 @@
     const times = [
       ...state.items.map((item) => item.updatedAt),
       ...state.tasks.map((task) => task.updatedAt),
-      ...state.updates.map((record) => record.updatedAt || record["最後更新時間"]),
+      ...state.updates.map((record) => record.updatedAt || record["最後更新時間"] || record.date || record["更新日期"]),
       ...state.cases.map((record) => record.reportedAt),
       ...state.caseUpdates.map((record) => record.reportedAt || record["回報日期"]),
     ].filter(Boolean);
-    return times.length ? times[times.length - 1] : embedded.generatedAt || "未記錄";
+    if (!times.length) return embedded.generatedAt || "未記錄";
+    return times.reduce((latest, value) => (dateValue(value) >= dateValue(latest) ? value : latest), times[0]);
   }
 
   function switchView(viewId) {
@@ -327,6 +345,11 @@
     return splitNames(value).join("、");
   }
 
+  function displayPersonName(value) {
+    const name = String(value || "").trim();
+    return personAliases[name] || name;
+  }
+
   function buildOverviewSheets(originalSheets) {
     const liveSheets = [
       buildSheet("即時-工項主檔", [
@@ -370,7 +393,7 @@
         record.taskId || record["任務ID"],
         record.itemId || record["工項ID"],
         record.date || record["更新日期"],
-        record.reporter || record["更新人"],
+        displayPersonName(record.reporter || record["更新人"]),
         record.progress || record["進度內容"],
         record.status || record["完成狀態"],
         record.nextDate || record["下次追蹤日期"],
@@ -396,7 +419,7 @@
         record.amount || record["金額"],
         record.detail || record["費用明細"],
         record.date || record["支出日期"],
-        record.reporter || record["填報人"],
+        displayPersonName(record.reporter || record["填報人"]),
         record.voucher || record["憑證連結"],
         record.note || record["備註"],
       ])),
@@ -482,7 +505,7 @@
     const query = $("searchInput").value.trim().toLowerCase();
     state.filteredItems = state.items.filter((item) => {
       const matchesPerson = !person || splitNames(itemPeopleText(item)).includes(person);
-      const matchesStatus = !status || itemStatus(item) === status;
+      const matchesStatus = matchesItemStatus(item, status);
       const haystack = [
         item.itemName,
         item.performance,
@@ -536,6 +559,10 @@
   }
 
   function itemStatus(item) {
+    const draftedStatus = state.itemStatusDrafts[item.itemId];
+    if (draftedStatus) return draftedStatus;
+    const latestStatus = latestItemUpdateStatus(item.itemId);
+    if (latestStatus) return latestStatus;
     const rawProgress = String(item.progressRatio || "").trim();
     const isPercent = rawProgress.endsWith("%");
     const progress = Number(rawProgress.replace("%", ""));
@@ -545,6 +572,18 @@
     return "未確認";
   }
 
+  function latestItemUpdateStatus(itemId) {
+    const latest = latestItemUpdate(itemId);
+    return latest && statusOption(latest.status) === latest.status ? latest.status : "";
+  }
+
+  function matchesItemStatus(item, selectedStatus) {
+    if (!selectedStatus) return true;
+    const currentStatus = itemStatus(item);
+    if (selectedStatus === "未完成") return currentStatus !== "已完成";
+    return currentStatus === selectedStatus;
+  }
+
   function setStatusPill(element, status) {
     const value = status || "未確認";
     element.textContent = value;
@@ -552,6 +591,15 @@
     if (value === "已完成") element.classList.add("done");
     else if (value === "未完成" || value === "進行中") element.classList.add("open");
     else element.classList.add("unknown");
+  }
+
+  function updateSelectedItemStatusDraft() {
+    if (!state.selectedItemId) return;
+    state.itemStatusDrafts[state.selectedItemId] = $("completeInput").value;
+    setStatusPill($("selectedStatus"), $("completeInput").value);
+    applyFilters();
+    renderSupervisor();
+    renderManagement();
   }
 
   function selectItem(itemId) {
@@ -679,7 +727,7 @@
       meta: [
         record.updateId || record["更新ID"],
         record.date || record["更新日期"],
-        record.reporter || record["更新人"],
+        displayPersonName(record.reporter || record["更新人"]),
         record.note || record["備註"],
         record.voucher || record["佐證資料連結"] || record["憑證連結"],
       ].filter(Boolean).join(" / "),
@@ -691,11 +739,162 @@
         record.expenseId || record["經費ID"],
         record.sourceSheet || record["來源工作表"],
         record.date || record["支出日期"],
-        record.reporter || record["填報人"],
+        displayPersonName(record.reporter || record["填報人"]),
         record.note || record["備註"],
       ].filter(Boolean).join(" / "),
     }));
     $("recordCount").textContent = `${state.updates.length + state.expenses.length} 筆`;
+  }
+
+  function renderSupervisor() {
+    const summary = supervisorSummary();
+    $("supervisorMeta").textContent = `資料時間：${latestDataTime()} / 近 7 日更新 ${summary.recentUpdateCount} 筆`;
+    $("supervisorNeedsCount").textContent = `${summary.needs.length} 筆需追蹤`;
+
+    const tbody = $("supervisorPeopleRows");
+    tbody.innerHTML = "";
+    if (!summary.people.length) {
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.colSpan = 6;
+      cell.textContent = "目前沒有主責同仁資料。";
+      row.appendChild(cell);
+      tbody.appendChild(row);
+    } else {
+      summary.people.forEach((person) => {
+        const row = document.createElement("tr");
+        if (person.needsFollowUp > 0) row.classList.add("needs-follow-up");
+        [
+          person.name,
+          String(person.total),
+          String(person.updatedRecently),
+          String(person.needsFollowUp),
+          person.latestDate ? `${person.latestDate} / ${displayPersonName(person.latestReporter) || "未填"}` : "尚無紀錄",
+          person.needsFollowUp > 0 ? "需追蹤" : "OK",
+        ].forEach((value) => {
+          const cell = document.createElement("td");
+          cell.textContent = value;
+          row.appendChild(cell);
+        });
+        tbody.appendChild(row);
+      });
+    }
+
+    const list = $("supervisorNeedsList");
+    list.innerHTML = "";
+    if (!summary.needs.length) {
+      const empty = document.createElement("p");
+      empty.className = "task-meta";
+      empty.textContent = "目前沒有超過 7 天未更新或未確認的工項。";
+      list.appendChild(empty);
+      return;
+    }
+    summary.needs.slice(0, 80).forEach((item) => {
+      const article = document.createElement("article");
+      article.className = "supervisor-need-card";
+      article.innerHTML = "<strong></strong><p></p><span></span>";
+      article.querySelector("strong").textContent = item.itemName || "未命名工項";
+      article.querySelector("p").textContent = [
+        `主責：${displayNames(item.owner) || "未填"}`,
+        `目前狀態：${item.status}`,
+        item.latestDate ? `最近更新：${item.latestDate} / ${displayPersonName(item.latestReporter) || "未填更新人"}` : "最近更新：尚無紀錄",
+      ].join(" / ");
+      article.querySelector("span").textContent = item.reason;
+      list.appendChild(article);
+    });
+  }
+
+  function supervisorSummary() {
+    const peopleMap = new Map();
+    const needs = [];
+    let recentUpdateCount = 0;
+
+    state.items.forEach((item) => {
+      const owners = splitNames(itemPeopleText(item));
+      const latest = latestItemUpdate(item.itemId);
+      const recent = latest && isRecentRecord(latest.date, 7);
+      const status = itemStatus(item);
+      const needsFollowUp = !recent && status !== "已完成";
+      if (latest && isRecentRecord(latest.date, 7)) recentUpdateCount += 1;
+
+      owners.forEach((owner) => {
+        if (!peopleMap.has(owner)) {
+          peopleMap.set(owner, {
+            name: owner,
+            total: 0,
+            updatedRecently: 0,
+            needsFollowUp: 0,
+            latestDate: "",
+            latestReporter: "",
+          });
+        }
+        const person = peopleMap.get(owner);
+        person.total += 1;
+        if (recent) person.updatedRecently += 1;
+        if (needsFollowUp) person.needsFollowUp += 1;
+        if (latest && isLaterDate(latest.date, person.latestDate)) {
+          person.latestDate = latest.date;
+          person.latestReporter = latest.reporter;
+        }
+      });
+
+      if (needsFollowUp) {
+        needs.push({
+          itemName: item.itemName,
+          owner: itemPeopleText(item),
+          status,
+          latestDate: latest ? latest.date : "",
+          latestReporter: latest ? latest.reporter : "",
+          reason: latest ? "超過 7 天未更新" : "尚無更新紀錄",
+        });
+      }
+    });
+
+    const people = [...peopleMap.values()].sort((a, b) => {
+      if (b.needsFollowUp !== a.needsFollowUp) return b.needsFollowUp - a.needsFollowUp;
+      return a.name.localeCompare(b.name, "zh-Hant");
+    });
+    needs.sort((a, b) => {
+      if (!a.latestDate && b.latestDate) return -1;
+      if (a.latestDate && !b.latestDate) return 1;
+      return dateValue(a.latestDate) - dateValue(b.latestDate);
+    });
+
+    return { people, needs, recentUpdateCount };
+  }
+
+  function latestItemUpdate(itemId) {
+    if (!itemId) return null;
+    let latest = null;
+    state.updates.forEach((record, index) => {
+      const recordItemId = record.itemId || record["工項ID"] || "";
+      if (recordItemId !== itemId) return;
+      const candidate = {
+        date: record.date || record["更新日期"] || record.updatedAt || record["最後更新時間"] || "",
+        reporter: displayPersonName(record.reporter || record["更新人"] || ""),
+        status: String(record.status || record["完成狀態"] || "").trim(),
+        index,
+      };
+      if (!latest || isLaterUpdate(candidate, latest)) latest = candidate;
+    });
+    return latest;
+  }
+
+  function isLaterUpdate(candidate, current) {
+    const candidateTime = dateValue(candidate.date);
+    const currentTime = dateValue(current.date);
+    if (candidateTime !== currentTime) return candidateTime > currentTime;
+    return candidate.index > current.index;
+  }
+
+  function isLaterDate(candidate, current) {
+    if (!current) return Boolean(candidate);
+    return dateValue(candidate) > dateValue(current);
+  }
+
+  function dateValue(value) {
+    const date = parseDeadline(value);
+    return date ? date.getTime() : 0;
   }
 
   function renderManagement() {
@@ -820,7 +1019,7 @@
     const assignee = $("caseAssigneeFilter").value;
     const status = $("caseStatusFilter").value;
     const priority = $("casePriorityFilter").value;
-    const openOnly = $("caseOpenOnlyFilter").checked;
+    const openOnly = $("caseOpenOnlyFilter").checked && status !== "已完成";
     const query = $("caseSearchInput").value.trim().toLowerCase();
     state.filteredCases = state.cases.filter((record) => {
       const matchesAssignee = !assignee || record.assignee === assignee;
@@ -1015,7 +1214,7 @@
     if (!updates.length) {
       const p = document.createElement("p");
       p.textContent = record.reportedAt
-        ? `${record.reportedAt} / ${record.reporter || "未填回報人"} / ${record.status || "未填狀態"}\n${record.progress || "未填最新進度"}`
+        ? `${record.reportedAt} / ${displayPersonName(record.reporter) || "未填回報人"} / ${record.status || "未填狀態"}\n${record.progress || "未填最新進度"}`
         : "尚無回報紀錄";
       field.appendChild(p);
       return field;
@@ -1027,7 +1226,7 @@
       const meta = document.createElement("strong");
       meta.textContent = [
         caseUpdateValue(update, "date", "回報日期"),
-        caseUpdateValue(update, "reporter", "回報人"),
+        displayPersonName(caseUpdateValue(update, "reporter", "回報人")),
         caseUpdateValue(update, "status", "狀態"),
       ].filter(Boolean).join(" / ");
       const progress = document.createElement("p");
@@ -1066,7 +1265,7 @@
       meta.textContent = [
         record.assignee ? `指定同事：${record.assignee}` : "",
         record.releasedAt ? `解除時間：${record.releasedAt}` : "",
-        record.reporter ? `回報人：${record.reporter}` : "",
+        record.reporter ? `回報人：${displayPersonName(record.reporter)}` : "",
       ].filter(Boolean).join(" / ");
       header.appendChild(title);
       header.appendChild(meta);
@@ -1110,7 +1309,7 @@
     meta.className = "case-card-meta";
     meta.textContent = [
       record.caseId,
-      record.reporter ? `回報人：${record.reporter}` : "",
+      record.reporter ? `回報人：${displayPersonName(record.reporter)}` : "",
       record.reportedAt ? `回報時間：${record.reportedAt}` : "",
     ].filter(Boolean).join(" / ");
     return meta;
