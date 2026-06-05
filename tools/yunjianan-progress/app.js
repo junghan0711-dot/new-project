@@ -7,6 +7,8 @@
     updates: [],
     expenses: [],
     cases: [],
+    caseUpdates: [],
+    localCaseUpdates: [],
     sheets: [],
     originalSheetCount: 0,
     filteredItems: [],
@@ -28,8 +30,12 @@
     $("sourceSearchInput").addEventListener("input", renderSourceTable);
     $("progressForm").addEventListener("submit", submitProgress);
     $("caseForm").addEventListener("submit", submitCaseTracking);
+    $("caseProgressForm").addEventListener("submit", submitCaseProgress);
+    $("copyReportButton").addEventListener("click", copyManagementReport);
     $("caseAssigneeFilter").addEventListener("change", applyCaseFilters);
     $("caseStatusFilter").addEventListener("change", applyCaseFilters);
+    $("casePriorityFilter").addEventListener("change", applyCaseFilters);
+    $("caseOpenOnlyFilter").addEventListener("change", applyCaseFilters);
     $("caseSearchInput").addEventListener("input", applyCaseFilters);
     $("reporterInput").value = localStorage.getItem("yunjianan.reporter") || "";
     $("reporterInput").addEventListener("input", (event) => {
@@ -37,8 +43,12 @@
       if (!$("caseReporterInput").value.trim()) {
         $("caseReporterInput").value = event.target.value.trim();
       }
+      if (!$("caseProgressReporterInput").value.trim()) {
+        $("caseProgressReporterInput").value = event.target.value.trim();
+      }
     });
     $("caseReporterInput").value = $("reporterInput").value;
+    $("caseProgressReporterInput").value = $("reporterInput").value;
     document.querySelectorAll(".tab-button").forEach((button) => {
       button.addEventListener("click", () => switchView(button.dataset.view));
     });
@@ -85,6 +95,7 @@
           updates: payload.updates || embedded.updates || [],
           expenses: payload.expenses || embedded.expenses || [],
           cases: payload.cases || embedded.cases || [],
+          caseUpdates: payload.caseUpdates || embedded.caseUpdates || [],
           sheets: payload.sheets || embedded.sheets || [],
         });
         $("dataMode").textContent = "已連線";
@@ -109,11 +120,27 @@
     state.updates = payload.updates || [];
     state.expenses = payload.expenses || [];
     state.cases = (payload.cases || []).map(normalizeCase);
+    state.caseUpdates = mergeCaseUpdates(payload.caseUpdates || [], state.localCaseUpdates);
     const originalSheets = payload.sheets && payload.sheets.length ? payload.sheets : [];
     state.originalSheetCount = originalSheets.length;
     state.sheets = buildOverviewSheets(originalSheets);
     const hasSelectedSheet = state.sheets.some((sheet) => sheet.name === state.selectedSheetName);
     state.selectedSheetName = hasSelectedSheet ? state.selectedSheetName : (state.sheets[0] && state.sheets[0].name) || "";
+  }
+
+  function mergeCaseUpdates(sourceUpdates, localUpdates) {
+    const seen = new Set();
+    return [...localUpdates, ...sourceUpdates].filter((record) => {
+      const key = record.updateId || record["案件更新ID"] || [
+        record.caseId || record["案件ID"],
+        record.date || record["回報日期"],
+        record.reporter || record["回報人"],
+        record.progress || record["最新進度"],
+      ].join("|");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   }
 
   function normalizeItem(item) {
@@ -166,6 +193,9 @@
       reporter: record.reporter || record["回報人"] || "",
       reportedAt: record.reportedAt || record["回報時間"] || record["最後更新時間"] || "",
       note: record.note || record["備註"] || "",
+      attachment: record.attachment || record["佐證資料連結"] || record["附件連結"] || "",
+      completion: record.completion || record["完成/解除列管說明"] || record["完成說明"] || "",
+      releasedAt: record.releasedAt || record["解除列管時間"] || "",
     };
   }
 
@@ -175,7 +205,9 @@
     renderSheetTabs();
     renderSourceTable();
     renderRecords();
+    renderManagement();
     populateCaseAssignees();
+    populateCaseIds();
     applyCaseFilters();
     const meta = [
       `資料更新時間：${latestDataTime()}`,
@@ -191,6 +223,7 @@
       ...state.tasks.map((task) => task.updatedAt),
       ...state.updates.map((record) => record.updatedAt || record["最後更新時間"]),
       ...state.cases.map((record) => record.reportedAt),
+      ...state.caseUpdates.map((record) => record.reportedAt || record["回報日期"]),
     ].filter(Boolean);
     return times.length ? times[times.length - 1] : embedded.generatedAt || "未記錄";
   }
@@ -244,6 +277,20 @@
     });
     assigneeInput.value = currentInput;
     assigneeFilter.value = sortedNames.includes(currentFilter) ? currentFilter : "";
+  }
+
+  function populateCaseIds() {
+    const options = $("caseIdOptions");
+    const currentValue = $("caseProgressIdInput").value;
+    options.innerHTML = "";
+    state.cases.forEach((record) => {
+      if (!record.caseId) return;
+      const option = document.createElement("option");
+      option.value = record.caseId;
+      option.textContent = `${record.caseId} / ${record.title || "未命名案件"} / ${record.assignee || "未指定"}`;
+      options.appendChild(option);
+    });
+    $("caseProgressIdInput").value = currentValue;
   }
 
   function splitNames(value) {
@@ -305,6 +352,7 @@
         "完成狀態",
         "下次追蹤日期",
         "備註",
+        "佐證資料連結",
       ], state.updates.map((record) => [
         record.updateId || record["更新ID"],
         record.taskId || record["任務ID"],
@@ -315,6 +363,7 @@
         record.status || record["完成狀態"],
         record.nextDate || record["下次追蹤日期"],
         record.note || record["備註"],
+        record.voucher || record["佐證資料連結"] || record["憑證連結"],
       ])),
       buildSheet("即時-經費支出紀錄", [
         "經費ID",
@@ -352,6 +401,9 @@
         "回報人",
         "回報時間",
         "備註",
+        "佐證資料連結",
+        "完成/解除列管說明",
+        "解除列管時間",
       ], state.cases.map((record) => [
         record.caseId,
         record.title,
@@ -365,6 +417,30 @@
         record.reporter,
         record.reportedAt,
         record.note,
+        record.attachment,
+        record.completion,
+        record.releasedAt,
+      ])),
+      buildSheet("即時-案件進度紀錄", [
+        "案件更新ID",
+        "案件ID",
+        "回報日期",
+        "回報人",
+        "最新進度",
+        "狀態",
+        "完成/解除列管說明",
+        "佐證資料連結",
+        "備註",
+      ], state.caseUpdates.map((record) => [
+        record.updateId || record["案件更新ID"],
+        record.caseId || record["案件ID"],
+        record.date || record["回報日期"],
+        record.reporter || record["回報人"],
+        record.progress || record["最新進度"],
+        record.status || record["狀態"],
+        record.completion || record["完成/解除列管說明"],
+        record.attachment || record["佐證資料連結"],
+        record.note || record["備註"],
       ])),
     ];
     return [...liveSheets, ...originalSheets.map((sheet) => ({
@@ -489,6 +565,7 @@
     $("expenseInput").value = "";
     $("expenseDetailInput").value = "";
     $("noteInput").value = "";
+    $("voucherInput").value = "";
     renderMessage("", "");
     renderTasks();
   }
@@ -591,6 +668,7 @@
         record.date || record["更新日期"],
         record.reporter || record["更新人"],
         record.note || record["備註"],
+        record.voucher || record["佐證資料連結"] || record["憑證連結"],
       ].filter(Boolean).join(" / "),
     }));
     renderRecordList("expensesList", state.expenses, (record) => ({
@@ -607,14 +685,137 @@
     $("recordCount").textContent = `${state.updates.length + state.expenses.length} 筆`;
   }
 
+  function renderManagement() {
+    const metrics = managementMetrics();
+    $("managementMetrics").innerHTML = "";
+    [
+      ["逾期案件", metrics.overdue],
+      ["今日到期", metrics.today],
+      ["3 日內到期", metrics.soon],
+      ["待查核", metrics.awaitingReview],
+      ["急件", metrics.urgent],
+      ["近 7 日更新", metrics.recentUpdates],
+      ["經費支出", formatMoney(metrics.expenseTotal)],
+    ].forEach(([label, value]) => {
+      const item = document.createElement("div");
+      item.className = "mini-metric";
+      item.innerHTML = "<span></span><strong></strong>";
+      item.querySelector("span").textContent = label;
+      item.querySelector("strong").textContent = String(value);
+      $("managementMetrics").appendChild(item);
+    });
+
+    const issues = qualityIssues();
+    $("qualityIssues").innerHTML = "";
+    if (!issues.length) {
+      const empty = document.createElement("p");
+      empty.className = "task-meta";
+      empty.textContent = "目前沒有明顯資料品質提醒。";
+      $("qualityIssues").appendChild(empty);
+    } else {
+      issues.slice(0, 16).forEach((issue) => {
+        const article = document.createElement("article");
+        article.className = `quality-item ${issue.level}`;
+        article.innerHTML = "<strong></strong><p></p>";
+        article.querySelector("strong").textContent = issue.title;
+        article.querySelector("p").textContent = issue.detail;
+        $("qualityIssues").appendChild(article);
+      });
+    }
+    $("managementReport").value = buildManagementReport(metrics, issues);
+  }
+
+  function managementMetrics() {
+    const openCases = state.cases.filter((record) => record.status !== "已完成");
+    return {
+      overdue: openCases.filter((record) => caseUrgency(record).level === "overdue").length,
+      today: openCases.filter((record) => caseUrgency(record).level === "today").length,
+      soon: openCases.filter((record) => caseUrgency(record).level === "soon").length,
+      awaitingReview: openCases.filter((record) => record.status === "待查核").length,
+      urgent: openCases.filter((record) => record.priority === "急件").length,
+      recentUpdates: state.updates.filter((record) => isRecentRecord(record.date || record["更新日期"] || record.updatedAt || record["最後更新時間"], 7)).length,
+      expenseTotal: state.expenses.reduce((sum, record) => sum + (Number(String(record.amount || record["金額"] || 0).replace(/,/g, "")) || 0), 0),
+    };
+  }
+
+  function qualityIssues() {
+    const issues = [];
+    state.cases.forEach((record) => {
+      const urgency = caseUrgency(record);
+      if (urgency.level === "overdue") {
+        issues.push({ level: "critical", title: "案件已逾期", detail: `${record.title || "未命名案件"} / ${record.assignee || "未指定"} / Deadline：${record.deadline}` });
+      }
+      if (record.status === "已完成" && !record.attachment) {
+        issues.push({ level: "warning", title: "已完成案件缺佐證連結", detail: record.title || record.caseId || "未命名案件" });
+      }
+      if (!record.reporter) {
+        issues.push({ level: "warning", title: "案件缺回報人", detail: record.title || record.caseId || "未命名案件" });
+      }
+    });
+    state.updates.forEach((record) => {
+      const status = record.status || record["完成狀態"];
+      const progress = record.progress || record["進度內容"];
+      const voucher = record.voucher || record["佐證資料連結"] || record["憑證連結"];
+      if (status === "已完成" && !progress) {
+        issues.push({ level: "warning", title: "已完成更新缺進度說明", detail: record.itemId || record["工項ID"] || record.updateId || record["更新ID"] || "未命名更新" });
+      }
+      if (status === "已完成" && !voucher) {
+        issues.push({ level: "notice", title: "已完成更新可補佐證連結", detail: record.itemId || record["工項ID"] || record.updateId || record["更新ID"] || "未命名更新" });
+      }
+    });
+    state.expenses.forEach((record) => {
+      const amount = Number(String(record.amount || record["金額"] || 0).replace(/,/g, "")) || 0;
+      const detail = record.detail || record["費用明細"];
+      const voucher = record.voucher || record["憑證連結"] || record["佐證資料連結"];
+      if (detail && amount <= 0) {
+        issues.push({ level: "warning", title: "費用明細有填但金額為 0", detail: detail });
+      }
+      if (amount > 0 && !voucher) {
+        issues.push({ level: "notice", title: "費用支出缺憑證連結", detail: `${record.itemId || record["工項ID"] || "未填工項"} / ${formatMoney(amount)}` });
+      }
+    });
+    return issues;
+  }
+
+  function buildManagementReport(metrics, issues) {
+    const openCases = state.cases.filter((record) => record.status !== "已完成");
+    const topCases = [...openCases].sort(compareCases).slice(0, 5);
+    return [
+      `${config.projectName || "115 雲嘉南多元計畫"}進度摘要`,
+      `資料時間：${latestDataTime()}`,
+      "",
+      `工項：${state.items.length} 筆，已完成 ${state.items.filter((item) => itemStatus(item) === "已完成").length} 筆，待追蹤 ${Math.max(state.items.length - state.items.filter((item) => itemStatus(item) === "已完成").length, 0)} 筆。`,
+      `案件：逾期 ${metrics.overdue} 筆，今日到期 ${metrics.today} 筆，3 日內到期 ${metrics.soon} 筆，待查核 ${metrics.awaitingReview} 筆，急件 ${metrics.urgent} 筆。`,
+      `近 7 日進度更新 ${metrics.recentUpdates} 筆，經費支出累計 ${formatMoney(metrics.expenseTotal)} 元。`,
+      "",
+      "優先追蹤：",
+      ...(topCases.length ? topCases.map((record, index) => `${index + 1}. ${record.title || "未命名案件"} / ${record.assignee || "未指定"} / ${record.status || "未填狀態"} / ${record.deadline || "未填 Deadline"}`) : ["1. 目前沒有未完成案件。"]),
+      "",
+      "資料品質提醒：",
+      ...(issues.length ? issues.slice(0, 5).map((issue, index) => `${index + 1}. ${issue.title}：${issue.detail}`) : ["1. 目前沒有明顯資料品質提醒。"]),
+    ].join("\n");
+  }
+
+  function isRecentRecord(value, days) {
+    const date = parseDeadline(value);
+    if (!date) return false;
+    const diff = new Date().getTime() - date.getTime();
+    return diff >= 0 && diff <= days * 24 * 60 * 60 * 1000;
+  }
+
   function applyCaseFilters() {
     const assignee = $("caseAssigneeFilter").value;
     const status = $("caseStatusFilter").value;
+    const priority = $("casePriorityFilter").value;
+    const openOnly = $("caseOpenOnlyFilter").checked;
     const query = $("caseSearchInput").value.trim().toLowerCase();
     state.filteredCases = state.cases.filter((record) => {
       const matchesAssignee = !assignee || record.assignee === assignee;
       const matchesStatus = !status || record.status === status;
+      const matchesPriority = !priority || record.priority === priority;
+      const matchesOpenOnly = !openOnly || record.status !== "已完成";
       const haystack = [
+        record.caseId,
         record.title,
         record.assignee,
         record.instruction,
@@ -625,8 +826,9 @@
         record.priority,
         record.reporter,
         record.note,
+        record.attachment,
       ].join(" ").toLowerCase();
-      return matchesAssignee && matchesStatus && (!query || haystack.includes(query));
+      return matchesAssignee && matchesStatus && matchesPriority && matchesOpenOnly && (!query || haystack.includes(query));
     });
     renderCases();
   }
@@ -642,26 +844,28 @@
       list.appendChild(empty);
       return;
     }
-    [...state.filteredCases].reverse().slice(0, 160).forEach((record) => {
+    [...state.filteredCases].sort(compareCases).slice(0, 160).forEach((record) => {
       const card = document.createElement("article");
+      const urgency = caseUrgency(record);
       card.className = "case-card";
+      if (urgency.level) card.classList.add(`case-${urgency.level}`);
       const status = document.createElement("span");
       status.className = "status-pill";
       setCaseStatusPill(status, record.status);
-      card.appendChild(caseHeader(record, status));
+      card.appendChild(caseHeader(record, status, urgency));
       card.appendChild(caseBody(record));
       card.appendChild(caseMeta(record));
       list.appendChild(card);
     });
   }
 
-  function caseHeader(record, status) {
+  function caseHeader(record, status, urgency) {
     const header = document.createElement("div");
     header.className = "case-card-header";
     const title = document.createElement("div");
     title.className = "case-card-title";
     const strong = document.createElement("strong");
-    strong.textContent = record.title || "未命名案件";
+    strong.textContent = `${record.caseId ? `${record.caseId} ` : ""}${record.title || "未命名案件"}`;
     const span = document.createElement("span");
     span.textContent = [
       record.assignee ? `指定同事：${record.assignee}` : "",
@@ -670,9 +874,88 @@
     ].filter(Boolean).join(" / ");
     title.appendChild(strong);
     title.appendChild(span);
+    const statusStack = document.createElement("div");
+    statusStack.className = "status-stack";
+    statusStack.appendChild(status);
+    if (urgency.label) {
+      const deadline = document.createElement("span");
+      deadline.className = `deadline-pill ${urgency.level}`;
+      deadline.textContent = urgency.label;
+      statusStack.appendChild(deadline);
+    }
+    const fillButton = document.createElement("button");
+    fillButton.className = "button compact";
+    fillButton.type = "button";
+    fillButton.textContent = "回報此案";
+    fillButton.addEventListener("click", () => fillCaseProgressForm(record));
+    statusStack.appendChild(fillButton);
     header.appendChild(title);
-    header.appendChild(status);
+    header.appendChild(statusStack);
     return header;
+  }
+
+  function compareCases(a, b) {
+    const urgencyDiff = caseUrgency(b).rank - caseUrgency(a).rank;
+    if (urgencyDiff) return urgencyDiff;
+    const priorityDiff = casePriorityRank(b.priority) - casePriorityRank(a.priority);
+    if (priorityDiff) return priorityDiff;
+    const deadlineDiff = deadlineTime(a.deadline) - deadlineTime(b.deadline);
+    if (deadlineDiff) return deadlineDiff;
+    return String(b.reportedAt || "").localeCompare(String(a.reportedAt || ""), "zh-Hant");
+  }
+
+  function casePriorityRank(priority) {
+    if (priority === "急件") return 3;
+    if (priority === "高") return 2;
+    if (priority === "一般") return 1;
+    return 0;
+  }
+
+  function caseUrgency(record) {
+    if (!record.deadline || record.status === "已完成") return { label: "", level: "", rank: 0 };
+    const target = parseDeadline(record.deadline);
+    if (!target) return { label: "", level: "", rank: 0 };
+    const now = new Date();
+    const dayMs = 24 * 60 * 60 * 1000;
+    const diff = target.getTime() - now.getTime();
+    if (diff < 0) return { label: "已逾期", level: "overdue", rank: 4 };
+    if (isSameLocalDate(target, now)) return { label: "今日到期", level: "today", rank: 3 };
+    if (diff <= 3 * dayMs) return { label: "3 日內到期", level: "soon", rank: 2 };
+    return { label: "", level: "", rank: 0 };
+  }
+
+  function parseDeadline(value) {
+    const text = String(value || "").trim();
+    if (!text) return null;
+    const normalized = text.includes("T") ? text : text.replace(" ", "T");
+    const date = new Date(normalized);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  function deadlineTime(value) {
+    const date = parseDeadline(value);
+    return date ? date.getTime() : Number.MAX_SAFE_INTEGER;
+  }
+
+  function isSameLocalDate(a, b) {
+    return a.getFullYear() === b.getFullYear()
+      && a.getMonth() === b.getMonth()
+      && a.getDate() === b.getDate();
+  }
+
+  function isUrl(value) {
+    return /^https?:\/\//.test(String(value || "").trim());
+  }
+
+  function caseUpdateValue(record, key, fallbackKey) {
+    return record[key] || record[fallbackKey] || "";
+  }
+
+  function caseUpdatesFor(caseId) {
+    return state.caseUpdates
+      .filter((record) => caseUpdateValue(record, "caseId", "案件ID") === caseId)
+      .sort((a, b) => String(caseUpdateValue(b, "date", "回報日期")).localeCompare(String(caseUpdateValue(a, "date", "回報日期")), "zh-Hant"))
+      .slice(0, 3);
   }
 
   function caseBody(record) {
@@ -682,19 +965,66 @@
       ["交辦內容", record.instruction],
       ["查核點", record.checkpoint],
       ["目前進度說明", record.progress],
+      ["完成/解除列管說明", record.completion],
       ["備註", record.note],
+      ["佐證資料連結", record.attachment],
     ].forEach(([label, value]) => {
       const field = document.createElement("div");
       field.className = "case-field";
       const span = document.createElement("span");
       span.textContent = label;
       const p = document.createElement("p");
-      p.textContent = value || "未填";
+      if (isUrl(value)) {
+        const link = document.createElement("a");
+        link.href = value;
+        link.target = "_blank";
+        link.rel = "noreferrer";
+        link.textContent = "開啟佐證資料";
+        p.appendChild(link);
+      } else {
+        p.textContent = value || "未填";
+      }
       field.appendChild(span);
       field.appendChild(p);
       body.appendChild(field);
     });
+    body.appendChild(caseUpdateHistory(record));
     return body;
+  }
+
+  function caseUpdateHistory(record) {
+    const field = document.createElement("div");
+    field.className = "case-field case-history-field";
+    const span = document.createElement("span");
+    span.textContent = "最新回報紀錄";
+    field.appendChild(span);
+    const updates = caseUpdatesFor(record.caseId);
+    if (!updates.length) {
+      const p = document.createElement("p");
+      p.textContent = record.reportedAt
+        ? `${record.reportedAt} / ${record.reporter || "未填回報人"} / ${record.status || "未填狀態"}\n${record.progress || "未填最新進度"}`
+        : "尚無回報紀錄";
+      field.appendChild(p);
+      return field;
+    }
+    const list = document.createElement("div");
+    list.className = "case-history-list";
+    updates.forEach((update) => {
+      const article = document.createElement("article");
+      const meta = document.createElement("strong");
+      meta.textContent = [
+        caseUpdateValue(update, "date", "回報日期"),
+        caseUpdateValue(update, "reporter", "回報人"),
+        caseUpdateValue(update, "status", "狀態"),
+      ].filter(Boolean).join(" / ");
+      const progress = document.createElement("p");
+      progress.textContent = caseUpdateValue(update, "progress", "最新進度") || "未填最新進度";
+      article.appendChild(meta);
+      article.appendChild(progress);
+      list.appendChild(article);
+    });
+    field.appendChild(list);
+    return field;
   }
 
   function caseMeta(record) {
@@ -773,7 +1103,16 @@
       expense: $("expenseInput").value,
       expenseDetail: $("expenseDetailInput").value.trim(),
       note: $("noteInput").value.trim(),
+      voucher: $("voucherInput").value.trim(),
     };
+    if (!confirmSubmission("請確認本次工項更新", [
+      ["工項", item.itemName],
+      ["填報人", reporter],
+      ["完成狀態", payload.status],
+      ["下次追蹤日期", payload.nextDate || "未填"],
+      ["本次費用", payload.expense ? formatMoney(payload.expense) : "0"],
+      ["佐證資料連結", payload.voucher || "未填"],
+    ])) return;
     $("submitButton").disabled = true;
     renderMessage("送出中...", "");
     try {
@@ -813,7 +1152,18 @@
       reporter,
       priority: $("casePriorityInput").value,
       note: $("caseNoteInput").value.trim(),
+      attachment: $("caseAttachmentInput").value.trim(),
+      completion: "",
     };
+    if (!confirmSubmission("請確認本次案件列管", [
+      ["案件名稱", payload.title],
+      ["指定同事", payload.assignee],
+      ["Deadline", payload.deadline],
+      ["狀態", payload.status],
+      ["優先序", payload.priority],
+      ["回報人", reporter],
+      ["佐證資料連結", payload.attachment || "未填"],
+    ])) return;
     $("caseSubmitButton").disabled = true;
     renderCaseMessage("送出中...", "");
     try {
@@ -830,10 +1180,155 @@
     }
   }
 
+  async function submitCaseProgress(event) {
+    event.preventDefault();
+    if (!config.apiUrl) {
+      renderCaseProgressMessage("目前尚未設定 Apps Script API URL，無法寫入案件進度。", "error");
+      return;
+    }
+    const caseId = $("caseProgressIdInput").value.trim();
+    const reporter = $("caseProgressReporterInput").value.trim() || $("reporterInput").value.trim();
+    const status = $("caseProgressStatusInput").value;
+    const completion = $("caseCompletionInput").value.trim();
+    const record = state.cases.find((entry) => entry.caseId === caseId);
+    if (!record) {
+      renderCaseProgressMessage("請輸入既有案件編號。", "error");
+      $("caseProgressIdInput").focus();
+      return;
+    }
+    if (!reporter) {
+      renderCaseProgressMessage("請填寫回報人。", "error");
+      $("caseProgressReporterInput").focus();
+      return;
+    }
+    if (status === "已完成" && !completion) {
+      renderCaseProgressMessage("解除列管前請填寫完成內容與解除列管說明。", "error");
+      $("caseCompletionInput").focus();
+      return;
+    }
+    const payload = {
+      action: "submitCaseProgress",
+      caseId,
+      reporter,
+      status,
+      progress: $("caseProgressUpdateInput").value.trim(),
+      completion,
+      attachment: $("caseProgressAttachmentInput").value.trim(),
+      note: $("caseProgressNoteInput").value.trim(),
+    };
+    if (!confirmSubmission("請確認本次案件進度", [
+      ["案件編號", payload.caseId],
+      ["案件名稱", record.title],
+      ["指定同事", record.assignee],
+      ["狀態", payload.status],
+      ["回報人", reporter],
+      ["完成/解除列管說明", payload.completion || "未填"],
+    ])) return;
+    $("caseProgressSubmitButton").disabled = true;
+    renderCaseProgressMessage("送出中...", "");
+    try {
+      await postNoCors(config.apiUrl, payload);
+      applyLocalCaseProgress(payload);
+      renderCaseProgressMessage("已送出案件進度，畫面已先更新最新回報紀錄。系統會重新讀取 Google Sheet。", "success");
+      $("caseProgressForm").reset();
+      $("caseProgressReporterInput").value = reporter;
+      await wait(900);
+      await loadData();
+    } catch (error) {
+      renderCaseProgressMessage(`送出失敗：${error.message}`, "error");
+    } finally {
+      $("caseProgressSubmitButton").disabled = false;
+    }
+  }
+
+  function fillCaseProgressForm(record) {
+    $("caseProgressIdInput").value = record.caseId;
+    $("caseProgressReporterInput").value = $("reporterInput").value.trim() || record.assignee || "";
+    $("caseProgressStatusInput").value = ["進行中", "待查核", "已完成"].includes(record.status) ? record.status : "進行中";
+    $("caseProgressUpdateInput").value = record.progress || "";
+    $("caseProgressAttachmentInput").value = record.attachment || "";
+    $("caseCompletionInput").value = record.completion || "";
+    $("caseProgressNoteInput").value = "";
+    renderCaseProgressMessage("", "");
+    $("caseProgressUpdateInput").focus();
+  }
+
+  function applyLocalCaseProgress(payload) {
+    const timestamp = localTimestamp();
+    const update = {
+      updateId: `LOCAL-${payload.caseId}-${Date.now()}`,
+      caseId: payload.caseId,
+      date: timestamp.slice(0, 10),
+      reporter: payload.reporter,
+      progress: payload.progress,
+      status: payload.status,
+      completion: payload.completion,
+      attachment: payload.attachment,
+      note: payload.note,
+    };
+    state.localCaseUpdates.unshift(update);
+    state.caseUpdates = mergeCaseUpdates(state.caseUpdates, state.localCaseUpdates);
+    const record = state.cases.find((entry) => entry.caseId === payload.caseId);
+    if (record) {
+      record.progress = payload.progress;
+      record.status = payload.status;
+      record.reporter = payload.reporter;
+      record.reportedAt = timestamp;
+      if (payload.attachment) record.attachment = payload.attachment;
+      if (payload.note) record.note = payload.note;
+      if (payload.status === "已完成") {
+        record.completion = payload.completion || payload.progress;
+        record.releasedAt = timestamp;
+      }
+    }
+    renderAll();
+  }
+
+  function localTimestamp() {
+    const now = new Date();
+    const pad = (value) => String(value).padStart(2, "0");
+    return [
+      now.getFullYear(),
+      pad(now.getMonth() + 1),
+      pad(now.getDate()),
+    ].join("-") + " " + [
+      pad(now.getHours()),
+      pad(now.getMinutes()),
+      pad(now.getSeconds()),
+    ].join(":");
+  }
+
   function renderCaseMessage(message, type) {
     const element = $("caseFormMessage");
     element.textContent = message;
     element.className = type || "";
+  }
+
+  function renderCaseProgressMessage(message, type) {
+    const element = $("caseProgressMessage");
+    element.textContent = message;
+    element.className = type || "";
+  }
+
+  async function copyManagementReport() {
+    const text = $("managementReport").value;
+    try {
+      await navigator.clipboard.writeText(text);
+      $("copyReportButton").textContent = "已複製";
+      setTimeout(() => {
+        $("copyReportButton").textContent = "複製摘要";
+      }, 1200);
+    } catch (error) {
+      $("managementReport").select();
+      document.execCommand("copy");
+    }
+  }
+
+  function confirmSubmission(title, fields) {
+    const summary = fields
+      .map(([label, value]) => `${label}：${value || "未填"}`)
+      .join("\n");
+    return window.confirm(`${title}\n\n${summary}\n\n確認送出？`);
   }
 
   function postNoCors(url, payload) {

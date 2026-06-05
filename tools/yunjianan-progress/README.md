@@ -10,6 +10,9 @@
 - Google Apps Script：接收填報資料，寫入 Google Sheets
 - Google Sheets：即時彙整資料，必要時可下載為 Excel
 - 案件追蹤列管：臨時交辦事項、指定同事、查核點、Deadline 與進度回報寫入 `案件追蹤列管` 工作表
+- 管理摘要：彙整逾期、急件、待查核、近 7 日更新、經費支出與資料品質提醒，可直接複製成週會或月報文字
+- 案件編號與解除列管：新增案件會自動產生 `CASE-0001` 這類案件編號；指定同事可用案件編號補最新進度，狀態改為 `已完成` 並填寫完成/解除列管說明後即可解除列管；每次回報會另存到 `案件進度紀錄`
+- 案件卡片會顯示最近 3 筆 `案件進度紀錄`，同事送出最新進度後，可直接回到案件列表查看最新回報內容。
 
 ## 來源資料
 
@@ -29,7 +32,7 @@
 
 目前連接的 Web App API：
 
-`https://script.google.com/macros/s/AKfycbzHMQY_u3n7rRIieye3qk21FvbHlPc-f3R11iVhydUB_u51HuMWZEn-qXtLdFQEuQLh/exec`
+`https://script.google.com/macros/s/AKfycbzhRazYCNo7Wjwz_K60_DamPO0VpYcLMl0N6ns1C-NjyvgQbHyZuyeoSY2cx7034d0-/exec`
 
 Apps Script 專案：
 
@@ -48,3 +51,6 @@ Apps Script 專案：
 - 不要把 Google 帳號憑證、金鑰或 token 放進 repo。
 - GitHub Pages 是公開靜態網站；真正的寫入權限由 Apps Script 控制。
 - 若要限制填報人，建議在 Apps Script 加上 Google Workspace 網域或白名單檢查。
+- 本版 Apps Script 已提供 `ALLOWED_REPORTERS` 選用白名單；維持空陣列代表不限制，填入姓名後只有名單內填報人可寫入。
+- 表單新增「佐證資料連結」，會寫入 `進度更新紀錄` 的 `佐證資料連結`、`經費支出紀錄` 的 `憑證連結`，以及 `案件追蹤列管` 的 `佐證資料連結`。若既有工作表缺少欄位，Apps Script 會在送出時補上表頭。
+- `案件追蹤列管` 若缺少 `完成/解除列管說明`、`解除列管時間` 欄位，Apps Script 會自動補上；`案件進度紀錄` 不存在時也會自動建立。
