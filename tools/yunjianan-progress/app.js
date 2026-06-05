@@ -33,7 +33,12 @@
     $("caseProgressForm").addEventListener("submit", submitCaseProgress);
     $("copyReportButton").addEventListener("click", copyManagementReport);
     $("caseAssigneeFilter").addEventListener("change", applyCaseFilters);
-    $("caseStatusFilter").addEventListener("change", applyCaseFilters);
+    $("caseStatusFilter").addEventListener("change", () => {
+      if ($("caseStatusFilter").value === "已完成") {
+        $("caseOpenOnlyFilter").checked = false;
+      }
+      applyCaseFilters();
+    });
     $("casePriorityFilter").addEventListener("change", applyCaseFilters);
     $("caseOpenOnlyFilter").addEventListener("change", applyCaseFilters);
     $("caseSearchInput").addEventListener("input", applyCaseFilters);
@@ -471,7 +476,7 @@
     const query = $("searchInput").value.trim().toLowerCase();
     state.filteredItems = state.items.filter((item) => {
       const matchesPerson = !person || splitNames(item.owner).includes(person);
-      const matchesStatus = !status || itemStatus(item) === status;
+      const matchesStatus = matchesItemStatus(item, status);
       const haystack = [
         item.itemName,
         item.performance,
@@ -531,6 +536,13 @@
     if (Number.isFinite(progress) && progress > 0) return "進行中";
     if (item.currentStatus || item.schedule) return "進行中";
     return "未確認";
+  }
+
+  function matchesItemStatus(item, selectedStatus) {
+    if (!selectedStatus) return true;
+    const currentStatus = itemStatus(item);
+    if (selectedStatus === "未完成") return currentStatus !== "已完成";
+    return currentStatus === selectedStatus;
   }
 
   function setStatusPill(element, status) {
@@ -808,7 +820,7 @@
     const assignee = $("caseAssigneeFilter").value;
     const status = $("caseStatusFilter").value;
     const priority = $("casePriorityFilter").value;
-    const openOnly = $("caseOpenOnlyFilter").checked;
+    const openOnly = $("caseOpenOnlyFilter").checked && status !== "已完成";
     const query = $("caseSearchInput").value.trim().toLowerCase();
     state.filteredCases = state.cases.filter((record) => {
       const matchesAssignee = !assignee || record.assignee === assignee;
