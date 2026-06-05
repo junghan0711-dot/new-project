@@ -13,6 +13,7 @@
     originalSheetCount: 0,
     filteredItems: [],
     filteredCases: [],
+    itemStatusDrafts: {},
     selectedItemId: "",
     selectedSheetName: "",
     loading: false,
@@ -29,6 +30,7 @@
     $("searchInput").addEventListener("input", applyFilters);
     $("sourceSearchInput").addEventListener("input", renderSourceTable);
     $("progressForm").addEventListener("submit", submitProgress);
+    $("completeInput").addEventListener("change", updateSelectedItemStatusDraft);
     $("caseForm").addEventListener("submit", submitCaseTracking);
     $("caseProgressForm").addEventListener("submit", submitCaseProgress);
     $("copyReportButton").addEventListener("click", copyManagementReport);
@@ -126,6 +128,7 @@
     state.expenses = payload.expenses || [];
     state.cases = (payload.cases || []).map(normalizeCase);
     state.caseUpdates = mergeCaseUpdates(payload.caseUpdates || [], state.localCaseUpdates);
+    state.itemStatusDrafts = {};
     const originalSheets = payload.sheets && payload.sheets.length ? payload.sheets : [];
     state.originalSheetCount = originalSheets.length;
     state.sheets = buildOverviewSheets(originalSheets);
@@ -529,6 +532,10 @@
   }
 
   function itemStatus(item) {
+    const draftedStatus = state.itemStatusDrafts[item.itemId];
+    if (draftedStatus) return draftedStatus;
+    const latestStatus = latestItemUpdateStatus(item.itemId);
+    if (latestStatus) return latestStatus;
     const rawProgress = String(item.progressRatio || "").trim();
     const isPercent = rawProgress.endsWith("%");
     const progress = Number(rawProgress.replace("%", ""));
@@ -536,6 +543,17 @@
     if (Number.isFinite(progress) && progress > 0) return "進行中";
     if (item.currentStatus || item.schedule) return "進行中";
     return "未確認";
+  }
+
+  function latestItemUpdateStatus(itemId) {
+    if (!itemId) return "";
+    for (let index = state.updates.length - 1; index >= 0; index -= 1) {
+      const record = state.updates[index];
+      const recordItemId = record.itemId || record["工項ID"] || "";
+      const status = String(record.status || record["完成狀態"] || "").trim();
+      if (recordItemId === itemId && statusOption(status) === status) return status;
+    }
+    return "";
   }
 
   function matchesItemStatus(item, selectedStatus) {
@@ -552,6 +570,13 @@
     if (value === "已完成") element.classList.add("done");
     else if (value === "未完成" || value === "進行中") element.classList.add("open");
     else element.classList.add("unknown");
+  }
+
+  function updateSelectedItemStatusDraft() {
+    if (!state.selectedItemId) return;
+    state.itemStatusDrafts[state.selectedItemId] = $("completeInput").value;
+    setStatusPill($("selectedStatus"), $("completeInput").value);
+    applyFilters();
   }
 
   function selectItem(itemId) {
