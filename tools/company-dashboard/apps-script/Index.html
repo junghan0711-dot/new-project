@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <base target="_top" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f5f7f8;
+        --panel: #ffffff;
+        --ink: #17202a;
+        --muted: #667085;
+        --line: #d8dee8;
+        --brand: #1f6f78;
+        --brand-dark: #15535a;
+        --red: #b8321f;
+        --yellow: #9a6512;
+        --green: #1f7a4d;
+        --shadow: 0 10px 28px rgba(25, 38, 52, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+        line-height: 1.5;
+      }
+
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        padding: 20px 26px;
+        background: var(--panel);
+        border-bottom: 1px solid var(--line);
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        font-size: 26px;
+        font-weight: 780;
+      }
+
+      h2 {
+        font-size: 18px;
+      }
+
+      h3 {
+        font-size: 15px;
+      }
+
+      .eyebrow {
+        color: var(--brand);
+        font-size: 13px;
+        font-weight: 800;
+        margin-bottom: 4px;
+      }
+
+      .subtle {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .button {
+        border: 1px solid var(--brand);
+        border-radius: 6px;
+        background: #ffffff;
+        color: var(--brand);
+        padding: 9px 12px;
+        min-height: 38px;
+        font: inherit;
+        font-size: 14px;
+        font-weight: 760;
+        text-decoration: none;
+        cursor: pointer;
+      }
+
+      .button:hover {
+        background: #edf7f8;
+      }
+
+      .button.primary {
+        background: var(--brand);
+        color: #ffffff;
+      }
+
+      .layout {
+        width: min(1440px, 100%);
+        margin: 0 auto;
+        padding: 22px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 1px;
+        margin-bottom: 16px;
+      }
+
+      .metric {
+        padding: 16px;
+        background: #ffffff;
+      }
+
+      .metric span {
+        display: block;
+        color: var(--muted);
+        font-size: 13px;
+        margin-bottom: 6px;
+      }
+
+      .metric strong {
+        font-size: 24px;
+      }
+
+      .project-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        margin-bottom: 16px;
+      }
+
+      .project-card {
+        display: grid;
+        gap: 12px;
+        padding: 14px;
+      }
+
+      .project-card.red {
+        border-color: #d14b32;
+      }
+
+      .project-card.yellow {
+        border-color: #e6b04a;
+      }
+
+      .project-card.green {
+        border-color: #b8dcc9;
+      }
+
+      .project-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: flex-start;
+      }
+
+      .status-dot {
+        display: inline-flex;
+        align-items: center;
+        min-height: 24px;
+        border-radius: 999px;
+        padding: 3px 9px;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .status-dot.red {
+        background: #feece8;
+        color: var(--red);
+      }
+
+      .status-dot.yellow {
+        background: #fff4df;
+        color: var(--yellow);
+      }
+
+      .status-dot.green {
+        background: #e8f5ee;
+        color: var(--green);
+      }
+
+      .mini-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .mini {
+        display: grid;
+        gap: 3px;
+        padding: 10px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: #fbfcfd;
+      }
+
+      .mini span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .mini strong {
+        font-size: 18px;
+      }
+
+      .dashboard-grid {
+        display: grid;
+        grid-template-columns: minmax(360px, 1fr) minmax(360px, 1fr);
+        gap: 16px;
+      }
+
+      .block {
+        display: grid;
+        gap: 12px;
+        padding: 14px;
+      }
+
+      .list {
+        display: grid;
+        gap: 9px;
+        max-height: 560px;
+        overflow: auto;
+      }
+
+      .item {
+        display: grid;
+        gap: 5px;
+        padding: 11px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: #fbfcfd;
+      }
+
+      .item strong {
+        font-size: 14px;
+      }
+
+      .item p,
+      .item span {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .item.critical {
+        border-color: #d14b32;
+        background: #fffafa;
+      }
+
+      .item.warning {
+        border-color: #e6b04a;
+        background: #fffaf1;
+      }
+
+      .people-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 640px;
+      }
+
+      .table-wrap {
+        overflow: auto;
+      }
+
+      th,
+      td {
+        padding: 10px 11px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        font-size: 13px;
+        vertical-align: top;
+      }
+
+      th {
+        color: var(--muted);
+        background: #f6f8fb;
+        font-weight: 800;
+      }
+
+      .auth-panel {
+        display: grid;
+        gap: 10px;
+        padding: 28px;
+        margin: 22px auto;
+        width: min(720px, calc(100% - 32px));
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      @media (max-width: 980px) {
+        .topbar {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .summary-grid,
+        .project-grid,
+        .dashboard-grid,
+        .mini-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .layout {
+          padding: 14px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">公司營運管理</p>
+        <h1>公司專案總控台</h1>
+        <p id="metaText" class="subtle">讀取中</p>
+      </div>
+      <button id="refreshButton" class="button primary" type="button">重新整理</button>
+    </header>
+
+    <section id="authPanel" class="panel auth-panel hidden">
+      <h2>無法進入公司總控台</h2>
+      <p id="authMessage" class="subtle"></p>
+    </section>
+
+    <main id="dashboard" class="layout hidden">
+      <section id="summaryGrid" class="panel summary-grid" aria-label="公司摘要"></section>
+      <section id="projectGrid" class="project-grid" aria-label="專案狀態"></section>
+      <section class="dashboard-grid">
+        <section class="panel block">
+          <h2>今日需追蹤</h2>
+          <div id="followUpList" class="list"></div>
+        </section>
+        <section class="panel block">
+          <h2>資料品質提醒</h2>
+          <div id="issueList" class="list"></div>
+        </section>
+        <section class="panel block" style="grid-column: 1 / -1">
+          <h2>同仁更新狀態</h2>
+          <div class="table-wrap">
+            <table class="people-table">
+              <thead>
+                <tr>
+                  <th>同仁</th>
+                  <th>專案</th>
+                  <th>負責工項</th>
+                  <th>近 7 日更新</th>
+                  <th>需追蹤</th>
+                  <th>最近更新</th>
+                </tr>
+              </thead>
+              <tbody id="peopleRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script>
+      const initialAuth = <?!= initialAuth ?>;
+      const $ = (id) => document.getElementById(id);
+
+      $("refreshButton").addEventListener("click", loadDashboard);
+      loadDashboard();
+
+      function loadDashboard() {
+        $("refreshButton").disabled = true;
+        $("refreshButton").textContent = "讀取中";
+        google.script.run
+          .withSuccessHandler((payload) => {
+            $("refreshButton").disabled = false;
+            $("refreshButton").textContent = "重新整理";
+            if (!payload || payload.ok === false) {
+              renderAuth(payload && payload.auth ? payload.auth : initialAuth, payload && payload.error);
+              return;
+            }
+            renderDashboard(payload);
+          })
+          .withFailureHandler((error) => {
+            $("refreshButton").disabled = false;
+            $("refreshButton").textContent = "重新整理";
+            renderAuth(initialAuth, error && error.message ? error.message : "讀取資料失敗");
+          })
+          .getDashboardData();
+      }
+
+      function renderAuth(auth, error) {
+        $("dashboard").classList.add("hidden");
+        $("authPanel").classList.remove("hidden");
+        $("authMessage").textContent = error || (auth && auth.message) || "此帳號未授權。";
+        $("metaText").textContent = auth && auth.email ? `目前帳號：${auth.email}` : "請使用已授權的 Google 帳號登入。";
+      }
+
+      function renderDashboard(payload) {
+        $("authPanel").classList.add("hidden");
+        $("dashboard").classList.remove("hidden");
+        $("metaText").textContent = `登入帳號：${payload.viewer} / 資料時間：${payload.generatedAt}`;
+        renderSummary(payload.totals);
+        renderProjects(payload.projects);
+        renderFollowUps(payload.followUps);
+        renderIssues(payload.issues);
+        renderPeople(payload.people);
+      }
+
+      function renderSummary(totals) {
+        const metrics = [
+          ["專案數", totals.projects],
+          ["紅燈", totals.redProjects],
+          ["黃燈", totals.yellowProjects],
+          ["待追蹤工項", totals.needsFollowUp],
+          ["未完成案件", totals.openCases],
+          ["本月輔導", totals.consultationsThisMonth],
+        ];
+        $("summaryGrid").innerHTML = metrics.map(([label, value]) => (
+          `<div class="metric"><span>${escapeHtml(label)}</span><strong>${formatNumber(value)}</strong></div>`
+        )).join("");
+      }
+
+      function renderProjects(projects) {
+        $("projectGrid").innerHTML = projects.map((project) => {
+          const label = project.status === "red" ? "紅燈" : project.status === "yellow" ? "黃燈" : "綠燈";
+          return `
+            <article class="panel project-card ${project.status}">
+              <div class="project-head">
+                <div>
+                  <h2>${escapeHtml(project.name)}</h2>
+                  <p class="subtle">資料時間：${escapeHtml(project.latestDataTime || "未記錄")}</p>
+                </div>
+                <span class="status-dot ${project.status}">${label}</span>
+              </div>
+              <div class="mini-grid">
+                ${mini("工項", `${project.metrics.doneItems}/${project.metrics.items}`)}
+                ${mini("需追蹤", project.metrics.needsFollowUp)}
+                ${mini("未完成案件", project.metrics.openCases)}
+                ${mini("本月輔導", project.metrics.consultationsThisMonth)}
+              </div>
+              <p class="subtle">逾期 ${project.metrics.overdueCases} / 待查核 ${project.metrics.awaitingReview} / 憑證缺漏 ${project.metrics.expensesMissingVoucher}</p>
+              <div>
+                <a class="button" href="${project.pageUrl}" target="_blank" rel="noreferrer">開啟專案頁</a>
+                <a class="button" href="${project.spreadsheetUrl}" target="_blank" rel="noreferrer">開啟底表</a>
+              </div>
+            </article>
+          `;
+        }).join("");
+      }
+
+      function renderFollowUps(items) {
+        $("followUpList").innerHTML = items.length ? items.map((item) => `
+          <article class="item ${item.reason === "已逾期" ? "critical" : "warning"}">
+            <strong>${escapeHtml(item.project)} / ${escapeHtml(item.type)} / ${escapeHtml(item.title || "未命名")}</strong>
+            <p>${escapeHtml(item.assignee || "未指定")} / ${escapeHtml(item.status || "未填狀態")} / ${escapeHtml(item.date || "未填日期")}</p>
+            <span>${escapeHtml(item.reason || "需追蹤")}</span>
+          </article>
+        `).join("") : '<p class="subtle">目前沒有需追蹤項目。</p>';
+      }
+
+      function renderIssues(items) {
+        $("issueList").innerHTML = items.length ? items.map((item) => `
+          <article class="item ${item.level}">
+            <strong>${escapeHtml(item.project)} / ${escapeHtml(item.title)}</strong>
+            <p>${escapeHtml(item.detail || "")}</p>
+          </article>
+        `).join("") : '<p class="subtle">目前沒有資料品質提醒。</p>';
+      }
+
+      function renderPeople(people) {
+        $("peopleRows").innerHTML = people.length ? people.map((person) => `
+          <tr>
+            <td>${escapeHtml(person.name)}</td>
+            <td>${escapeHtml(person.projects)}</td>
+            <td>${formatNumber(person.total)}</td>
+            <td>${formatNumber(person.recentUpdates)}</td>
+            <td>${formatNumber(person.needsFollowUp)}</td>
+            <td>${escapeHtml(person.latestDate || "尚無紀錄")}</td>
+          </tr>
+        `).join("") : '<tr><td colspan="6">目前沒有同仁資料。</td></tr>';
+      }
+
+      function mini(label, value) {
+        return `<div class="mini"><span>${escapeHtml(label)}</span><strong>${formatNumber(value)}</strong></div>`;
+      }
+
+      function formatNumber(value) {
+        if (typeof value === "number") return value.toLocaleString("zh-TW");
+        return value == null ? "0" : String(value);
+      }
+
+      function escapeHtml(value) {
+        return String(value == null ? "" : value)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+    </script>
+  </body>
+</html>
