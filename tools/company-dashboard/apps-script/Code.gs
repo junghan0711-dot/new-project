@@ -92,6 +92,7 @@ function getDashboardData() {
     people: collectPeople_(projects),
     issues: collectIssues_(projects),
     priorities: collectPriorityGroups_(projects),
+    reviewQueue: collectReviewQueue_(projects),
     workload: collectWorkload_(projects),
     reminderStatus: {
       emailEnabled: REMINDER_EMAILS.length > 0,
@@ -246,6 +247,7 @@ function summarizeProject_(project) {
     people,
     followUps: projectFollowUps_(itemSummaries, caseSummaries),
     issues: projectIssues_(itemSummaries, expenses, caseSummaries, consultations),
+    reviewItems: projectReviewItems_(caseSummaries),
     recentUpdates: recentUpdates_(updates),
     consultations: summarizeConsultations_(consultations),
     workload: projectWorkload_(itemSummaries, caseSummaries, consultations),
@@ -278,6 +280,7 @@ function errorProjectSummary_(project, error) {
       title: "專案資料讀取失敗",
       detail: message,
     }],
+    reviewItems: [],
     recentUpdates: [],
     consultations: {
       total: 0,
@@ -397,6 +400,7 @@ function summarizeCase_(record, updates) {
     progress: latest.progress || value_(record, ["目前進度說明"]),
     completion: value_(record, ["完成/解除列管說明"]),
     attachment: value_(record, ["佐證資料連結", "附件連結"]),
+    closedAt: value_(record, ["解除列管時間"]),
     urgency,
   };
 }
@@ -618,6 +622,66 @@ function collectIssues_(projects) {
   return projects
     .flatMap((project) => project.issues.map((issue) => ({ ...issue, project: project.name, projectId: project.id, pageUrl: project.pageUrl })))
     .slice(0, 60);
+}
+
+function projectReviewItems_(cases) {
+  return cases
+    .map((record) => {
+      const review = caseReviewReason_(record);
+      if (!review.reason) return null;
+      return {
+        type: "案件",
+        caseId: record.caseId,
+        title: record.title,
+        assignee: record.assignee,
+        status: record.status,
+        priority: record.priority,
+        deadline: record.deadline,
+        reporter: record.reporter,
+        reportedAt: record.reportedAt,
+        progress: record.progress,
+        completion: record.completion,
+        attachment: record.attachment,
+        closedAt: record.closedAt,
+        reason: review.reason,
+        level: review.level,
+        rank: review.rank,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.rank - a.rank);
+}
+
+function collectReviewQueue_(projects) {
+  return projects
+    .flatMap((project) => project.reviewItems.map((item) => ({
+      ...item,
+      project: project.name,
+      projectId: project.id,
+      office: project.office,
+      pageUrl: project.pageUrl,
+      spreadsheetUrl: project.spreadsheetUrl,
+    })))
+    .sort((a, b) => {
+      if (b.rank !== a.rank) return b.rank - a.rank;
+      return compareDate_(a.deadline, b.deadline);
+    })
+    .slice(0, 120);
+}
+
+function caseReviewReason_(record) {
+  if (record.status === "待查核") return { reason: "待查核", level: "warning", rank: 600 };
+  if (record.urgency.level === "overdue") return { reason: "已逾期", level: "critical", rank: 550 };
+  if (record.urgency.level === "today") return { reason: "今日到期", level: "today", rank: 500 };
+  if (record.urgency.level === "soon") return { reason: "3 日內到期", level: "warning", rank: 450 };
+  if (record.priority === "急件" && record.status !== "已完成") return { reason: "急件未結", level: "warning", rank: 420 };
+  if (record.status === "已完成" && isRecent_(record.closedAt || record.reportedAt, 14)) {
+    return { reason: "已完成待確認", level: "notice", rank: 320 };
+  }
+  if (record.status !== "已完成" && !isRecent_(record.reportedAt, 7)) {
+    return { reason: record.reportedAt ? "超過 7 天未回報" : "尚無回報紀錄", level: "reminder", rank: 260 };
+  }
+  return { reason: "", level: "", rank: 0 };
 }
 
 function collectPriorityGroups_(projects) {

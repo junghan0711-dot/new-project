@@ -387,6 +387,57 @@
         min-width: 640px;
       }
 
+      .review-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 1120px;
+      }
+
+      .review-filters {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .text-cell {
+        max-width: 320px;
+        color: var(--muted);
+      }
+
+      .link-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 24px;
+        border-radius: 999px;
+        padding: 3px 9px;
+        font-size: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .badge.critical {
+        background: #feece8;
+        color: var(--red);
+      }
+
+      .badge.warning,
+      .badge.today {
+        background: #fff4df;
+        color: var(--yellow);
+      }
+
+      .badge.notice,
+      .badge.reminder {
+        background: #edf2f7;
+        color: var(--muted);
+      }
+
       .table-wrap {
         overflow: auto;
       }
@@ -431,6 +482,7 @@
         .priority-grid,
         .workload-grid,
         .assignment-grid,
+        .review-filters,
         .form-grid {
           grid-template-columns: 1fr;
         }
@@ -479,6 +531,50 @@
           <h2>提醒</h2>
           <div id="priorityReminderList" class="list"></div>
         </section>
+      </section>
+      <section class="panel block" aria-label="主管待查核清單">
+        <div class="project-head">
+          <div>
+            <h2>主管待查核清單</h2>
+            <p id="reviewCountText" class="subtle"></p>
+          </div>
+        </div>
+        <div class="review-filters">
+          <label>
+            <span>專案</span>
+            <select id="reviewProjectFilter"></select>
+          </label>
+          <label>
+            <span>同仁</span>
+            <select id="reviewAssigneeFilter"></select>
+          </label>
+          <label>
+            <span>狀態</span>
+            <select id="reviewStatusFilter"></select>
+          </label>
+          <label>
+            <span>優先序</span>
+            <select id="reviewPriorityFilter"></select>
+          </label>
+        </div>
+        <div class="table-wrap">
+          <table class="review-table">
+            <thead>
+              <tr>
+                <th>查核原因</th>
+                <th>專案</th>
+                <th>案件</th>
+                <th>同仁</th>
+                <th>狀態</th>
+                <th>Deadline</th>
+                <th>最近回報</th>
+                <th>最新進度</th>
+                <th>連結</th>
+              </tr>
+            </thead>
+            <tbody id="reviewRows"></tbody>
+          </table>
+        </div>
       </section>
       <section class="dashboard-grid">
         <section class="panel block">
@@ -584,11 +680,21 @@
       const initialAuth = <?!= initialAuth ?>;
       const $ = (id) => document.getElementById(id);
       let dashboardData = null;
+      const reviewFilters = {
+        projectId: "",
+        assignee: "",
+        status: "",
+        priority: "",
+      };
 
       $("refreshButton").addEventListener("click", loadDashboard);
       $("sendReminderButton").addEventListener("click", sendReminderDigest);
       $("copyReminderButton").addEventListener("click", copyReminderText);
       $("assignmentForm").addEventListener("submit", submitAssignment);
+      $("reviewProjectFilter").addEventListener("change", updateReviewFilters);
+      $("reviewAssigneeFilter").addEventListener("change", updateReviewFilters);
+      $("reviewStatusFilter").addEventListener("change", updateReviewFilters);
+      $("reviewPriorityFilter").addEventListener("change", updateReviewFilters);
       loadDashboard();
 
       function loadDashboard() {
@@ -628,6 +734,8 @@
         renderProjects(payload.projects);
         renderAssignmentProjects(payload.projects);
         renderAssignmentPeople(payload.workload);
+        renderReviewFilters(payload);
+        renderReviewQueue();
         renderPriorities(payload.priorities);
         renderFollowUps(payload.followUps);
         renderIssues(payload.issues);
@@ -764,6 +872,81 @@
         $("assignmentAssigneeOptions").innerHTML = names.map((name) => `<option value="${escapeHtml(name)}"></option>`).join("");
       }
 
+      function renderReviewFilters(payload) {
+        setSelectOptions("reviewProjectFilter", payload.projects.map((project) => ({
+          value: project.id,
+          label: project.name,
+        })), "全部專案", reviewFilters.projectId);
+        setSelectOptions("reviewAssigneeFilter", uniqueOptions((payload.reviewQueue || []).map((item) => item.assignee)), "全部同仁", reviewFilters.assignee);
+        setSelectOptions("reviewStatusFilter", uniqueOptions((payload.reviewQueue || []).map((item) => item.status)), "全部狀態", reviewFilters.status);
+        setSelectOptions("reviewPriorityFilter", uniqueOptions((payload.reviewQueue || []).map((item) => item.priority)), "全部優先序", reviewFilters.priority);
+      }
+
+      function updateReviewFilters() {
+        reviewFilters.projectId = $("reviewProjectFilter").value;
+        reviewFilters.assignee = $("reviewAssigneeFilter").value;
+        reviewFilters.status = $("reviewStatusFilter").value;
+        reviewFilters.priority = $("reviewPriorityFilter").value;
+        renderReviewQueue();
+      }
+
+      function renderReviewQueue() {
+        const items = filterReviewQueue(dashboardData ? dashboardData.reviewQueue || [] : []);
+        $("reviewCountText").textContent = `目前顯示 ${formatNumber(items.length)} 筆，依查核急迫性排序。`;
+        $("reviewRows").innerHTML = items.length ? items.map((item) => `
+          <tr>
+            <td><span class="badge ${escapeHtml(item.level || "reminder")}">${escapeHtml(item.reason || "需查核")}</span></td>
+            <td>${escapeHtml(item.office || item.project || "")}</td>
+            <td>
+              <strong>${escapeHtml(item.caseId || "")}</strong>
+              <p class="subtle">${escapeHtml(item.title || "未命名案件")}</p>
+            </td>
+            <td>${escapeHtml(item.assignee || "未指定")}</td>
+            <td>${escapeHtml(item.status || "未填")}</td>
+            <td>${escapeHtml(item.deadline || "未填")}</td>
+            <td>
+              ${escapeHtml(item.reportedAt || "尚無紀錄")}
+              <p class="subtle">${escapeHtml(item.reporter || "")}</p>
+            </td>
+            <td class="text-cell">${escapeHtml(shortText(item.progress || item.completion || "", 90))}</td>
+            <td>
+              <div class="link-row">
+                <a class="button" href="${escapeHtml(item.pageUrl || "#")}" target="_blank" rel="noreferrer">專案頁</a>
+                <a class="button" href="${escapeHtml(item.spreadsheetUrl || "#")}" target="_blank" rel="noreferrer">底表</a>
+              </div>
+            </td>
+          </tr>
+        `).join("") : '<tr><td colspan="9">目前沒有符合條件的待查核案件。</td></tr>';
+      }
+
+      function filterReviewQueue(items) {
+        return items.filter((item) => {
+          if (reviewFilters.projectId && item.projectId !== reviewFilters.projectId) return false;
+          if (reviewFilters.assignee && item.assignee !== reviewFilters.assignee) return false;
+          if (reviewFilters.status && item.status !== reviewFilters.status) return false;
+          if (reviewFilters.priority && item.priority !== reviewFilters.priority) return false;
+          return true;
+        });
+      }
+
+      function setSelectOptions(id, options, allLabel, currentValue) {
+        const select = $(id);
+        const normalized = options.filter((option) => option.value);
+        const hasCurrent = !currentValue || normalized.some((option) => option.value === currentValue);
+        const selectedValue = hasCurrent ? currentValue : "";
+        select.innerHTML = [
+          `<option value="">${escapeHtml(allLabel)}</option>`,
+          ...normalized.map((option) => `<option value="${escapeHtml(option.value)}">${escapeHtml(option.label)}</option>`),
+        ].join("");
+        select.value = selectedValue;
+      }
+
+      function uniqueOptions(values) {
+        return [...new Set(values.filter(Boolean))]
+          .sort((a, b) => a.localeCompare(b, "zh-Hant"))
+          .map((value) => ({ value, label: value }));
+      }
+
       function renderReminder(payload) {
         const emailText = payload.reminderStatus.emailEnabled ? "Email 已啟用" : "Email 未設定";
         const lineText = payload.reminderStatus.lineEnabled ? "LINE 已啟用" : "LINE 尚未設定 webhook";
@@ -877,6 +1060,12 @@
       function formatNumber(value) {
         if (typeof value === "number") return value.toLocaleString("zh-TW");
         return value == null ? "0" : String(value);
+      }
+
+      function shortText(value, maxLength) {
+        const text = String(value || "").trim();
+        if (text.length <= maxLength) return text || "未填";
+        return `${text.slice(0, maxLength)}...`;
       }
 
       function escapeHtml(value) {
