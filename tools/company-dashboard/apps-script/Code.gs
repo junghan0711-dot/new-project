@@ -80,9 +80,9 @@ function getDashboardData() {
     };
   }
 
-  const projects = PROJECTS.map((project) => summarizeProject_(project));
+  const projects = PROJECTS.map((project) => safeSummarizeProject_(project));
   const totals = summarizeCompany_(projects);
-  return {
+  const data = {
     ok: true,
     viewer: auth.email,
     generatedAt: nowText_(),
@@ -98,6 +98,8 @@ function getDashboardData() {
       lineEnabled: Boolean(LINE_WEBHOOK_URL),
     },
   };
+  data.reminderText = buildReminderText_(data);
+  return data;
 }
 
 function createAssignment(payload) {
@@ -248,6 +250,65 @@ function summarizeProject_(project) {
     consultations: summarizeConsultations_(consultations),
     workload: projectWorkload_(itemSummaries, caseSummaries, consultations),
     latestDataTime: latestDataTime_(itemSummaries, updates, cases, caseUpdates, consultations),
+  };
+}
+
+function safeSummarizeProject_(project) {
+  try {
+    return summarizeProject_(project);
+  } catch (error) {
+    return errorProjectSummary_(project, error);
+  }
+}
+
+function errorProjectSummary_(project, error) {
+  const message = error && error.message ? error.message : String(error || "未知錯誤");
+  return {
+    id: project.id,
+    name: project.name,
+    office: project.office,
+    pageUrl: project.pageUrl,
+    spreadsheetUrl: `https://docs.google.com/spreadsheets/d/${project.spreadsheetId}`,
+    status: "red",
+    metrics: emptyMetrics_(),
+    people: [],
+    followUps: [],
+    issues: [{
+      level: "critical",
+      title: "專案資料讀取失敗",
+      detail: message,
+    }],
+    recentUpdates: [],
+    consultations: {
+      total: 0,
+      thisMonth: 0,
+      planned: 0,
+      confirmed: 0,
+      done: 0,
+    },
+    workload: [],
+    latestDataTime: "讀取失敗",
+    error: message,
+  };
+}
+
+function emptyMetrics_() {
+  return {
+    items: 0,
+    doneItems: 0,
+    openItems: 0,
+    needsFollowUp: 0,
+    recentUpdates: 0,
+    openCases: 0,
+    overdueCases: 0,
+    dueTodayCases: 0,
+    dueSoonCases: 0,
+    awaitingReview: 0,
+    urgentCases: 0,
+    expenseTotal: 0,
+    expensesMissingVoucher: 0,
+    consultations: 0,
+    consultationsThisMonth: 0,
   };
 }
 

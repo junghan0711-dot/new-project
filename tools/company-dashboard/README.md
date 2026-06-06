@@ -19,7 +19,9 @@
 - 待辦優先序：今天必追、本週需追、逾期、一般提醒。
 - 同仁工作量看板：彙整未完成工項、未完成案件、本月輔導、需追蹤數，並給工作量分數。
 - 主管交辦中心：可從總控台新增交辦，寫入指定專案的 `案件追蹤列管` 與 `案件進度紀錄`。
-- 提醒中心：可寄出 Email 提醒摘要給 `REMINDER_EMAILS`。
+- 主管交辦中心：指定同事欄位會帶出目前各專案已出現過的同仁名單。
+- 提醒中心：可預覽、複製並寄出 Email 提醒摘要給 `REMINDER_EMAILS`。
+- 資料容錯：單一專案 Google Sheet 暫時讀取失敗時，會顯示紅燈錯誤卡，不會讓整個總控台無法載入。
 
 ## LINE 提醒
 
@@ -44,3 +46,15 @@
 - Web App: `https://script.google.com/macros/s/AKfycbyknQkwIo9PXksPGtCCCDkO8C-d2Vje4ZkBgWGU2gNo_dQU5o7hTlYtja1kVoXzfbLP/exec`
 
 第一次開啟時需由白名單內的 Google 帳號完成 Apps Script 權限授權。
+
+## 固定網址部署
+
+總控台建議用既有 deployment ID 更新，讓使用者永遠開同一個 Web App 網址：
+
+```bash
+tools/scripts/deploy-apps-script.sh tools/company-dashboard \
+  --deployment-id AKfycbyknQkwIo9PXksPGtCCCDkO8C-d2Vje4ZkBgWGU2gNo_dQU5o7hTlYtja1kVoXzfbLP \
+  --description "Improve dashboard usability"
+```
+
+若未帶 `--deployment-id`，Apps Script 會建立新的部署網址，需另外通知使用者改開新網址。

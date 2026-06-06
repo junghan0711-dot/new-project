@@ -10,10 +10,12 @@ Options:
   --title <title>          Apps Script project title when .clasp.json is absent
   --description <text>     Version/deployment description
   --access <value>         Manifest webapp access: ANYONE or ANYONE_ANONYMOUS
+  --deployment-id <id>     Update an existing deployment to keep the same Web App URL
   --update-config          Write the deployed Web App URL into config.js and config.example.js
 
 Example:
   tools/scripts/deploy-apps-script.sh tools/taozhumiao-progress --update-config
+  tools/scripts/deploy-apps-script.sh tools/company-dashboard --deployment-id AKfy...
 EOF
 }
 
@@ -32,6 +34,7 @@ shift
 title=""
 description="Progress tracker web app"
 access=""
+deployment_id=""
 update_config=0
 
 while [[ $# -gt 0 ]]; do
@@ -46,6 +49,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --access)
       access="${2:-}"
+      shift 2
+      ;;
+    --deployment-id)
+      deployment_id="${2:-}"
       shift 2
       ;;
     --update-config)
@@ -117,9 +124,16 @@ if [[ -z "$version_number" ]]; then
   exit 1
 fi
 
-deploy_output="$(npx --yes @google/clasp deploy -V "$version_number" -d "$description")"
+if [[ -n "$deployment_id" ]]; then
+  deploy_output="$(npx --yes @google/clasp deploy -i "$deployment_id" -V "$version_number" -d "$description")"
+else
+  deploy_output="$(npx --yes @google/clasp deploy -V "$version_number" -d "$description")"
+fi
 echo "$deploy_output"
-deployment_id="$(printf '%s\n' "$deploy_output" | sed -n 's/^Deployed \([^ ]*\) .*/\1/p' | tail -1)"
+deployed_id="$(printf '%s\n' "$deploy_output" | sed -n 's/^Deployed \([^ ]*\) .*/\1/p' | tail -1)"
+if [[ -n "$deployed_id" ]]; then
+  deployment_id="$deployed_id"
+fi
 if [[ -z "$deployment_id" ]]; then
   echo "ERROR: Could not determine deployment id." >&2
   exit 1

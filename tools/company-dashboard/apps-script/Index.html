@@ -110,6 +110,7 @@
         display: flex;
         gap: 10px;
         align-items: center;
+        flex-wrap: wrap;
       }
 
       .layout {
@@ -364,6 +365,22 @@
         color: var(--red);
       }
 
+      .notice {
+        padding: 10px 11px;
+        border: 1px solid #f0b5a7;
+        border-radius: 7px;
+        background: #fffafa;
+        color: var(--red);
+        font-size: 13px;
+      }
+
+      .reminder-textarea {
+        min-height: 280px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        font-size: 13px;
+        white-space: pre;
+      }
+
       .people-table {
         width: 100%;
         border-collapse: collapse;
@@ -473,7 +490,8 @@
             </label>
             <label>
               <span>指定同事</span>
-              <input id="assignmentAssigneeInput" type="text" required placeholder="輸入同仁姓名" />
+              <input id="assignmentAssigneeInput" type="text" list="assignmentAssigneeOptions" required placeholder="輸入同仁姓名" />
+              <datalist id="assignmentAssigneeOptions"></datalist>
             </label>
             <label>
               <span>案件名稱</span>
@@ -522,6 +540,10 @@
         <section class="panel block">
           <h2>提醒中心</h2>
           <p id="reminderStatus" class="subtle"></p>
+          <div class="top-actions">
+            <button id="copyReminderButton" class="button" type="button">複製摘要</button>
+          </div>
+          <textarea id="reminderText" class="reminder-textarea" readonly></textarea>
           <div id="reminderPreview" class="list"></div>
           <p id="reminderMessage" class="message" role="status"></p>
         </section>
@@ -565,6 +587,7 @@
 
       $("refreshButton").addEventListener("click", loadDashboard);
       $("sendReminderButton").addEventListener("click", sendReminderDigest);
+      $("copyReminderButton").addEventListener("click", copyReminderText);
       $("assignmentForm").addEventListener("submit", submitAssignment);
       loadDashboard();
 
@@ -604,6 +627,7 @@
         renderSummary(payload.totals);
         renderProjects(payload.projects);
         renderAssignmentProjects(payload.projects);
+        renderAssignmentPeople(payload.workload);
         renderPriorities(payload.priorities);
         renderFollowUps(payload.followUps);
         renderIssues(payload.issues);
@@ -629,6 +653,7 @@
       function renderProjects(projects) {
         $("projectGrid").innerHTML = projects.map((project) => {
           const label = project.status === "red" ? "紅燈" : project.status === "yellow" ? "黃燈" : "綠燈";
+          const errorBlock = project.error ? `<p class="notice">資料來源讀取失敗：${escapeHtml(project.error)}</p>` : "";
           return `
             <article class="panel project-card ${project.status}">
               <div class="project-head">
@@ -644,6 +669,7 @@
                 ${mini("未完成案件", project.metrics.openCases)}
                 ${mini("本月輔導", project.metrics.consultationsThisMonth)}
               </div>
+              ${errorBlock}
               <p class="subtle">逾期 ${project.metrics.overdueCases} / 待查核 ${project.metrics.awaitingReview} / 憑證缺漏 ${project.metrics.expensesMissingVoucher}</p>
               <div>
                 <a class="button" href="${project.pageUrl}" target="_blank" rel="noreferrer">開啟專案頁</a>
@@ -730,10 +756,19 @@
         if (projects.some((project) => project.id === current)) select.value = current;
       }
 
+      function renderAssignmentPeople(people) {
+        const names = [...new Set((people || [])
+          .map((person) => person.name)
+          .filter((name) => name && name !== "未指定"))]
+          .sort((a, b) => a.localeCompare(b, "zh-Hant"));
+        $("assignmentAssigneeOptions").innerHTML = names.map((name) => `<option value="${escapeHtml(name)}"></option>`).join("");
+      }
+
       function renderReminder(payload) {
         const emailText = payload.reminderStatus.emailEnabled ? "Email 已啟用" : "Email 未設定";
         const lineText = payload.reminderStatus.lineEnabled ? "LINE 已啟用" : "LINE 尚未設定 webhook";
         $("reminderStatus").textContent = `${emailText} / ${lineText}`;
+        $("reminderText").value = payload.reminderText || "";
         const items = [
           ...(payload.priorities.today || []).slice(0, 4),
           ...(payload.priorities.overdue || []).slice(0, 4),
@@ -808,6 +843,25 @@
             setMessage("reminderMessage", error && error.message ? error.message : "寄送失敗", "error");
           })
           .sendReminderDigest();
+      }
+
+      async function copyReminderText() {
+        const text = $("reminderText").value;
+        if (!text) {
+          setMessage("reminderMessage", "目前沒有可複製的提醒摘要。", "error");
+          return;
+        }
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+          } else {
+            $("reminderText").select();
+            document.execCommand("copy");
+          }
+          setMessage("reminderMessage", "已複製提醒摘要。", "success");
+        } catch (error) {
+          setMessage("reminderMessage", "複製失敗，請直接選取摘要文字。", "error");
+        }
       }
 
       function setMessage(id, text, type) {
