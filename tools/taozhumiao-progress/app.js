@@ -57,6 +57,8 @@
     $("casePriorityFilter").addEventListener("change", applyCaseFilters);
     $("caseOpenOnlyFilter").addEventListener("change", applyCaseFilters);
     $("caseSearchInput").addEventListener("input", applyCaseFilters);
+    $("myCaseAssigneeInput").addEventListener("change", renderMyCases);
+    $("syncMyCaseButton").addEventListener("click", syncMyCaseAssigneeFromReporter);
     $("consultationMonthFilter").addEventListener("change", applyConsultationFilters);
     $("consultationOwnerFilter").addEventListener("change", applyConsultationFilters);
     $("consultationStatusFilter").addEventListener("change", applyConsultationFilters);
@@ -70,6 +72,7 @@
       if (!$("caseProgressReporterInput").value.trim()) {
         $("caseProgressReporterInput").value = event.target.value.trim();
       }
+      syncMyCaseAssigneeFromReporter();
     });
     $("caseReporterInput").value = $("reporterInput").value;
     $("caseProgressReporterInput").value = $("reporterInput").value;
@@ -264,6 +267,9 @@
     renderManagement();
     populateCaseAssignees();
     populateCaseIds();
+    populateMyCaseAssignees();
+    syncMyCaseAssigneeFromReporter(false);
+    renderMyCases();
     applyCaseFilters();
     renderReleasedCases();
     populateConsultationOwners();
@@ -342,6 +348,42 @@
     });
     assigneeInput.value = currentInput;
     assigneeFilter.value = sortedNames.includes(currentFilter) ? currentFilter : "";
+  }
+
+  function populateMyCaseAssignees() {
+    const select = $("myCaseAssigneeInput");
+    const currentValue = select.value;
+    const names = new Set();
+    state.items.forEach((item) => splitNames(item.owner).forEach((name) => names.add(name)));
+    state.cases.forEach((record) => splitNames(record.assignee).forEach((name) => names.add(name)));
+    const reporter = $("reporterInput").value.trim();
+    if (reporter) names.add(displayPersonName(reporter));
+    const sortedNames = [...names].sort((a, b) => a.localeCompare(b, "zh-Hant"));
+    select.innerHTML = '<option value="">請選擇同仁</option>';
+    sortedNames.forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      select.appendChild(option);
+    });
+    select.value = sortedNames.includes(currentValue) ? currentValue : "";
+  }
+
+  function syncMyCaseAssigneeFromReporter(shouldRender = true) {
+    const reporter = displayPersonName($("reporterInput").value.trim());
+    const select = $("myCaseAssigneeInput");
+    if (!reporter || !select) {
+      if (shouldRender) renderMyCases();
+      return;
+    }
+    if (![...select.options].some((option) => option.value === reporter)) {
+      const option = document.createElement("option");
+      option.value = reporter;
+      option.textContent = reporter;
+      select.appendChild(option);
+    }
+    select.value = reporter;
+    if (shouldRender) renderMyCases();
   }
 
   function populateCaseIds() {
@@ -1340,6 +1382,85 @@
     });
   }
 
+  function renderMyCases() {
+    const list = $("myCaseList");
+    const count = $("myCaseCount");
+    if (!list || !count) return;
+    list.innerHTML = "";
+    const assignee = $("myCaseAssigneeInput").value;
+    if (!assignee) {
+      count.textContent = "請先選擇同仁";
+      const empty = document.createElement("p");
+      empty.className = "task-meta";
+      empty.textContent = "請輸入上方填報人，或在這裡選擇姓名，即可查看自己負責的追蹤案件。";
+      list.appendChild(empty);
+      return;
+    }
+    const records = state.cases
+      .filter((record) => record.status !== "已完成")
+      .filter((record) => caseAssigneeMatches(record, assignee))
+      .sort(compareCases);
+    count.textContent = `${records.length} 筆`;
+    if (!records.length) {
+      const empty = document.createElement("p");
+      empty.className = "task-meta";
+      empty.textContent = "目前沒有指派給你的未完成追蹤案件。";
+      list.appendChild(empty);
+      return;
+    }
+    records.slice(0, 12).forEach((record) => {
+      const urgency = caseUrgency(record);
+      const card = document.createElement("article");
+      card.className = "my-case-card";
+      if (urgency.level) card.classList.add(`case-${urgency.level}`);
+
+      const main = document.createElement("div");
+      main.className = "my-case-main";
+      const title = document.createElement("div");
+      title.className = "my-case-title";
+      const strong = document.createElement("strong");
+      strong.textContent = `${record.caseId ? `${record.caseId} ` : ""}${record.title || "未命名案件"}`;
+      const meta = document.createElement("span");
+      meta.textContent = [
+        record.status ? `狀態：${record.status}` : "",
+        record.priority ? `優先序：${record.priority}` : "",
+        record.deadline ? `Deadline：${record.deadline}` : "",
+      ].filter(Boolean).join(" / ");
+      title.appendChild(strong);
+      title.appendChild(meta);
+
+      const actions = document.createElement("div");
+      actions.className = "my-case-actions";
+      if (urgency.label) {
+        const deadline = document.createElement("span");
+        deadline.className = `deadline-pill ${urgency.level}`;
+        deadline.textContent = urgency.label;
+        actions.appendChild(deadline);
+      }
+      const button = document.createElement("button");
+      button.className = "button compact";
+      button.type = "button";
+      button.textContent = "回報此案";
+      button.addEventListener("click", () => fillCaseProgressForm(record));
+      actions.appendChild(button);
+
+      main.appendChild(title);
+      main.appendChild(actions);
+      card.appendChild(main);
+
+      const progress = document.createElement("p");
+      progress.className = "my-case-progress";
+      progress.textContent = record.progress || record.instruction || "尚無進度說明";
+      card.appendChild(progress);
+      list.appendChild(card);
+    });
+  }
+
+  function caseAssigneeMatches(record, assignee) {
+    const target = displayPersonName(assignee);
+    return splitNames(record.assignee).some((name) => displayPersonName(name) === target);
+  }
+
   function caseHeader(record, status, urgency) {
     const header = document.createElement("div");
     header.className = "case-card-header";
@@ -1855,6 +1976,7 @@
     $("caseCompletionInput").value = record.completion || "";
     $("caseProgressNoteInput").value = "";
     renderCaseProgressMessage("", "");
+    $("caseProgressForm").scrollIntoView({ behavior: "smooth", block: "start" });
     $("caseProgressUpdateInput").focus();
   }
 

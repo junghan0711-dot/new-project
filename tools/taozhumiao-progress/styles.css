@@ -699,6 +699,82 @@ textarea:focus {
   align-items: start;
 }
 
+.my-cases-panel {
+  display: grid;
+  gap: 14px;
+  margin: 16px 16px 0;
+  padding: 14px;
+  border: 1px solid #cfe1e4;
+  border-radius: 7px;
+  background: #f7fbfc;
+}
+
+.my-cases-toolbar {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) auto auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.my-case-list {
+  display: grid;
+  gap: 10px;
+}
+
+.my-case-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #ffffff;
+}
+
+.my-case-card.case-overdue {
+  border-color: #d14b32;
+  background: #fffafa;
+}
+
+.my-case-card.case-today {
+  border-color: #d8841b;
+  background: #fffaf1;
+}
+
+.my-case-card.case-soon {
+  border-color: #e6b04a;
+}
+
+.my-case-main {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.my-case-title {
+  display: grid;
+  gap: 4px;
+}
+
+.my-case-title strong {
+  font-size: 15px;
+}
+
+.my-case-title span,
+.my-case-meta,
+.my-case-progress {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.my-case-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .case-forms-stack {
   display: grid;
   gap: 14px;
@@ -1061,15 +1137,16 @@ textarea:focus {
   .workspace.view-section.active,
   .detail-grid,
   .form-grid,
-    .records-grid,
-    .management-grid,
-    .mini-metrics,
-    .consultation-workspace,
-    .consultation-form-grid,
-    .consultation-toolbar,
-    .consultation-metrics,
-    .consultation-card-body,
-    .case-workspace,
+  .records-grid,
+  .management-grid,
+  .mini-metrics,
+  .consultation-workspace,
+  .consultation-form-grid,
+  .consultation-toolbar,
+  .consultation-metrics,
+  .consultation-card-body,
+  .case-workspace,
+  .my-cases-toolbar,
   .case-form-grid,
   .case-toolbar,
   .case-card-body {

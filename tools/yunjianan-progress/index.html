@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>115 雲嘉南多元計畫進度填報</title>
-    <link rel="stylesheet" href="./styles.css?v=consultation-tracking-20260606" />
+    <link rel="stylesheet" href="./styles.css?v=my-cases-20260607" />
   </head>
   <body>
     <header class="topbar">
@@ -403,6 +403,24 @@
           <span id="caseCount">0 筆</span>
         </div>
 
+        <section class="my-cases-panel" aria-label="我的追蹤案件">
+          <div class="form-caption">
+            <h3>我的追蹤案件</h3>
+            <p>輸入或選擇自己的姓名後，這裡會先列出目前指派給你的未完成追蹤案件。</p>
+          </div>
+          <div class="my-cases-toolbar">
+            <label>
+              <span>查詢同仁</span>
+              <select id="myCaseAssigneeInput">
+                <option value="">請選擇同仁</option>
+              </select>
+            </label>
+            <button id="syncMyCaseButton" class="button" type="button">帶入填報人</button>
+            <span id="myCaseCount" class="task-meta">0 筆</span>
+          </div>
+          <div id="myCaseList" class="my-case-list"></div>
+        </section>
+
         <div class="case-workspace">
           <div class="case-forms-stack">
             <form id="caseForm" class="case-form">
@@ -590,6 +608,6 @@
 
     <script src="./config.js?v=api-consultation-20260606"></script>
     <script src="./data.js"></script>
-    <script src="./app.js?v=consultation-tracking-20260606"></script>
+    <script src="./app.js?v=my-cases-20260607"></script>
   </body>
 </html>
