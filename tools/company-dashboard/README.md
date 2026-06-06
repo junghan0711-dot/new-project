@@ -30,6 +30,6 @@
 ## Apps Script
 
 - Script project: `https://script.google.com/d/1H25gQRkKRNxZSAAhZol2Nhlm1lukOnbT5P44rfX-D_rpN7G1q1oMZajU/edit`
-- Web App: `https://script.google.com/macros/s/AKfycbx3SuS6UU4uQiZXRv6MCKFhU_y52fBh9C0UYq6NElHYa4iAlMzITdeAXBIyauOeQmye/exec`
+- Web App: `https://script.google.com/macros/s/AKfycbwNGbpyBqP7Z-sc32ceSHP_XD_qYzBA5Xu4Ro6gUJ9bmtCLEF0oR7gNwmyWEGTyAqbH/exec`
 
 第一次開啟時需由白名單內的 Google 帳號完成 Apps Script 權限授權。
