@@ -57,6 +57,8 @@
     $("caseSearchInput").addEventListener("input", applyCaseFilters);
     $("myCaseAssigneeInput").addEventListener("change", renderMyCases);
     $("syncMyCaseButton").addEventListener("click", syncMyCaseAssigneeFromReporter);
+    $("myWorkPersonInput").addEventListener("change", renderMyWork);
+    $("syncMyWorkButton").addEventListener("click", syncMyWorkPersonFromReporter);
     $("consultationMonthFilter").addEventListener("change", applyConsultationFilters);
     $("consultationOwnerFilter").addEventListener("change", applyConsultationFilters);
     $("consultationStatusFilter").addEventListener("change", applyConsultationFilters);
@@ -71,6 +73,7 @@
         $("caseProgressReporterInput").value = event.target.value.trim();
       }
       syncMyCaseAssigneeFromReporter();
+      syncMyWorkPersonFromReporter();
     });
     $("caseReporterInput").value = $("reporterInput").value;
     $("caseProgressReporterInput").value = $("reporterInput").value;
@@ -267,6 +270,9 @@
     populateMyCaseAssignees();
     syncMyCaseAssigneeFromReporter(false);
     renderMyCases();
+    populateMyWorkPeople();
+    syncMyWorkPersonFromReporter(false);
+    renderMyWork();
     applyCaseFilters();
     renderReleasedCases();
     populateConsultationOwners();
@@ -377,6 +383,48 @@
     }
     select.value = reporter;
     if (shouldRender) renderMyCases();
+  }
+
+  function populateMyWorkPeople() {
+    const select = $("myWorkPersonInput");
+    const currentValue = select.value;
+    const names = new Set();
+    state.items.forEach((item) => splitNames(workItemPeopleText(item)).forEach((name) => names.add(name)));
+    state.tasks.forEach((task) => splitNames(task.owner).forEach((name) => names.add(name)));
+    state.cases.forEach((record) => splitNames(record.assignee).forEach((name) => names.add(name)));
+    state.consultations.forEach((record) => splitNames(record.owner).forEach((name) => names.add(name)));
+    const reporter = $("reporterInput").value.trim();
+    if (reporter) names.add(displayPersonName(reporter));
+    const sortedNames = [...names].sort((a, b) => a.localeCompare(b, "zh-Hant"));
+    select.innerHTML = '<option value="">請選擇同仁</option>';
+    sortedNames.forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      select.appendChild(option);
+    });
+    select.value = sortedNames.includes(currentValue) ? currentValue : "";
+  }
+
+  function syncMyWorkPersonFromReporter(shouldRender = true) {
+    const reporter = displayPersonName($("reporterInput").value.trim());
+    const select = $("myWorkPersonInput");
+    if (!reporter || !select) {
+      if (shouldRender) renderMyWork();
+      return;
+    }
+    if (![...select.options].some((option) => option.value === reporter)) {
+      const option = document.createElement("option");
+      option.value = reporter;
+      option.textContent = reporter;
+      select.appendChild(option);
+    }
+    select.value = reporter;
+    if (shouldRender) renderMyWork();
+  }
+
+  function workItemPeopleText(item) {
+    return [item.owner, item.coOwner].filter(Boolean).join("、");
   }
 
   function populateCaseIds() {
@@ -1367,6 +1415,191 @@
       card.appendChild(caseMeta(record));
       list.appendChild(card);
     });
+  }
+
+  function renderMyWork() {
+    const person = $("myWorkPersonInput").value;
+    if (!person) {
+      setMyWorkCounts(0, 0, 0);
+      renderMyWorkEmpty("myWorkItemList", "請先選擇同仁。");
+      renderMyWorkEmpty("myWorkCaseList", "請先選擇同仁。");
+      renderMyWorkEmpty("myWorkConsultationList", "請先選擇同仁。");
+      return;
+    }
+
+    const items = state.items
+      .filter((item) => workPersonMatches(workItemPeopleText(item), person))
+      .sort(compareMyWorkItems);
+    const cases = state.cases
+      .filter((record) => record.status !== "已完成")
+      .filter((record) => workPersonMatches(record.assignee, person))
+      .sort(compareCases);
+    const consultations = state.consultations
+      .filter((record) => !["已完成", "取消"].includes(record.status))
+      .filter((record) => workPersonMatches(record.owner, person))
+      .sort(compareConsultations);
+
+    setMyWorkCounts(items.length, cases.length, consultations.length);
+    renderMyWorkItems(items);
+    renderMyWorkCases(cases);
+    renderMyWorkConsultations(consultations, person);
+  }
+
+  function setMyWorkCounts(itemCount, caseCount, consultationCount) {
+    $("myWorkItemCount").textContent = `${itemCount} 筆`;
+    $("myWorkCaseCount").textContent = `${caseCount} 筆`;
+    $("myWorkConsultationCount").textContent = `${consultationCount} 筆`;
+    $("myWorkTotalCount").textContent = `${itemCount + caseCount + consultationCount} 筆`;
+  }
+
+  function renderMyWorkEmpty(id, text) {
+    const list = $(id);
+    list.innerHTML = "";
+    const empty = document.createElement("p");
+    empty.className = "task-meta";
+    empty.textContent = text;
+    list.appendChild(empty);
+  }
+
+  function renderMyWorkItems(items) {
+    const list = $("myWorkItemList");
+    list.innerHTML = "";
+    if (!items.length) {
+      renderMyWorkEmpty("myWorkItemList", "目前沒有負責工項。");
+      return;
+    }
+    items.slice(0, 18).forEach((item) => {
+      const status = itemStatus(item);
+      const card = myWorkCard(status !== "已完成" ? "soon" : "");
+      card.appendChild(myWorkTitle(item.itemName || "未命名工項", [
+        status ? `狀態：${status}` : "",
+        item.period ? `時程：${item.period}` : "",
+      ]));
+      card.appendChild(myWorkText(item.currentStatus || item.schedule || "尚無進度說明"));
+      const actions = myWorkActions();
+      actions.appendChild(myWorkButton("回報工項", () => openItemFromMyWork(item)));
+      card.appendChild(actions);
+      list.appendChild(card);
+    });
+  }
+
+  function renderMyWorkCases(cases) {
+    const list = $("myWorkCaseList");
+    list.innerHTML = "";
+    if (!cases.length) {
+      renderMyWorkEmpty("myWorkCaseList", "目前沒有未完成追蹤案件。");
+      return;
+    }
+    cases.slice(0, 18).forEach((record) => {
+      const urgency = caseUrgency(record);
+      const card = myWorkCard(urgency.level === "overdue" ? "alert" : urgency.level ? "soon" : "");
+      card.appendChild(myWorkTitle(`${record.caseId ? `${record.caseId} ` : ""}${record.title || "未命名案件"}`, [
+        record.status ? `狀態：${record.status}` : "",
+        record.priority ? `優先序：${record.priority}` : "",
+        record.deadline ? `Deadline：${record.deadline}` : "",
+        urgency.label,
+      ]));
+      card.appendChild(myWorkText(record.progress || record.instruction || "尚無進度說明"));
+      const actions = myWorkActions();
+      actions.appendChild(myWorkButton("回報案件", () => openCaseFromMyWork(record)));
+      card.appendChild(actions);
+      list.appendChild(card);
+    });
+  }
+
+  function renderMyWorkConsultations(records, person) {
+    const list = $("myWorkConsultationList");
+    list.innerHTML = "";
+    if (!records.length) {
+      renderMyWorkEmpty("myWorkConsultationList", "目前沒有未完成諮詢輔導場次。");
+      return;
+    }
+    records.slice(0, 18).forEach((record) => {
+      const date = parseDeadline(record.date);
+      const isUpcoming = date && date.getTime() >= new Date().setHours(0, 0, 0, 0);
+      const card = myWorkCard(isUpcoming ? "soon" : "");
+      card.appendChild(myWorkTitle(`${record.sessionId ? `${record.sessionId} ` : ""}${record.unitName || "未填單位"}`, [
+        record.status ? `狀態：${record.status}` : "",
+        record.month ? `月份：${record.month}` : "",
+        consultationDateTime(record),
+      ]));
+      card.appendChild(myWorkText(record.topic || record.note || record.location || "尚無輔導內容"));
+      const actions = myWorkActions();
+      actions.appendChild(myWorkButton("查看場次", () => openConsultationsFromMyWork(record, person)));
+      card.appendChild(actions);
+      list.appendChild(card);
+    });
+  }
+
+  function myWorkCard(level) {
+    const card = document.createElement("article");
+    card.className = `my-work-card ${level || ""}`.trim();
+    return card;
+  }
+
+  function myWorkTitle(titleText, metaParts) {
+    const title = document.createElement("div");
+    title.className = "my-work-title";
+    const strong = document.createElement("strong");
+    strong.textContent = titleText;
+    const span = document.createElement("span");
+    span.textContent = metaParts.filter(Boolean).join(" / ");
+    title.appendChild(strong);
+    title.appendChild(span);
+    return title;
+  }
+
+  function myWorkText(text) {
+    const p = document.createElement("p");
+    p.textContent = text || "未填";
+    return p;
+  }
+
+  function myWorkActions() {
+    const actions = document.createElement("div");
+    actions.className = "my-work-actions";
+    return actions;
+  }
+
+  function myWorkButton(text, onClick) {
+    const button = document.createElement("button");
+    button.className = "button compact";
+    button.type = "button";
+    button.textContent = text;
+    button.addEventListener("click", onClick);
+    return button;
+  }
+
+  function compareMyWorkItems(a, b) {
+    const statusDiff = (itemStatus(a) === "已完成" ? 1 : 0) - (itemStatus(b) === "已完成" ? 1 : 0);
+    if (statusDiff) return statusDiff;
+    return String(a.period || "").localeCompare(String(b.period || ""), "zh-Hant");
+  }
+
+  function workPersonMatches(value, person) {
+    const target = displayPersonName(person);
+    return splitNames(value).some((name) => displayPersonName(name) === target);
+  }
+
+  function openItemFromMyWork(item) {
+    switchView("tasksView");
+    selectItem(item.itemId);
+    $("progressForm").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function openCaseFromMyWork(record) {
+    switchView("casesView");
+    fillCaseProgressForm(record);
+  }
+
+  function openConsultationsFromMyWork(record, person) {
+    switchView("consultationView");
+    $("consultationOwnerFilter").value = person;
+    $("consultationMonthFilter").value = record.month || "";
+    $("consultationStatusFilter").value = "";
+    $("consultationSearchInput").value = "";
+    applyConsultationFilters();
+    $("consultationList").scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   function renderMyCases() {

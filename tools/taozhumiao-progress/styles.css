@@ -614,6 +614,91 @@ textarea:focus {
   font-weight: 800;
 }
 
+.my-work-panel {
+  padding: 16px;
+}
+
+.my-work-controls {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 14px;
+}
+
+.my-work-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.my-work-block {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fbfcfd;
+}
+
+.compact-heading {
+  gap: 8px;
+  margin: 0;
+}
+
+.compact-heading h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.my-work-list {
+  display: grid;
+  gap: 10px;
+  max-height: 620px;
+  overflow: auto;
+}
+
+.my-work-card {
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #ffffff;
+}
+
+.my-work-card.alert {
+  border-color: #d14b32;
+  background: #fffafa;
+}
+
+.my-work-card.soon {
+  border-color: #e6b04a;
+  background: #fffaf1;
+}
+
+.my-work-title {
+  display: grid;
+  gap: 4px;
+}
+
+.my-work-title strong {
+  font-size: 15px;
+}
+
+.my-work-title span,
+.my-work-card p {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.my-work-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .management-grid {
   display: grid;
   grid-template-columns: minmax(260px, 0.8fr) minmax(320px, 1fr);
@@ -1139,6 +1224,8 @@ textarea:focus {
   .form-grid,
   .records-grid,
   .management-grid,
+  .my-work-controls,
+  .my-work-grid,
   .mini-metrics,
   .consultation-workspace,
   .consultation-form-grid,

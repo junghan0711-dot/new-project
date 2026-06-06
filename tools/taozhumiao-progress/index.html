@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>115 桃竹苗多元計畫進度填報</title>
-    <link rel="stylesheet" href="./styles.css?v=my-cases-20260607" />
+    <link rel="stylesheet" href="./styles.css?v=my-work-20260607" />
   </head>
   <body>
     <header class="topbar">
@@ -67,6 +67,7 @@
 
       <nav class="view-tabs" aria-label="資料檢視">
         <button class="tab-button active" type="button" data-view="tasksView">任務填報</button>
+        <button class="tab-button" type="button" data-view="myWorkView">我的工作</button>
         <button class="tab-button" type="button" data-view="sourceView">資料總覽</button>
         <button class="tab-button" type="button" data-view="updatesView">更新與費用紀錄</button>
         <button class="tab-button" type="button" data-view="supervisorView">主管追蹤</button>
@@ -169,6 +170,48 @@
             </div>
           </form>
         </section>
+      </section>
+
+      <section id="myWorkView" class="panel my-work-panel view-section" aria-label="我的工作">
+        <div class="section-heading">
+          <div>
+            <h2>我的工作</h2>
+            <p class="subtle">輸入或選擇姓名後，集中查看自己負責的工項、追蹤案件與諮詢輔導。</p>
+          </div>
+          <span id="myWorkTotalCount">0 筆</span>
+        </div>
+        <div class="my-work-controls">
+          <label>
+            <span>查詢同仁</span>
+            <select id="myWorkPersonInput">
+              <option value="">請選擇同仁</option>
+            </select>
+          </label>
+          <button id="syncMyWorkButton" class="button" type="button">帶入填報人</button>
+        </div>
+        <div class="my-work-grid">
+          <section class="my-work-block">
+            <div class="section-heading compact-heading">
+              <h3>負責工項</h3>
+              <span id="myWorkItemCount">0 筆</span>
+            </div>
+            <div id="myWorkItemList" class="my-work-list"></div>
+          </section>
+          <section class="my-work-block">
+            <div class="section-heading compact-heading">
+              <h3>追蹤案件</h3>
+              <span id="myWorkCaseCount">0 筆</span>
+            </div>
+            <div id="myWorkCaseList" class="my-work-list"></div>
+          </section>
+          <section class="my-work-block">
+            <div class="section-heading compact-heading">
+              <h3>諮詢輔導</h3>
+              <span id="myWorkConsultationCount">0 筆</span>
+            </div>
+            <div id="myWorkConsultationList" class="my-work-list"></div>
+          </section>
+        </div>
       </section>
 
       <section id="sourceView" class="panel source-panel view-section" aria-label="資料總覽">
@@ -607,6 +650,6 @@
 
     <script src="./config.js?v=api-consultation-20260606"></script>
     <script src="./data.js"></script>
-    <script src="./app.js?v=my-cases-20260607"></script>
+    <script src="./app.js?v=my-work-20260607"></script>
   </body>
 </html>
