@@ -1,6 +1,38 @@
 const ALLOWED_EMAILS = [
   "junghan0711@gmail.com",
 ];
+const REMINDER_EMAILS = [
+  "junghan0711@gmail.com",
+];
+const LINE_WEBHOOK_URL = "";
+const CASE_HEADERS = [
+  "案件ID",
+  "案件名稱",
+  "指定同事",
+  "交辦內容",
+  "查核點",
+  "Deadline",
+  "目前進度說明",
+  "狀態",
+  "優先序",
+  "回報人",
+  "回報時間",
+  "備註",
+  "佐證資料連結",
+  "完成/解除列管說明",
+  "解除列管時間",
+];
+const CASE_UPDATE_HEADERS = [
+  "案件更新ID",
+  "案件ID",
+  "回報日期",
+  "回報人",
+  "最新進度",
+  "狀態",
+  "完成/解除列管說明",
+  "佐證資料連結",
+  "備註",
+];
 
 const PROJECTS = [
   {
@@ -59,6 +91,103 @@ function getDashboardData() {
     followUps: collectFollowUps_(projects),
     people: collectPeople_(projects),
     issues: collectIssues_(projects),
+    priorities: collectPriorityGroups_(projects),
+    workload: collectWorkload_(projects),
+    reminderStatus: {
+      emailEnabled: REMINDER_EMAILS.length > 0,
+      lineEnabled: Boolean(LINE_WEBHOOK_URL),
+    },
+  };
+}
+
+function createAssignment(payload) {
+  const auth = currentAuth_();
+  if (!auth.ok) return { ok: false, error: auth.message };
+
+  const project = PROJECTS.find((item) => item.id === String(payload.projectId || ""));
+  if (!project) return { ok: false, error: "找不到指定專案。" };
+  const title = String(payload.title || "").trim();
+  const assignee = String(payload.assignee || "").trim();
+  const deadline = String(payload.deadline || "").trim();
+  const instruction = String(payload.instruction || "").trim();
+  if (!title || !assignee || !deadline || !instruction) {
+    return { ok: false, error: "請填寫專案、案件名稱、指定同事、Deadline 與交辦內容。" };
+  }
+
+  const spreadsheet = SpreadsheetApp.openById(project.spreadsheetId);
+  const caseSheet = ensureSheet_(spreadsheet, "案件追蹤列管", CASE_HEADERS);
+  const updateSheet = ensureSheet_(spreadsheet, "案件進度紀錄", CASE_UPDATE_HEADERS);
+  const timestamp = nowText_();
+  const caseId = nextCaseId_(caseSheet);
+  const status = payload.status || "待執行";
+  const progress = payload.progress || "主管新增交辦，待指定同事回報進度。";
+
+  caseSheet.appendRow([
+    caseId,
+    title,
+    assignee,
+    instruction,
+    payload.checkpoint || "",
+    deadline,
+    progress,
+    status,
+    payload.priority || "一般",
+    auth.email,
+    timestamp,
+    payload.note || "",
+    payload.attachment || "",
+    "",
+    "",
+  ]);
+
+  updateSheet.appendRow([
+    "CASE-UPD" + Utilities.formatDate(new Date(), "Asia/Taipei", "yyyyMMddHHmmss"),
+    caseId,
+    timestamp.slice(0, 10),
+    auth.email,
+    progress,
+    status,
+    "",
+    payload.attachment || "",
+    payload.note || "",
+  ]);
+
+  return {
+    ok: true,
+    caseId,
+    project: project.name,
+    message: `${project.name} 已新增 ${caseId}`,
+  };
+}
+
+function sendReminderDigest() {
+  const auth = currentAuth_();
+  if (!auth.ok) return { ok: false, error: auth.message };
+
+  const data = getDashboardData();
+  if (!data.ok) return data;
+  const subject = `公司專案總控台提醒摘要 ${Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy-MM-dd")}`;
+  const body = buildReminderText_(data);
+  REMINDER_EMAILS.forEach((email) => {
+    MailApp.sendEmail(email, subject, body);
+  });
+
+  let lineSent = false;
+  if (LINE_WEBHOOK_URL) {
+    UrlFetchApp.fetch(LINE_WEBHOOK_URL, {
+      method: "post",
+      contentType: "application/json",
+      payload: JSON.stringify({ text: body.slice(0, 4000) }),
+      muteHttpExceptions: true,
+    });
+    lineSent = true;
+  }
+
+  return {
+    ok: true,
+    emailRecipients: REMINDER_EMAILS,
+    lineSent,
+    sentAt: nowText_(),
   };
 }
 
@@ -117,6 +246,7 @@ function summarizeProject_(project) {
     issues: projectIssues_(itemSummaries, expenses, caseSummaries, consultations),
     recentUpdates: recentUpdates_(updates),
     consultations: summarizeConsultations_(consultations),
+    workload: projectWorkload_(itemSummaries, caseSummaries, consultations),
     latestDataTime: latestDataTime_(itemSummaries, updates, cases, caseUpdates, consultations),
   };
 }
@@ -429,6 +559,177 @@ function collectIssues_(projects) {
     .slice(0, 60);
 }
 
+function collectPriorityGroups_(projects) {
+  const followUps = collectFollowUps_(projects).map((item) => ({
+    ...item,
+    bucket: priorityBucket_(item),
+    rank: priorityRank_(item),
+  })).sort((a, b) => b.rank - a.rank);
+  return {
+    today: followUps.filter((item) => item.bucket === "today"),
+    week: followUps.filter((item) => item.bucket === "week"),
+    overdue: followUps.filter((item) => item.bucket === "overdue"),
+    reminder: followUps.filter((item) => item.bucket === "reminder"),
+  };
+}
+
+function priorityBucket_(item) {
+  if (item.reason === "已逾期") return "overdue";
+  if (item.reason === "今日到期") return "today";
+  if (item.reason === "3 日內到期") return "week";
+  return "reminder";
+}
+
+function priorityRank_(item) {
+  const base = item.reason === "已逾期" ? 400 : item.reason === "今日到期" ? 300 : item.reason === "3 日內到期" ? 200 : 100;
+  const typeBonus = item.type === "案件" ? 20 : 0;
+  return base + typeBonus;
+}
+
+function projectWorkload_(items, cases, consultations) {
+  const map = {};
+  items.forEach((item) => {
+    splitNames_(item.owner).forEach((name) => {
+      const person = ensureWorkloadPerson_(map, name);
+      person.items += 1;
+      if (item.status !== "已完成") person.openItems += 1;
+      if (item.needsFollowUp) person.needsFollowUp += 1;
+    });
+  });
+  cases.forEach((record) => {
+    splitNames_(record.assignee).forEach((name) => {
+      const person = ensureWorkloadPerson_(map, name);
+      person.cases += 1;
+      if (record.status !== "已完成") person.openCases += 1;
+      if (record.urgency.level === "overdue") person.overdue += 1;
+    });
+  });
+  consultations.forEach((record) => {
+    splitNames_(value_(record, ["負責同仁"])).forEach((name) => {
+      const person = ensureWorkloadPerson_(map, name);
+      person.consultations += 1;
+      if (sameMonth_(value_(record, ["月份", "輔導日期"]))) person.consultationsThisMonth += 1;
+    });
+  });
+  return Object.keys(map).map((key) => scoreWorkload_(map[key]));
+}
+
+function collectWorkload_(projects) {
+  const map = {};
+  projects.forEach((project) => {
+    project.workload.forEach((person) => {
+      const target = ensureWorkloadPerson_(map, person.name);
+      target.items += person.items;
+      target.openItems += person.openItems;
+      target.cases += person.cases;
+      target.openCases += person.openCases;
+      target.consultations += person.consultations;
+      target.consultationsThisMonth += person.consultationsThisMonth;
+      target.needsFollowUp += person.needsFollowUp;
+      target.overdue += person.overdue;
+      target.projects.push(project.office);
+    });
+  });
+  return Object.keys(map)
+    .map((key) => {
+      const person = scoreWorkload_(map[key]);
+      person.projects = [...new Set(person.projects)].join("、");
+      return person;
+    })
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.name.localeCompare(b.name, "zh-Hant");
+    });
+}
+
+function ensureWorkloadPerson_(map, name) {
+  if (!name) name = "未指定";
+  if (!map[name]) {
+    map[name] = {
+      name,
+      projects: [],
+      items: 0,
+      openItems: 0,
+      cases: 0,
+      openCases: 0,
+      consultations: 0,
+      consultationsThisMonth: 0,
+      needsFollowUp: 0,
+      overdue: 0,
+      score: 0,
+      level: "normal",
+    };
+  }
+  return map[name];
+}
+
+function scoreWorkload_(person) {
+  person.score = person.openItems + (person.openCases * 2) + person.consultationsThisMonth + (person.needsFollowUp * 2) + (person.overdue * 3);
+  person.level = person.score >= 12 || person.overdue > 0 ? "high" : person.score >= 6 ? "medium" : "normal";
+  return person;
+}
+
+function ensureSheet_(spreadsheet, sheetName, headers) {
+  let sheet = spreadsheet.getSheetByName(sheetName);
+  if (!sheet) sheet = spreadsheet.insertSheet(sheetName);
+  const currentHeaders = sheet.getLastRow() > 0
+    ? sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), headers.length)).getValues()[0]
+    : [];
+  const hasAnyHeader = currentHeaders.some((header) => header);
+  if (!hasAnyHeader) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.setFrozenRows(1);
+    return sheet;
+  }
+  const missingHeaders = headers.filter((header) => currentHeaders.indexOf(header) < 0);
+  if (missingHeaders.length) {
+    const startColumn = currentHeaders.filter((header) => header).length + 1;
+    sheet.getRange(1, startColumn, 1, missingHeaders.length).setValues([missingHeaders]);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function nextCaseId_(sheet) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return "CASE-0001";
+  const values = sheet.getRange(2, 1, lastRow - 1, 1).getDisplayValues();
+  let maxSerial = 0;
+  values.forEach((row) => {
+    const match = String(row[0] || "").match(/^CASE-(\d+)$/);
+    if (match) maxSerial = Math.max(maxSerial, Number(match[1]));
+  });
+  return "CASE-" + String(Math.max(maxSerial, values.length) + 1).padStart(4, "0");
+}
+
+function buildReminderText_(data) {
+  const lines = [
+    `公司專案總控台提醒摘要`,
+    `資料時間：${data.generatedAt}`,
+    "",
+    `專案：${data.totals.projects}，紅燈 ${data.totals.redProjects}，黃燈 ${data.totals.yellowProjects}`,
+    `待追蹤工項：${data.totals.needsFollowUp || 0}，未完成案件：${data.totals.openCases || 0}`,
+    "",
+    "今天必追：",
+    ...listReminderItems_(data.priorities.today),
+    "",
+    "逾期：",
+    ...listReminderItems_(data.priorities.overdue),
+    "",
+    "本週需追：",
+    ...listReminderItems_(data.priorities.week),
+    "",
+    "工作量較高：",
+    ...data.workload.filter((person) => person.level === "high").slice(0, 8).map((person, index) => `${index + 1}. ${person.name} / 分數 ${person.score} / 未完成工項 ${person.openItems} / 未完成案件 ${person.openCases}`),
+  ];
+  return lines.join("\n");
+}
+
+function listReminderItems_(items) {
+  if (!items.length) return ["- 無"];
+  return items.slice(0, 10).map((item, index) => `${index + 1}. ${item.project} / ${item.type} / ${item.title || "未命名"} / ${item.assignee || "未指定"} / ${item.reason}`);
+}
+
 function latestDataTime_(items, updates, cases, caseUpdates, consultations) {
   const times = []
     .concat(items.map((item) => item.latestDate))
@@ -515,4 +816,3 @@ function formatMoney_(value) {
 function nowText_() {
   return Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
 }
-

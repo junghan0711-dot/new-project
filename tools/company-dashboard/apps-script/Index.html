@@ -101,6 +101,17 @@
         color: #ffffff;
       }
 
+      .button:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+
+      .top-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+
       .layout {
         width: min(1440px, 100%);
         margin: 0 auto;
@@ -225,6 +236,13 @@
         gap: 16px;
       }
 
+      .priority-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
       .block {
         display: grid;
         gap: 12px;
@@ -265,6 +283,85 @@
       .item.warning {
         border-color: #e6b04a;
         background: #fffaf1;
+      }
+
+      .item.today {
+        border-color: #d8841b;
+        background: #fffaf1;
+      }
+
+      .item.reminder {
+        border-color: var(--line);
+      }
+
+      .workload-grid,
+      .assignment-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .workload-card {
+        display: grid;
+        gap: 8px;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: #fbfcfd;
+      }
+
+      .workload-card.high {
+        border-color: #d14b32;
+        background: #fffafa;
+      }
+
+      .workload-card.medium {
+        border-color: #e6b04a;
+        background: #fffaf1;
+      }
+
+      .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      label {
+        display: grid;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 760;
+      }
+
+      input,
+      select,
+      textarea {
+        width: 100%;
+        border: 1px solid #cbd3df;
+        border-radius: 6px;
+        padding: 10px 11px;
+        background: #ffffff;
+        color: var(--ink);
+        font: inherit;
+      }
+
+      textarea {
+        resize: vertical;
+      }
+
+      .message {
+        min-height: 20px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .message.success {
+        color: var(--green);
+      }
+
+      .message.error {
+        color: var(--red);
       }
 
       .people-table {
@@ -313,7 +410,11 @@
         .summary-grid,
         .project-grid,
         .dashboard-grid,
-        .mini-grid {
+        .mini-grid,
+        .priority-grid,
+        .workload-grid,
+        .assignment-grid,
+        .form-grid {
           grid-template-columns: 1fr;
         }
 
@@ -330,7 +431,10 @@
         <h1>公司專案總控台</h1>
         <p id="metaText" class="subtle">讀取中</p>
       </div>
-      <button id="refreshButton" class="button primary" type="button">重新整理</button>
+      <div class="top-actions">
+        <button id="sendReminderButton" class="button" type="button">寄出提醒</button>
+        <button id="refreshButton" class="button primary" type="button">重新整理</button>
+      </div>
     </header>
 
     <section id="authPanel" class="panel auth-panel hidden">
@@ -341,7 +445,86 @@
     <main id="dashboard" class="layout hidden">
       <section id="summaryGrid" class="panel summary-grid" aria-label="公司摘要"></section>
       <section id="projectGrid" class="project-grid" aria-label="專案狀態"></section>
+      <section class="priority-grid" aria-label="待辦優先序">
+        <section class="panel block">
+          <h2>今天必追</h2>
+          <div id="priorityTodayList" class="list"></div>
+        </section>
+        <section class="panel block">
+          <h2>本週需追</h2>
+          <div id="priorityWeekList" class="list"></div>
+        </section>
+        <section class="panel block">
+          <h2>逾期</h2>
+          <div id="priorityOverdueList" class="list"></div>
+        </section>
+        <section class="panel block">
+          <h2>提醒</h2>
+          <div id="priorityReminderList" class="list"></div>
+        </section>
+      </section>
       <section class="dashboard-grid">
+        <section class="panel block">
+          <h2>主管交辦中心</h2>
+          <form id="assignmentForm" class="assignment-grid">
+            <label>
+              <span>專案</span>
+              <select id="assignmentProjectInput" required></select>
+            </label>
+            <label>
+              <span>指定同事</span>
+              <input id="assignmentAssigneeInput" type="text" required placeholder="輸入同仁姓名" />
+            </label>
+            <label>
+              <span>案件名稱</span>
+              <input id="assignmentTitleInput" type="text" required placeholder="例：成果資料補件追蹤" />
+            </label>
+            <label>
+              <span>Deadline</span>
+              <input id="assignmentDeadlineInput" type="datetime-local" required />
+            </label>
+            <label>
+              <span>優先序</span>
+              <select id="assignmentPriorityInput">
+                <option value="一般">一般</option>
+                <option value="高">高</option>
+                <option value="急件">急件</option>
+              </select>
+            </label>
+            <label>
+              <span>狀態</span>
+              <select id="assignmentStatusInput">
+                <option value="待執行">待執行</option>
+                <option value="進行中">進行中</option>
+                <option value="待查核">待查核</option>
+              </select>
+            </label>
+            <label style="grid-column: 1 / -1">
+              <span>交辦內容</span>
+              <textarea id="assignmentInstructionInput" rows="4" required placeholder="請寫清楚交辦事項、交付格式、需要協調的人或資料"></textarea>
+            </label>
+            <label style="grid-column: 1 / -1">
+              <span>查核點</span>
+              <textarea id="assignmentCheckpointInput" rows="3" placeholder="例：週三前回報初稿；週五前補齊佐證"></textarea>
+            </label>
+            <label style="grid-column: 1 / -1">
+              <span>備註</span>
+              <input id="assignmentNoteInput" type="text" placeholder="補充提醒、檔案位置或主管查核意見" />
+            </label>
+            <label style="grid-column: 1 / -1">
+              <span>佐證資料連結</span>
+              <input id="assignmentAttachmentInput" type="url" placeholder="貼上雲端資料夾、文件或成果連結" />
+            </label>
+            <p id="assignmentMessage" class="message" role="status"></p>
+            <button id="assignmentSubmitButton" class="button primary" type="submit">送出交辦</button>
+          </form>
+        </section>
+        <section class="panel block">
+          <h2>提醒中心</h2>
+          <p id="reminderStatus" class="subtle"></p>
+          <div id="reminderPreview" class="list"></div>
+          <p id="reminderMessage" class="message" role="status"></p>
+        </section>
         <section class="panel block">
           <h2>今日需追蹤</h2>
           <div id="followUpList" class="list"></div>
@@ -349,6 +532,10 @@
         <section class="panel block">
           <h2>資料品質提醒</h2>
           <div id="issueList" class="list"></div>
+        </section>
+        <section class="panel block" style="grid-column: 1 / -1">
+          <h2>同仁工作量看板</h2>
+          <div id="workloadGrid" class="workload-grid"></div>
         </section>
         <section class="panel block" style="grid-column: 1 / -1">
           <h2>同仁更新狀態</h2>
@@ -374,8 +561,11 @@
     <script>
       const initialAuth = <?!= initialAuth ?>;
       const $ = (id) => document.getElementById(id);
+      let dashboardData = null;
 
       $("refreshButton").addEventListener("click", loadDashboard);
+      $("sendReminderButton").addEventListener("click", sendReminderDigest);
+      $("assignmentForm").addEventListener("submit", submitAssignment);
       loadDashboard();
 
       function loadDashboard() {
@@ -407,13 +597,18 @@
       }
 
       function renderDashboard(payload) {
+        dashboardData = payload;
         $("authPanel").classList.add("hidden");
         $("dashboard").classList.remove("hidden");
         $("metaText").textContent = `登入帳號：${payload.viewer} / 資料時間：${payload.generatedAt}`;
         renderSummary(payload.totals);
         renderProjects(payload.projects);
+        renderAssignmentProjects(payload.projects);
+        renderPriorities(payload.priorities);
         renderFollowUps(payload.followUps);
         renderIssues(payload.issues);
+        renderReminder(payload);
+        renderWorkload(payload.workload);
         renderPeople(payload.people);
       }
 
@@ -469,6 +664,23 @@
         `).join("") : '<p class="subtle">目前沒有需追蹤項目。</p>';
       }
 
+      function renderPriorities(groups) {
+        renderPriorityList("priorityTodayList", groups.today, "today");
+        renderPriorityList("priorityWeekList", groups.week, "warning");
+        renderPriorityList("priorityOverdueList", groups.overdue, "critical");
+        renderPriorityList("priorityReminderList", groups.reminder, "reminder");
+      }
+
+      function renderPriorityList(id, items, level) {
+        $(id).innerHTML = items.length ? items.slice(0, 10).map((item) => `
+          <article class="item ${level}">
+            <strong>${escapeHtml(item.project)} / ${escapeHtml(item.title || "未命名")}</strong>
+            <p>${escapeHtml(item.type)} / ${escapeHtml(item.assignee || "未指定")} / ${escapeHtml(item.date || "未填日期")}</p>
+            <span>${escapeHtml(item.reason || "需追蹤")}</span>
+          </article>
+        `).join("") : '<p class="subtle">目前沒有項目。</p>';
+      }
+
       function renderIssues(items) {
         $("issueList").innerHTML = items.length ? items.map((item) => `
           <article class="item ${item.level}">
@@ -489,6 +701,119 @@
             <td>${escapeHtml(person.latestDate || "尚無紀錄")}</td>
           </tr>
         `).join("") : '<tr><td colspan="6">目前沒有同仁資料。</td></tr>';
+      }
+
+      function renderWorkload(items) {
+        $("workloadGrid").innerHTML = items.length ? items.slice(0, 24).map((person) => `
+          <article class="workload-card ${person.level}">
+            <div class="project-head">
+              <div>
+                <h3>${escapeHtml(person.name)}</h3>
+                <p class="subtle">${escapeHtml(person.projects || "")}</p>
+              </div>
+              <span class="status-dot ${person.level === "high" ? "red" : person.level === "medium" ? "yellow" : "green"}">分數 ${formatNumber(person.score)}</span>
+            </div>
+            <div class="mini-grid">
+              ${mini("未完成工項", person.openItems)}
+              ${mini("未完成案件", person.openCases)}
+              ${mini("本月輔導", person.consultationsThisMonth)}
+              ${mini("需追蹤", person.needsFollowUp)}
+            </div>
+          </article>
+        `).join("") : '<p class="subtle">目前沒有工作量資料。</p>';
+      }
+
+      function renderAssignmentProjects(projects) {
+        const select = $("assignmentProjectInput");
+        const current = select.value;
+        select.innerHTML = projects.map((project) => `<option value="${escapeHtml(project.id)}">${escapeHtml(project.name)}</option>`).join("");
+        if (projects.some((project) => project.id === current)) select.value = current;
+      }
+
+      function renderReminder(payload) {
+        const emailText = payload.reminderStatus.emailEnabled ? "Email 已啟用" : "Email 未設定";
+        const lineText = payload.reminderStatus.lineEnabled ? "LINE 已啟用" : "LINE 尚未設定 webhook";
+        $("reminderStatus").textContent = `${emailText} / ${lineText}`;
+        const items = [
+          ...(payload.priorities.today || []).slice(0, 4),
+          ...(payload.priorities.overdue || []).slice(0, 4),
+          ...(payload.priorities.week || []).slice(0, 4),
+        ];
+        $("reminderPreview").innerHTML = items.length ? items.map((item) => `
+          <article class="item ${item.reason === "已逾期" ? "critical" : item.reason === "今日到期" ? "today" : "warning"}">
+            <strong>${escapeHtml(item.project)} / ${escapeHtml(item.title || "未命名")}</strong>
+            <p>${escapeHtml(item.assignee || "未指定")} / ${escapeHtml(item.reason || "")}</p>
+          </article>
+        `).join("") : '<p class="subtle">目前沒有高優先提醒。</p>';
+      }
+
+      function submitAssignment(event) {
+        event.preventDefault();
+        const payload = {
+          projectId: $("assignmentProjectInput").value,
+          assignee: $("assignmentAssigneeInput").value.trim(),
+          title: $("assignmentTitleInput").value.trim(),
+          deadline: $("assignmentDeadlineInput").value,
+          priority: $("assignmentPriorityInput").value,
+          status: $("assignmentStatusInput").value,
+          instruction: $("assignmentInstructionInput").value.trim(),
+          checkpoint: $("assignmentCheckpointInput").value.trim(),
+          note: $("assignmentNoteInput").value.trim(),
+          attachment: $("assignmentAttachmentInput").value.trim(),
+        };
+        if (!payload.projectId || !payload.assignee || !payload.title || !payload.deadline || !payload.instruction) {
+          setMessage("assignmentMessage", "請填寫專案、指定同事、案件名稱、Deadline 與交辦內容。", "error");
+          return;
+        }
+        if (!window.confirm(`確認送出交辦？\n\n案件：${payload.title}\n指定同事：${payload.assignee}\nDeadline：${payload.deadline}`)) return;
+        $("assignmentSubmitButton").disabled = true;
+        setMessage("assignmentMessage", "送出中...", "");
+        google.script.run
+          .withSuccessHandler((result) => {
+            $("assignmentSubmitButton").disabled = false;
+            if (!result || result.ok === false) {
+              setMessage("assignmentMessage", result && result.error ? result.error : "送出失敗", "error");
+              return;
+            }
+            setMessage("assignmentMessage", `已新增交辦：${result.caseId}`, "success");
+            $("assignmentForm").reset();
+            loadDashboard();
+          })
+          .withFailureHandler((error) => {
+            $("assignmentSubmitButton").disabled = false;
+            setMessage("assignmentMessage", error && error.message ? error.message : "送出失敗", "error");
+          })
+          .createAssignment(payload);
+      }
+
+      function sendReminderDigest() {
+        if (!dashboardData) {
+          setMessage("reminderMessage", "資料尚未讀取完成。", "error");
+          return;
+        }
+        if (!window.confirm("確認寄出公司專案提醒摘要？")) return;
+        $("sendReminderButton").disabled = true;
+        setMessage("reminderMessage", "寄送中...", "");
+        google.script.run
+          .withSuccessHandler((result) => {
+            $("sendReminderButton").disabled = false;
+            if (!result || result.ok === false) {
+              setMessage("reminderMessage", result && result.error ? result.error : "寄送失敗", "error");
+              return;
+            }
+            setMessage("reminderMessage", `已寄出 Email：${(result.emailRecipients || []).join("、")}${result.lineSent ? "；LINE 已送出" : ""}`, "success");
+          })
+          .withFailureHandler((error) => {
+            $("sendReminderButton").disabled = false;
+            setMessage("reminderMessage", error && error.message ? error.message : "寄送失敗", "error");
+          })
+          .sendReminderDigest();
+      }
+
+      function setMessage(id, text, type) {
+        const element = $(id);
+        element.textContent = text;
+        element.className = `message ${type || ""}`;
       }
 
       function mini(label, value) {
