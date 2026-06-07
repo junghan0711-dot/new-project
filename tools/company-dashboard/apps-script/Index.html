@@ -963,6 +963,7 @@
               <p class="status-reasons">${escapeHtml(reasonText)}</p>
               <div class="action-row">
                 <button class="button compact" type="button" data-status-assignee="${escapeHtml(person.name)}">查看待查核</button>
+                <button class="button compact" type="button" data-status-copy="${escapeHtml(person.name)}">複製提醒</button>
               </div>
             </article>
           `;
@@ -988,7 +989,20 @@
         renderPeopleStatus(dashboardData ? dashboardData.peopleStatus || [] : []);
       }
 
-      function handlePeopleStatusActionClick(event) {
+      async function handlePeopleStatusActionClick(event) {
+        const copyButton = event.target.closest("[data-status-copy]");
+        if (copyButton && dashboardData) {
+          const name = copyButton.dataset.statusCopy || "";
+          const person = (dashboardData.peopleStatus || []).find((item) => item.name === name);
+          if (!person) return;
+          try {
+            await copyText(buildPersonReminder(person));
+            $("peopleStatusCountText").textContent = `已複製 ${name} 的提醒文字，可貼到 LINE、Email 或工作群組。`;
+          } catch (error) {
+            $("peopleStatusCountText").textContent = "複製失敗，請改用瀏覽器手動選取。";
+          }
+          return;
+        }
         const button = event.target.closest("[data-status-assignee]");
         if (!button || !dashboardData) return;
         const name = button.dataset.statusAssignee || "";
@@ -997,6 +1011,23 @@
         renderReviewQueue();
         setMessage("reviewActionMessage", `已篩選 ${name} 的待查核案件。`, "success");
         $("reviewPanel").scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+
+      function buildPersonReminder(person) {
+        const reasons = (person.reasons || []).length
+          ? person.reasons.map((reason) => `- ${reason}`).join("\n")
+          : "- 目前沒有高優先查核原因，請確認最新進度是否已補齊。";
+        return [
+          `${person.name}，提醒一下目前專案回報狀態：`,
+          `專案：${person.projects || "未標示"}`,
+          `狀態：${person.actionText || "持續觀察"}`,
+          `近 7 日更新：${formatNumber(person.recentUpdates)}，需追蹤工項：${formatNumber(person.needsFollowUp)}`,
+          `未完成案件：${formatNumber(person.openCases)}，逾期案件：${formatNumber(person.overdueCases)}，待查核：${formatNumber(person.pendingReview)}`,
+          `今日/3 日內到期：${formatNumber(person.dueToday)}/${formatNumber(person.dueSoon)}`,
+          "待確認事項：",
+          reasons,
+          "請協助補上最新進度、完成說明或佐證資料，謝謝。",
+        ].join("\n");
       }
 
       function renderAssignmentProjects(projects) {
@@ -1282,16 +1313,31 @@
           return;
         }
         try {
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            await navigator.clipboard.writeText(text);
-          } else {
-            $("reminderText").select();
-            document.execCommand("copy");
-          }
+          await copyText(text, $("reminderText"));
           setMessage("reminderMessage", "已複製提醒摘要。", "success");
         } catch (error) {
           setMessage("reminderMessage", "複製失敗，請直接選取摘要文字。", "error");
         }
+      }
+
+      async function copyText(text, fallbackElement) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+          return;
+        }
+        if (fallbackElement && fallbackElement.select) {
+          fallbackElement.select();
+          document.execCommand("copy");
+          return;
+        }
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.style.position = "fixed";
+        textarea.style.left = "-9999px";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
       }
 
       function setMessage(id, text, type) {
