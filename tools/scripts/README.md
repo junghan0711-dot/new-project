@@ -2,7 +2,39 @@
 
 這個資料夾放「政府計畫進度填報網頁」的重複建置工具，讓下次新增類似桃竹苗、雲嘉南的內部管理網頁時少走手動流程。
 
-## 1. 建立新進度網頁
+## 1. 用新專案模板快速建立
+
+先複製範本：
+
+```bash
+cp tools/scripts/project-template.example.json /tmp/my-project.json
+```
+
+修改 `/tmp/my-project.json` 的欄位：
+
+- `toolName`：工具資料夾名稱，例如 `taichung-progress`
+- `projectName`：畫面顯示的專案名稱
+- `office`：總控台顯示的辦公室或區域
+- `spreadsheetUrl`：Google Sheet 網址或試算表 ID
+- `xlsx`：原始 Excel 檔路徑
+- `template`：要複製的既有網頁模板，預設用桃竹苗
+- `addToDashboard`：是否自動接進公司專案總控台
+
+乾跑確認：
+
+```bash
+tools/scripts/create-project-from-template.py --config /tmp/my-project.json --dry-run
+```
+
+正式產生：
+
+```bash
+tools/scripts/create-project-from-template.py --config /tmp/my-project.json
+```
+
+產生後會建立 `tools/<toolName>/SETUP_CHECKLIST.md`，照清單部署 Apps Script、檢查、commit/push。
+
+## 2. 直接建立新進度網頁
 
 ```bash
 tools/scripts/create-progress-tracker.py \
@@ -24,7 +56,7 @@ tools/scripts/create-progress-tracker.py \
 - `apps-script/Code.gs`
 - `apps-script/appsscript.json`
 
-## 2. 部署 Apps Script
+## 3. 部署 Apps Script
 
 ```bash
 tools/scripts/deploy-apps-script.sh tools/example-progress \
