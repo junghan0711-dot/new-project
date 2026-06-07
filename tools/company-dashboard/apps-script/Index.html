@@ -101,6 +101,12 @@
         color: #ffffff;
       }
 
+      .button.compact {
+        min-height: 30px;
+        padding: 5px 8px;
+        font-size: 12px;
+      }
+
       .button:disabled {
         opacity: 0.55;
         cursor: not-allowed;
@@ -390,7 +396,7 @@
       .review-table {
         width: 100%;
         border-collapse: collapse;
-        min-width: 1120px;
+        min-width: 1280px;
       }
 
       .review-filters {
@@ -408,6 +414,13 @@
         display: flex;
         gap: 8px;
         flex-wrap: wrap;
+      }
+
+      .action-row {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        min-width: 180px;
       }
 
       .badge {
@@ -557,6 +570,7 @@
             <select id="reviewPriorityFilter"></select>
           </label>
         </div>
+        <p id="reviewActionMessage" class="message" role="status"></p>
         <div class="table-wrap">
           <table class="review-table">
             <thead>
@@ -570,6 +584,7 @@
                 <th>最近回報</th>
                 <th>最新進度</th>
                 <th>連結</th>
+                <th>主管動作</th>
               </tr>
             </thead>
             <tbody id="reviewRows"></tbody>
@@ -695,6 +710,7 @@
       $("reviewAssigneeFilter").addEventListener("change", updateReviewFilters);
       $("reviewStatusFilter").addEventListener("change", updateReviewFilters);
       $("reviewPriorityFilter").addEventListener("change", updateReviewFilters);
+      $("reviewRows").addEventListener("click", handleReviewActionClick);
       loadDashboard();
 
       function loadDashboard() {
@@ -915,8 +931,106 @@
                 <a class="button" href="${escapeHtml(item.spreadsheetUrl || "#")}" target="_blank" rel="noreferrer">底表</a>
               </div>
             </td>
+            <td>
+              <div class="action-row">
+                <button class="button compact" type="button" data-review-action="approve" data-project-id="${escapeHtml(item.projectId || "")}" data-case-id="${escapeHtml(item.caseId || "")}">通過</button>
+                <button class="button compact" type="button" data-review-action="return" data-project-id="${escapeHtml(item.projectId || "")}" data-case-id="${escapeHtml(item.caseId || "")}">退回</button>
+                <button class="button compact" type="button" data-review-action="comment" data-project-id="${escapeHtml(item.projectId || "")}" data-case-id="${escapeHtml(item.caseId || "")}">意見</button>
+                <button class="button compact" type="button" data-review-action="extend" data-project-id="${escapeHtml(item.projectId || "")}" data-case-id="${escapeHtml(item.caseId || "")}">延長</button>
+              </div>
+            </td>
           </tr>
-        `).join("") : '<tr><td colspan="9">目前沒有符合條件的待查核案件。</td></tr>';
+        `).join("") : '<tr><td colspan="10">目前沒有符合條件的待查核案件。</td></tr>';
+      }
+
+      function handleReviewActionClick(event) {
+        const button = event.target.closest("[data-review-action]");
+        if (!button) return;
+        const item = (dashboardData && dashboardData.reviewQueue || []).find((entry) => (
+          entry.projectId === button.dataset.projectId && entry.caseId === button.dataset.caseId
+        ));
+        if (!item) {
+          setMessage("reviewActionMessage", "找不到這筆案件，請重新整理後再試。", "error");
+          return;
+        }
+        const payload = buildReviewPayload(button.dataset.reviewAction, item);
+        if (!payload) return;
+        const label = reviewActionLabel(payload.action);
+        if (!window.confirm(`確認${label}？\n\n${item.project}\n${item.caseId} ${item.title || ""}`)) return;
+        setReviewButtonsDisabled(true);
+        setMessage("reviewActionMessage", `${label}寫入中...`, "");
+        google.script.run
+          .withSuccessHandler((result) => {
+            setReviewButtonsDisabled(false);
+            if (!result || result.ok === false) {
+              setMessage("reviewActionMessage", result && result.error ? result.error : `${label}失敗`, "error");
+              return;
+            }
+            setMessage("reviewActionMessage", result.message || `${label}完成`, "success");
+            loadDashboard();
+          })
+          .withFailureHandler((error) => {
+            setReviewButtonsDisabled(false);
+            setMessage("reviewActionMessage", error && error.message ? error.message : `${label}失敗`, "error");
+          })
+          .reviewCaseAction(payload);
+      }
+
+      function buildReviewPayload(action, item) {
+        let comment = "";
+        let deadline = "";
+        if (action === "approve") {
+          comment = window.prompt("查核通過說明，可留空：", item.completion || item.progress || "");
+          if (comment === null) return null;
+          comment = comment.trim();
+        } else if (action === "return") {
+          comment = window.prompt("請填寫退回補件原因或補件要求：", "");
+          if (comment === null) return null;
+          comment = comment.trim();
+          if (!comment) {
+            setMessage("reviewActionMessage", "退回補件請填寫原因或要求。", "error");
+            return null;
+          }
+        } else if (action === "comment") {
+          comment = window.prompt("請填寫主管意見：", "");
+          if (comment === null) return null;
+          comment = comment.trim();
+          if (!comment) {
+            setMessage("reviewActionMessage", "請填寫主管意見。", "error");
+            return null;
+          }
+        } else if (action === "extend") {
+          deadline = window.prompt("請填寫新 Deadline，例：2026-06-10 17:00", item.deadline || "");
+          if (deadline === null) return null;
+          deadline = deadline.trim();
+          if (!deadline) {
+            setMessage("reviewActionMessage", "延長 Deadline 請填寫新期限。", "error");
+            return null;
+          }
+          comment = (window.prompt("延長原因或提醒，可留空：", "") || "").trim();
+        }
+        return {
+          projectId: item.projectId,
+          caseId: item.caseId,
+          action,
+          comment,
+          deadline,
+        };
+      }
+
+      function reviewActionLabel(action) {
+        return {
+          approve: "查核通過",
+          return: "退回補件",
+          comment: "加註主管意見",
+          extend: "延長 Deadline",
+        }[action] || "主管查核";
+      }
+
+      function setReviewButtonsDisabled(disabled) {
+        document.querySelectorAll("[data-review-action]").forEach((button) => {
+          button.disabled = disabled;
+        });
       }
 
       function filterReviewQueue(items) {

@@ -163,6 +163,85 @@ function createAssignment(payload) {
   };
 }
 
+function reviewCaseAction(payload) {
+  const auth = currentAuth_();
+  if (!auth.ok) return { ok: false, error: auth.message };
+
+  const project = PROJECTS.find((item) => item.id === String(payload.projectId || ""));
+  if (!project) return { ok: false, error: "找不到指定專案。" };
+  const caseId = String(payload.caseId || "").trim();
+  const action = String(payload.action || "").trim();
+  const comment = String(payload.comment || "").trim();
+  const newDeadline = String(payload.deadline || "").trim();
+  if (!caseId || !action) return { ok: false, error: "請指定案件與查核動作。" };
+  if (action === "return" && !comment) return { ok: false, error: "退回補件請填寫原因或補件要求。" };
+  if (action === "comment" && !comment) return { ok: false, error: "請填寫主管意見。" };
+  if (action === "extend" && !newDeadline) return { ok: false, error: "延長 Deadline 請填寫新期限。" };
+
+  const spreadsheet = SpreadsheetApp.openById(project.spreadsheetId);
+  const caseSheet = ensureSheet_(spreadsheet, "案件追蹤列管", CASE_HEADERS);
+  const updateSheet = ensureSheet_(spreadsheet, "案件進度紀錄", CASE_UPDATE_HEADERS);
+  const row = findCaseRow_(caseSheet, caseId);
+  if (!row) return { ok: false, error: `找不到案件編號：${caseId}` };
+
+  const timestamp = nowText_();
+  const headers = caseSheet.getRange(1, 1, 1, caseSheet.getLastColumn()).getValues()[0];
+  const currentStatus = getByHeader_(caseSheet, headers, row, "狀態") || "進行中";
+  const currentProgress = getByHeader_(caseSheet, headers, row, "目前進度說明");
+  const currentCompletion = getByHeader_(caseSheet, headers, row, "完成/解除列管說明");
+  const currentNote = getByHeader_(caseSheet, headers, row, "備註");
+  const actionText = reviewActionText_(action);
+  const progress = comment ? `${actionText}：${comment}` : actionText;
+  let status = currentStatus;
+  let completion = "";
+
+  if (action === "approve") {
+    status = "已完成";
+    completion = comment || currentCompletion || currentProgress || "主管查核通過，解除列管。";
+    setByHeader_(caseSheet, headers, row, "狀態", status);
+    setByHeader_(caseSheet, headers, row, "完成/解除列管說明", completion);
+    setByHeader_(caseSheet, headers, row, "解除列管時間", timestamp);
+  } else if (action === "return") {
+    status = "進行中";
+    setByHeader_(caseSheet, headers, row, "狀態", status);
+  } else if (action === "comment") {
+    status = currentStatus;
+  } else if (action === "extend") {
+    status = currentStatus === "已完成" ? "進行中" : currentStatus;
+    setByHeader_(caseSheet, headers, row, "狀態", status);
+    setByHeader_(caseSheet, headers, row, "Deadline", newDeadline);
+  } else {
+    return { ok: false, error: "不支援的查核動作。" };
+  }
+
+  setByHeader_(caseSheet, headers, row, "目前進度說明", progress);
+  setByHeader_(caseSheet, headers, row, "回報人", auth.email);
+  setByHeader_(caseSheet, headers, row, "回報時間", timestamp);
+  setByHeader_(caseSheet, headers, row, "備註", appendSupervisorNote_(currentNote, timestamp, actionText, comment, newDeadline));
+
+  updateSheet.appendRow([
+    "CASE-UPD" + Utilities.formatDate(new Date(), "Asia/Taipei", "yyyyMMddHHmmss") + "-" + Math.floor(Math.random() * 1000),
+    caseId,
+    timestamp.slice(0, 10),
+    auth.email,
+    progress,
+    status,
+    completion,
+    "",
+    action === "extend" ? `新 Deadline：${newDeadline}${comment ? "；" + comment : ""}` : comment,
+  ]);
+
+  return {
+    ok: true,
+    action,
+    caseId,
+    project: project.name,
+    status,
+    updatedAt: timestamp,
+    message: `${project.name} / ${caseId} 已完成${actionText}`,
+  };
+}
+
 function sendReminderDigest() {
   const auth = currentAuth_();
   if (!auth.ok) return { ok: false, error: auth.message };
@@ -825,6 +904,47 @@ function nextCaseId_(sheet) {
     if (match) maxSerial = Math.max(maxSerial, Number(match[1]));
   });
   return "CASE-" + String(Math.max(maxSerial, values.length) + 1).padStart(4, "0");
+}
+
+function findCaseRow_(sheet, caseId) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return 0;
+  const values = sheet.getRange(2, 1, lastRow - 1, 1).getDisplayValues();
+  for (let index = 0; index < values.length; index += 1) {
+    if (String(values[index][0] || "").trim() === caseId) return index + 2;
+  }
+  return 0;
+}
+
+function getByHeader_(sheet, headers, row, header) {
+  const column = headers.indexOf(header) + 1;
+  if (column <= 0) return "";
+  return sheet.getRange(row, column).getDisplayValue();
+}
+
+function setByHeader_(sheet, headers, row, header, value) {
+  const column = headers.indexOf(header) + 1;
+  if (column <= 0) return;
+  sheet.getRange(row, column).setValue(value);
+}
+
+function reviewActionText_(action) {
+  const labels = {
+    approve: "主管查核通過",
+    return: "主管退回補件",
+    comment: "主管加註意見",
+    extend: "主管延長 Deadline",
+  };
+  return labels[action] || "主管查核";
+}
+
+function appendSupervisorNote_(currentNote, timestamp, actionText, comment, deadline) {
+  const addition = [
+    `${timestamp} ${actionText}`,
+    deadline ? `新 Deadline：${deadline}` : "",
+    comment || "",
+  ].filter(Boolean).join(" / ");
+  return [currentNote, addition].filter(Boolean).join("\n");
 }
 
 function buildReminderText_(data) {
