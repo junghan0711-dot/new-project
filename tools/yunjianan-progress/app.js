@@ -390,11 +390,6 @@
     const currentValue = select.value;
     const names = new Set();
     state.items.forEach((item) => splitNames(workItemPeopleText(item)).forEach((name) => names.add(name)));
-    state.tasks.forEach((task) => splitNames(task.owner).forEach((name) => names.add(name)));
-    state.cases.forEach((record) => splitNames(record.assignee).forEach((name) => names.add(name)));
-    state.consultations.forEach((record) => splitNames(record.owner).forEach((name) => names.add(name)));
-    const reporter = $("reporterInput").value.trim();
-    if (reporter) names.add(displayPersonName(reporter));
     const sortedNames = [...names].sort((a, b) => a.localeCompare(b, "zh-Hant"));
     select.innerHTML = '<option value="">請選擇同仁</option>';
     sortedNames.forEach((name) => {
@@ -414,10 +409,8 @@
       return;
     }
     if (![...select.options].some((option) => option.value === reporter)) {
-      const option = document.createElement("option");
-      option.value = reporter;
-      option.textContent = reporter;
-      select.appendChild(option);
+      if (shouldRender) renderMyWork();
+      return;
     }
     select.value = reporter;
     if (shouldRender) renderMyWork();
