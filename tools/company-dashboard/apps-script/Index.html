@@ -448,6 +448,10 @@
         white-space: pre;
       }
 
+      .report-note {
+        min-height: 88px;
+      }
+
       .people-table {
         width: 100%;
         border-collapse: collapse;
@@ -672,9 +676,18 @@
               <option value="monthly">月報</option>
             </select>
           </label>
+          <label>
+            <span>報告期間</span>
+            <input id="reportPeriodInput" type="text" />
+          </label>
           <button id="refreshReportButton" class="button" type="button">重新產生</button>
           <button id="copyReportButton" class="button primary" type="button">複製報告</button>
+          <button id="downloadReportButton" class="button" type="button">下載文字檔</button>
         </div>
+        <label>
+          <span>主管補充重點</span>
+          <textarea id="reportNoteInput" class="report-note" rows="3" placeholder="可填入本週決策、下週重點、需跨部門協調事項"></textarea>
+        </label>
         <textarea id="reportText" class="report-textarea" readonly></textarea>
         <p id="reportMessage" class="message" role="status"></p>
       </section>
@@ -816,9 +829,12 @@
       $("reviewPriorityFilter").addEventListener("change", updateReviewFilters);
       $("reviewRows").addEventListener("click", handleReviewActionClick);
       $("copyReviewQueueButton").addEventListener("click", copyCurrentReviewQueue);
-      $("reportTypeInput").addEventListener("change", renderReport);
+      $("reportTypeInput").addEventListener("change", handleReportTypeChange);
+      $("reportPeriodInput").addEventListener("input", renderReport);
+      $("reportNoteInput").addEventListener("input", renderReport);
       $("refreshReportButton").addEventListener("click", renderReport);
       $("copyReportButton").addEventListener("click", copyReportText);
+      $("downloadReportButton").addEventListener("click", downloadReportText);
       $("peopleStatusFilters").addEventListener("click", handlePeopleStatusFilterClick);
       $("peopleStatusGrid").addEventListener("click", handlePeopleStatusActionClick);
       $("copyPeopleStatusButton").addEventListener("click", copyCurrentPeopleStatusList);
@@ -1387,8 +1403,14 @@
           setMessage("reportMessage", "資料尚未讀取完成。", "");
           return;
         }
+        ensureReportPeriod();
         $("reportText").value = buildCompanyReport(dashboardData, $("reportTypeInput").value);
         setMessage("reportMessage", "報告已依目前總控台資料產生。", "");
+      }
+
+      function handleReportTypeChange() {
+        $("reportPeriodInput").value = defaultReportPeriod($("reportTypeInput").value);
+        renderReport();
       }
 
       async function copyReportText() {
@@ -1405,8 +1427,27 @@
         }
       }
 
+      function downloadReportText() {
+        const text = $("reportText").value;
+        if (!text) {
+          setMessage("reportMessage", "目前沒有可下載的報告。", "error");
+          return;
+        }
+        const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = reportFileName();
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+        setMessage("reportMessage", "已下載報告文字檔。", "success");
+      }
+
       function buildCompanyReport(data, type) {
         const label = type === "monthly" ? "月報" : "週報";
+        const period = $("reportPeriodInput").value.trim() || defaultReportPeriod(type);
+        const note = $("reportNoteInput").value.trim();
         const totals = data.totals || {};
         const projects = data.projects || [];
         const reviewQueue = data.reviewQueue || [];
@@ -1417,6 +1458,7 @@
         const mediumPeople = peopleStatus.filter((person) => person.level === "medium");
         const lines = [
           `公司專案${label}`,
+          `報告期間：${period}`,
           `資料時間：${data.generatedAt || ""}`,
           `主管帳號：${data.viewer || ""}`,
           "",
@@ -1439,7 +1481,37 @@
           "六、建議下一步",
           ...reportNextStepLines(reviewQueue, highPeople, issues),
         ];
+        if (note) {
+          lines.push("", "七、主管補充重點", ...note.split("\n").map((line) => `- ${line}`));
+        }
         return lines.join("\n");
+      }
+
+      function ensureReportPeriod() {
+        if (!$("reportPeriodInput").value.trim()) {
+          $("reportPeriodInput").value = defaultReportPeriod($("reportTypeInput").value);
+        }
+      }
+
+      function defaultReportPeriod(type) {
+        const now = new Date();
+        if (type === "monthly") return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+        const start = new Date(now);
+        const dayOffset = (now.getDay() + 6) % 7;
+        start.setDate(now.getDate() - dayOffset);
+        const end = new Date(start);
+        end.setDate(start.getDate() + 6);
+        return `${formatLocalDate(start)} 至 ${formatLocalDate(end)}`;
+      }
+
+      function reportFileName() {
+        const type = $("reportTypeInput").value === "monthly" ? "月報" : "週報";
+        const period = $("reportPeriodInput").value.trim().replace(/[^0-9A-Za-z\u4e00-\u9fa5]+/g, "-").replace(/^-|-$/g, "");
+        return `公司專案${type}-${period || formatLocalDate(new Date())}.txt`;
+      }
+
+      function formatLocalDate(date) {
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
       }
 
       function reportProjectLines(projects) {
