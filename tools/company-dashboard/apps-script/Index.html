@@ -596,6 +596,9 @@
             <h2>主管待查核清單</h2>
             <p id="reviewCountText" class="subtle"></p>
           </div>
+          <div class="top-actions">
+            <button id="copyReviewQueueButton" class="button compact" type="button">複製目前清單</button>
+          </div>
         </div>
         <div class="review-filters">
           <label>
@@ -773,6 +776,7 @@
       $("reviewStatusFilter").addEventListener("change", updateReviewFilters);
       $("reviewPriorityFilter").addEventListener("change", updateReviewFilters);
       $("reviewRows").addEventListener("click", handleReviewActionClick);
+      $("copyReviewQueueButton").addEventListener("click", copyCurrentReviewQueue);
       $("peopleStatusFilters").addEventListener("click", handlePeopleStatusFilterClick);
       $("peopleStatusGrid").addEventListener("click", handlePeopleStatusActionClick);
       $("copyPeopleStatusButton").addEventListener("click", copyCurrentPeopleStatusList);
@@ -1143,6 +1147,52 @@
             </td>
           </tr>
         `).join("") : '<tr><td colspan="10">目前沒有符合條件的待查核案件。</td></tr>';
+      }
+
+      async function copyCurrentReviewQueue() {
+        if (!dashboardData) {
+          setMessage("reviewActionMessage", "資料尚未讀取完成。", "error");
+          return;
+        }
+        const items = filterReviewQueue(dashboardData.reviewQueue || []);
+        if (!items.length) {
+          setMessage("reviewActionMessage", "目前篩選沒有可複製的待查核案件。", "error");
+          return;
+        }
+        const filters = [
+          `專案：${selectedOptionText("reviewProjectFilter")}`,
+          `同仁：${selectedOptionText("reviewAssigneeFilter")}`,
+          `狀態：${selectedOptionText("reviewStatusFilter")}`,
+          `優先序：${selectedOptionText("reviewPriorityFilter")}`,
+        ].join(" / ");
+        const text = [
+          "主管待查核清單",
+          `資料時間：${dashboardData.generatedAt || ""}`,
+          `篩選：${filters}`,
+          `件數：${formatNumber(items.length)}`,
+          "",
+          ...items.slice(0, 80).map((item, index) => buildReviewQueueSummary(item, index + 1)),
+        ].join("\n");
+        try {
+          await copyText(text);
+          setMessage("reviewActionMessage", `已複製目前 ${formatNumber(items.length)} 筆待查核清單。`, "success");
+        } catch (error) {
+          setMessage("reviewActionMessage", "複製失敗，請改用手動選取。", "error");
+        }
+      }
+
+      function buildReviewQueueSummary(item, index) {
+        return [
+          `${index}. [${item.reason || "需查核"}] ${item.office || item.project || ""} / ${item.caseId || ""} ${item.title || "未命名案件"}`,
+          `   同仁：${item.assignee || "未指定"} / 狀態：${item.status || "未填"} / 優先序：${item.priority || "未填"} / Deadline：${item.deadline || "未填"}`,
+          `   最近回報：${item.reportedAt || "尚無紀錄"} ${item.reporter ? "/ " + item.reporter : ""}`,
+          `   最新進度：${shortText(item.progress || item.completion || "", 120)}`,
+        ].join("\n");
+      }
+
+      function selectedOptionText(id) {
+        const select = $(id);
+        return select.options[select.selectedIndex] ? select.options[select.selectedIndex].textContent : "全部";
       }
 
       function handleReviewActionClick(event) {
