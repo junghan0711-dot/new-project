@@ -112,9 +112,21 @@
         cursor: not-allowed;
       }
 
+      .button.active {
+        background: var(--brand);
+        color: #ffffff;
+      }
+
       .top-actions {
         display: flex;
         gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .filter-row {
+        display: flex;
+        gap: 8px;
         align-items: center;
         flex-wrap: wrap;
       }
@@ -578,7 +590,7 @@
           <div id="priorityReminderList" class="list"></div>
         </section>
       </section>
-      <section class="panel block" aria-label="主管待查核清單">
+      <section id="reviewPanel" class="panel block" aria-label="主管待查核清單">
         <div class="project-head">
           <div>
             <h2>主管待查核清單</h2>
@@ -700,7 +712,18 @@
           <div id="issueList" class="list"></div>
         </section>
         <section class="panel block" style="grid-column: 1 / -1">
-          <h2>同仁回報提醒</h2>
+          <div class="project-head">
+            <div>
+              <h2>同仁回報提醒</h2>
+              <p id="peopleStatusCountText" class="subtle"></p>
+            </div>
+            <div id="peopleStatusFilters" class="filter-row" aria-label="同仁回報提醒篩選">
+              <button class="button compact active" type="button" data-people-status-filter="all">全部</button>
+              <button class="button compact" type="button" data-people-status-filter="high">今天要追</button>
+              <button class="button compact" type="button" data-people-status-filter="medium">本週追蹤</button>
+              <button class="button compact" type="button" data-people-status-filter="updated">有更新</button>
+            </div>
+          </div>
           <div id="peopleStatusGrid" class="people-status-grid"></div>
         </section>
         <section class="panel block" style="grid-column: 1 / -1">
@@ -738,6 +761,7 @@
         status: "",
         priority: "",
       };
+      let peopleStatusFilter = "all";
 
       $("refreshButton").addEventListener("click", loadDashboard);
       $("sendReminderButton").addEventListener("click", sendReminderDigest);
@@ -748,6 +772,8 @@
       $("reviewStatusFilter").addEventListener("change", updateReviewFilters);
       $("reviewPriorityFilter").addEventListener("change", updateReviewFilters);
       $("reviewRows").addEventListener("click", handleReviewActionClick);
+      $("peopleStatusFilters").addEventListener("click", handlePeopleStatusFilterClick);
+      $("peopleStatusGrid").addEventListener("click", handlePeopleStatusActionClick);
       loadDashboard();
 
       function loadDashboard() {
@@ -912,7 +938,9 @@
       }
 
       function renderPeopleStatus(items) {
-        $("peopleStatusGrid").innerHTML = items.length ? items.slice(0, 18).map((person) => {
+        const filtered = filterPeopleStatus(items);
+        $("peopleStatusCountText").textContent = `目前顯示 ${formatNumber(filtered.length)} 位，點「查看待查核」可直接篩到同仁案件。`;
+        $("peopleStatusGrid").innerHTML = filtered.length ? filtered.slice(0, 18).map((person) => {
           const dotClass = person.level === "high" ? "red" : person.level === "medium" ? "yellow" : "green";
           const reasonText = (person.reasons || []).length ? person.reasons.join("；") : "目前沒有高優先查核原因。";
           return `
@@ -933,9 +961,42 @@
                 ${mini("今日/3日到期", `${formatNumber(person.dueToday)}/${formatNumber(person.dueSoon)}`)}
               </div>
               <p class="status-reasons">${escapeHtml(reasonText)}</p>
+              <div class="action-row">
+                <button class="button compact" type="button" data-status-assignee="${escapeHtml(person.name)}">查看待查核</button>
+              </div>
             </article>
           `;
         }).join("") : '<p class="subtle">目前沒有同仁回報資料。</p>';
+      }
+
+      function filterPeopleStatus(items) {
+        return (items || []).filter((person) => {
+          if (peopleStatusFilter === "high") return person.level === "high";
+          if (peopleStatusFilter === "medium") return person.level === "medium";
+          if (peopleStatusFilter === "updated") return Number(person.recentUpdates || 0) > 0;
+          return true;
+        });
+      }
+
+      function handlePeopleStatusFilterClick(event) {
+        const button = event.target.closest("[data-people-status-filter]");
+        if (!button) return;
+        peopleStatusFilter = button.dataset.peopleStatusFilter || "all";
+        document.querySelectorAll("[data-people-status-filter]").forEach((item) => {
+          item.classList.toggle("active", item === button);
+        });
+        renderPeopleStatus(dashboardData ? dashboardData.peopleStatus || [] : []);
+      }
+
+      function handlePeopleStatusActionClick(event) {
+        const button = event.target.closest("[data-status-assignee]");
+        if (!button || !dashboardData) return;
+        const name = button.dataset.statusAssignee || "";
+        reviewFilters.assignee = name;
+        renderReviewFilters(dashboardData);
+        renderReviewQueue();
+        setMessage("reviewActionMessage", `已篩選 ${name} 的待查核案件。`, "success");
+        $("reviewPanel").scrollIntoView({ behavior: "smooth", block: "start" });
       }
 
       function renderAssignmentProjects(projects) {
@@ -958,7 +1019,7 @@
           value: project.id,
           label: project.name,
         })), "全部專案", reviewFilters.projectId);
-        setSelectOptions("reviewAssigneeFilter", uniqueOptions((payload.reviewQueue || []).map((item) => item.assignee)), "全部同仁", reviewFilters.assignee);
+        setSelectOptions("reviewAssigneeFilter", uniqueOptions((payload.reviewQueue || []).flatMap((item) => splitClientNames(item.assignee))), "全部同仁", reviewFilters.assignee);
         setSelectOptions("reviewStatusFilter", uniqueOptions((payload.reviewQueue || []).map((item) => item.status)), "全部狀態", reviewFilters.status);
         setSelectOptions("reviewPriorityFilter", uniqueOptions((payload.reviewQueue || []).map((item) => item.priority)), "全部優先序", reviewFilters.priority);
       }
@@ -1101,7 +1162,7 @@
       function filterReviewQueue(items) {
         return items.filter((item) => {
           if (reviewFilters.projectId && item.projectId !== reviewFilters.projectId) return false;
-          if (reviewFilters.assignee && item.assignee !== reviewFilters.assignee) return false;
+          if (reviewFilters.assignee && splitClientNames(item.assignee).indexOf(reviewFilters.assignee) < 0) return false;
           if (reviewFilters.status && item.status !== reviewFilters.status) return false;
           if (reviewFilters.priority && item.priority !== reviewFilters.priority) return false;
           return true;
@@ -1124,6 +1185,13 @@
         return [...new Set(values.filter(Boolean))]
           .sort((a, b) => a.localeCompare(b, "zh-Hant"))
           .map((value) => ({ value, label: value }));
+      }
+
+      function splitClientNames(value) {
+        return String(value || "")
+          .split(/[\n、,，/]+/)
+          .map((name) => name.trim().replace(/\(.+?\)/g, ""))
+          .filter((name) => name && ["主責", "協辦", "主責及協辦", "負責同仁"].indexOf(name) < 0);
       }
 
       function renderReminder(payload) {
