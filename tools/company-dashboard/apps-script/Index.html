@@ -722,6 +722,7 @@
               <button class="button compact" type="button" data-people-status-filter="high">今天要追</button>
               <button class="button compact" type="button" data-people-status-filter="medium">本週追蹤</button>
               <button class="button compact" type="button" data-people-status-filter="updated">有更新</button>
+              <button id="copyPeopleStatusButton" class="button compact" type="button">複製目前名單</button>
             </div>
           </div>
           <div id="peopleStatusGrid" class="people-status-grid"></div>
@@ -774,6 +775,7 @@
       $("reviewRows").addEventListener("click", handleReviewActionClick);
       $("peopleStatusFilters").addEventListener("click", handlePeopleStatusFilterClick);
       $("peopleStatusGrid").addEventListener("click", handlePeopleStatusActionClick);
+      $("copyPeopleStatusButton").addEventListener("click", copyCurrentPeopleStatusList);
       loadDashboard();
 
       function loadDashboard() {
@@ -1028,6 +1030,49 @@
           reasons,
           "請協助補上最新進度、完成說明或佐證資料，謝謝。",
         ].join("\n");
+      }
+
+      async function copyCurrentPeopleStatusList() {
+        if (!dashboardData) {
+          $("peopleStatusCountText").textContent = "資料尚未讀取完成。";
+          return;
+        }
+        const people = filterPeopleStatus(dashboardData.peopleStatus || []).slice(0, 18);
+        if (!people.length) {
+          $("peopleStatusCountText").textContent = "目前篩選沒有可複製的同仁提醒。";
+          return;
+        }
+        const title = peopleStatusFilterLabel();
+        const text = [
+          `公司專案回報提醒：${title}`,
+          `產生時間：${dashboardData.generatedAt || ""}`,
+          "",
+          ...people.map((person, index) => buildPersonReminderSummary(person, index + 1)),
+        ].join("\n");
+        try {
+          await copyText(text);
+          $("peopleStatusCountText").textContent = `已複製「${title}」${formatNumber(people.length)} 位同仁提醒摘要。`;
+        } catch (error) {
+          $("peopleStatusCountText").textContent = "複製失敗，請改用逐筆複製。";
+        }
+      }
+
+      function buildPersonReminderSummary(person, index) {
+        const reasons = (person.reasons || []).length ? person.reasons.join("；") : "請確認最新進度是否已補齊";
+        return [
+          `${index}. ${person.name} / ${person.actionText || "持續觀察"} / ${person.projects || "未標示專案"}`,
+          `   近7日更新 ${formatNumber(person.recentUpdates)}；需追蹤 ${formatNumber(person.needsFollowUp)}；未完成案件 ${formatNumber(person.openCases)}；逾期 ${formatNumber(person.overdueCases)}；待查核 ${formatNumber(person.pendingReview)}；今日/3日到期 ${formatNumber(person.dueToday)}/${formatNumber(person.dueSoon)}`,
+          `   待確認：${reasons}`,
+        ].join("\n");
+      }
+
+      function peopleStatusFilterLabel() {
+        return {
+          all: "全部",
+          high: "今天要追",
+          medium: "本週追蹤",
+          updated: "有更新",
+        }[peopleStatusFilter] || "全部";
       }
 
       function renderAssignmentProjects(projects) {
