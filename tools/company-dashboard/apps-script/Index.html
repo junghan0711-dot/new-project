@@ -430,6 +430,24 @@
         white-space: pre;
       }
 
+      .report-controls {
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+        flex-wrap: wrap;
+      }
+
+      .report-controls label {
+        min-width: 180px;
+      }
+
+      .report-textarea {
+        min-height: 420px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        font-size: 13px;
+        white-space: pre;
+      }
+
       .people-table {
         width: 100%;
         border-collapse: collapse;
@@ -639,6 +657,27 @@
           </table>
         </div>
       </section>
+      <section class="panel block" aria-label="週報月報產生器">
+        <div class="project-head">
+          <div>
+            <h2>週報 / 月報產生器</h2>
+            <p class="subtle">依目前總控台資料產生可貼到會議紀錄、Email 或月報的文字摘要。</p>
+          </div>
+        </div>
+        <div class="report-controls">
+          <label>
+            <span>報告類型</span>
+            <select id="reportTypeInput">
+              <option value="weekly">週報</option>
+              <option value="monthly">月報</option>
+            </select>
+          </label>
+          <button id="refreshReportButton" class="button" type="button">重新產生</button>
+          <button id="copyReportButton" class="button primary" type="button">複製報告</button>
+        </div>
+        <textarea id="reportText" class="report-textarea" readonly></textarea>
+        <p id="reportMessage" class="message" role="status"></p>
+      </section>
       <section class="dashboard-grid">
         <section class="panel block">
           <h2>主管交辦中心</h2>
@@ -777,6 +816,9 @@
       $("reviewPriorityFilter").addEventListener("change", updateReviewFilters);
       $("reviewRows").addEventListener("click", handleReviewActionClick);
       $("copyReviewQueueButton").addEventListener("click", copyCurrentReviewQueue);
+      $("reportTypeInput").addEventListener("change", renderReport);
+      $("refreshReportButton").addEventListener("click", renderReport);
+      $("copyReportButton").addEventListener("click", copyReportText);
       $("peopleStatusFilters").addEventListener("click", handlePeopleStatusFilterClick);
       $("peopleStatusGrid").addEventListener("click", handlePeopleStatusActionClick);
       $("copyPeopleStatusButton").addEventListener("click", copyCurrentPeopleStatusList);
@@ -825,6 +867,7 @@
         renderFollowUps(payload.followUps);
         renderIssues(payload.issues);
         renderReminder(payload);
+        renderReport();
         renderPeopleStatus(payload.peopleStatus || []);
         renderWorkload(payload.workload);
         renderPeople(payload.people);
@@ -1336,6 +1379,114 @@
             <p>${escapeHtml(item.assignee || "未指定")} / ${escapeHtml(item.reason || "")}</p>
           </article>
         `).join("") : '<p class="subtle">目前沒有高優先提醒。</p>';
+      }
+
+      function renderReport() {
+        if (!dashboardData) {
+          $("reportText").value = "";
+          setMessage("reportMessage", "資料尚未讀取完成。", "");
+          return;
+        }
+        $("reportText").value = buildCompanyReport(dashboardData, $("reportTypeInput").value);
+        setMessage("reportMessage", "報告已依目前總控台資料產生。", "");
+      }
+
+      async function copyReportText() {
+        const text = $("reportText").value;
+        if (!text) {
+          setMessage("reportMessage", "目前沒有可複製的報告。", "error");
+          return;
+        }
+        try {
+          await copyText(text, $("reportText"));
+          setMessage("reportMessage", "已複製報告文字。", "success");
+        } catch (error) {
+          setMessage("reportMessage", "複製失敗，請直接選取報告文字。", "error");
+        }
+      }
+
+      function buildCompanyReport(data, type) {
+        const label = type === "monthly" ? "月報" : "週報";
+        const totals = data.totals || {};
+        const projects = data.projects || [];
+        const reviewQueue = data.reviewQueue || [];
+        const peopleStatus = data.peopleStatus || [];
+        const issues = data.issues || [];
+        const priorities = data.priorities || {};
+        const highPeople = peopleStatus.filter((person) => person.level === "high");
+        const mediumPeople = peopleStatus.filter((person) => person.level === "medium");
+        const lines = [
+          `公司專案${label}`,
+          `資料時間：${data.generatedAt || ""}`,
+          `主管帳號：${data.viewer || ""}`,
+          "",
+          "一、整體狀態",
+          `- 專案數：${formatNumber(totals.projects)}；紅燈 ${formatNumber(totals.redProjects)}、黃燈 ${formatNumber(totals.yellowProjects)}、綠燈 ${formatNumber(totals.greenProjects)}`,
+          `- 待追蹤工項：${formatNumber(totals.needsFollowUp)}；未完成案件：${formatNumber(totals.openCases)}；本月諮詢輔導：${formatNumber(totals.consultationsThisMonth)}`,
+          "",
+          "二、各專案摘要",
+          ...reportProjectLines(projects),
+          "",
+          "三、待查核與優先追蹤",
+          ...reportReviewLines(reviewQueue, priorities),
+          "",
+          "四、同仁回報狀態",
+          ...reportPeopleLines(highPeople, mediumPeople),
+          "",
+          "五、資料品質提醒",
+          ...reportIssueLines(issues),
+          "",
+          "六、建議下一步",
+          ...reportNextStepLines(reviewQueue, highPeople, issues),
+        ];
+        return lines.join("\n");
+      }
+
+      function reportProjectLines(projects) {
+        if (!projects.length) return ["- 目前沒有專案資料。"];
+        return projects.map((project, index) => {
+          const status = project.status === "red" ? "紅燈" : project.status === "yellow" ? "黃燈" : "綠燈";
+          const metrics = project.metrics || {};
+          return `${index + 1}. ${project.name}：${status}；工項 ${formatNumber(metrics.doneItems)}/${formatNumber(metrics.items)}；需追蹤 ${formatNumber(metrics.needsFollowUp)}；未完成案件 ${formatNumber(metrics.openCases)}；逾期 ${formatNumber(metrics.overdueCases)}；待查核 ${formatNumber(metrics.awaitingReview)}；本月輔導 ${formatNumber(metrics.consultationsThisMonth)}`;
+        });
+      }
+
+      function reportReviewLines(reviewQueue, priorities) {
+        const lines = [
+          `- 逾期：${formatNumber((priorities.overdue || []).length)}；今天必追：${formatNumber((priorities.today || []).length)}；本週需追：${formatNumber((priorities.week || []).length)}；待查核清單：${formatNumber(reviewQueue.length)}`,
+        ];
+        const topItems = reviewQueue.slice(0, 10);
+        if (!topItems.length) return lines.concat(["- 目前沒有待查核案件。"]);
+        return lines.concat(topItems.map((item, index) => (
+          `${index + 1}. [${item.reason || "需查核"}] ${item.office || item.project || ""} / ${item.caseId || ""} ${item.title || "未命名案件"} / ${item.assignee || "未指定"} / Deadline：${item.deadline || "未填"}`
+        )));
+      }
+
+      function reportPeopleLines(highPeople, mediumPeople) {
+        const lines = [
+          `- 今天要追：${formatNumber(highPeople.length)} 位；本週追蹤：${formatNumber(mediumPeople.length)} 位`,
+        ];
+        const people = highPeople.concat(mediumPeople).slice(0, 12);
+        if (!people.length) return lines.concat(["- 目前沒有高優先同仁提醒。"]);
+        return lines.concat(people.map((person, index) => (
+          `${index + 1}. ${person.name} / ${person.actionText || "持續觀察"} / ${person.projects || ""} / 未完成案件 ${formatNumber(person.openCases)} / 逾期 ${formatNumber(person.overdueCases)} / 待查核 ${formatNumber(person.pendingReview)} / 近7日更新 ${formatNumber(person.recentUpdates)}`
+        )));
+      }
+
+      function reportIssueLines(issues) {
+        if (!issues.length) return ["- 目前沒有資料品質提醒。"];
+        return issues.slice(0, 10).map((issue, index) => (
+          `${index + 1}. [${issue.level || "notice"}] ${issue.project || ""} / ${issue.title || ""}：${issue.detail || ""}`
+        ));
+      }
+
+      function reportNextStepLines(reviewQueue, highPeople, issues) {
+        const steps = [];
+        if (reviewQueue.length) steps.push("處理主管待查核清單前 10 筆，優先處理逾期、今日到期與待查核案件。");
+        if (highPeople.length) steps.push("提醒今天要追的同仁補最新進度、完成說明或佐證資料。");
+        if (issues.length) steps.push("補齊資料品質提醒中的缺漏欄位，避免月底彙整時資料不完整。");
+        if (!steps.length) steps.push("維持目前回報節奏，週五前再次確認已完成案件是否可解除列管。");
+        return steps.map((step, index) => `${index + 1}. ${step}`);
       }
 
       function submitAssignment(event) {
