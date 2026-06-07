@@ -90,6 +90,7 @@ function getDashboardData() {
     projects,
     followUps: collectFollowUps_(projects),
     people: collectPeople_(projects),
+    peopleStatus: collectPeopleStatus_(projects),
     issues: collectIssues_(projects),
     priorities: collectPriorityGroups_(projects),
     reviewQueue: collectReviewQueue_(projects),
@@ -695,6 +696,93 @@ function collectPeople_(projects) {
     if (b.needsFollowUp !== a.needsFollowUp) return b.needsFollowUp - a.needsFollowUp;
     return a.name.localeCompare(b.name, "zh-Hant");
   });
+}
+
+function collectPeopleStatus_(projects) {
+  const map = {};
+  collectPeople_(projects).forEach((person) => {
+    const target = ensurePeopleStatus_(map, person.name);
+    target.projects = target.projects.concat(splitNames_(person.projects));
+    target.totalItems += person.total;
+    target.recentUpdates += person.recentUpdates;
+    target.needsFollowUp += person.needsFollowUp;
+    if (compareDate_(person.latestDate, target.latestDate) > 0) target.latestDate = person.latestDate;
+  });
+  collectWorkload_(projects).forEach((person) => {
+    const target = ensurePeopleStatus_(map, person.name);
+    target.projects = target.projects.concat(splitNames_(person.projects));
+    target.openItems += person.openItems;
+    target.openCases += person.openCases;
+    target.overdueCases += person.overdue;
+    target.consultationsThisMonth += person.consultationsThisMonth;
+  });
+  collectReviewQueue_(projects).forEach((item) => {
+    splitNames_(item.assignee).forEach((name) => {
+      const target = ensurePeopleStatus_(map, name);
+      target.projects.push(item.office || item.project || "");
+      target.reviewItems += 1;
+      if (item.reason === "待查核" || item.reason === "已完成待確認") target.pendingReview += 1;
+      if (item.reason === "今日到期") target.dueToday += 1;
+      if (item.reason === "3 日內到期") target.dueSoon += 1;
+      if (item.priority === "急件" && item.status !== "已完成") target.urgentCases += 1;
+      target.reasons.push(`${item.office || item.project || "專案"} / ${item.caseId || "案件"} / ${item.reason || "需查核"}`);
+      if (compareDate_(item.reportedAt, target.latestDate) > 0) target.latestDate = item.reportedAt;
+    });
+  });
+  return Object.keys(map)
+    .filter((name) => name && name !== "未指定")
+    .map((name) => scorePeopleStatus_(map[name]))
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (b.pendingReview !== a.pendingReview) return b.pendingReview - a.pendingReview;
+      return a.name.localeCompare(b.name, "zh-Hant");
+    })
+    .slice(0, 30);
+}
+
+function ensurePeopleStatus_(map, name) {
+  const key = name || "未指定";
+  if (!map[key]) {
+    map[key] = {
+      name: key,
+      projects: [],
+      totalItems: 0,
+      openItems: 0,
+      openCases: 0,
+      recentUpdates: 0,
+      needsFollowUp: 0,
+      overdueCases: 0,
+      pendingReview: 0,
+      dueToday: 0,
+      dueSoon: 0,
+      urgentCases: 0,
+      reviewItems: 0,
+      consultationsThisMonth: 0,
+      latestDate: "",
+      reasons: [],
+      score: 0,
+      level: "normal",
+      actionText: "持續觀察",
+    };
+  }
+  return map[key];
+}
+
+function scorePeopleStatus_(person) {
+  const noRecentUpdate = person.recentUpdates === 0 && (person.openItems > 0 || person.openCases > 0);
+  person.score = (person.overdueCases * 6)
+    + (person.pendingReview * 5)
+    + (person.dueToday * 4)
+    + (person.urgentCases * 3)
+    + (person.dueSoon * 2)
+    + (person.needsFollowUp * 2)
+    + person.openCases
+    + (noRecentUpdate ? 2 : 0);
+  person.level = person.overdueCases > 0 || person.pendingReview > 0 || person.score >= 10 ? "high" : person.score >= 5 ? "medium" : "normal";
+  person.actionText = person.level === "high" ? "今天要追" : person.level === "medium" ? "本週追蹤" : person.recentUpdates > 0 ? "有更新" : "持續觀察";
+  person.projects = [...new Set(person.projects.filter(Boolean))].join("、");
+  person.reasons = [...new Set(person.reasons)].slice(0, 3);
+  return person;
 }
 
 function collectIssues_(projects) {

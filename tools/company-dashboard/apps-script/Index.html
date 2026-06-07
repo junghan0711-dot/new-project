@@ -302,6 +302,7 @@
       }
 
       .workload-grid,
+      .people-status-grid,
       .assignment-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -325,6 +326,36 @@
       .workload-card.medium {
         border-color: #e6b04a;
         background: #fffaf1;
+      }
+
+      .people-status-card {
+        display: grid;
+        gap: 10px;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: #fbfcfd;
+      }
+
+      .people-status-card.high {
+        border-color: #d14b32;
+        background: #fffafa;
+      }
+
+      .people-status-card.medium {
+        border-color: #e6b04a;
+        background: #fffaf1;
+      }
+
+      .status-metrics {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .status-reasons {
+        color: var(--muted);
+        font-size: 13px;
       }
 
       .form-grid {
@@ -494,6 +525,8 @@
         .mini-grid,
         .priority-grid,
         .workload-grid,
+        .people-status-grid,
+        .status-metrics,
         .assignment-grid,
         .review-filters,
         .form-grid {
@@ -667,6 +700,10 @@
           <div id="issueList" class="list"></div>
         </section>
         <section class="panel block" style="grid-column: 1 / -1">
+          <h2>同仁回報提醒</h2>
+          <div id="peopleStatusGrid" class="people-status-grid"></div>
+        </section>
+        <section class="panel block" style="grid-column: 1 / -1">
           <h2>同仁工作量看板</h2>
           <div id="workloadGrid" class="workload-grid"></div>
         </section>
@@ -756,6 +793,7 @@
         renderFollowUps(payload.followUps);
         renderIssues(payload.issues);
         renderReminder(payload);
+        renderPeopleStatus(payload.peopleStatus || []);
         renderWorkload(payload.workload);
         renderPeople(payload.people);
       }
@@ -871,6 +909,33 @@
             </div>
           </article>
         `).join("") : '<p class="subtle">目前沒有工作量資料。</p>';
+      }
+
+      function renderPeopleStatus(items) {
+        $("peopleStatusGrid").innerHTML = items.length ? items.slice(0, 18).map((person) => {
+          const dotClass = person.level === "high" ? "red" : person.level === "medium" ? "yellow" : "green";
+          const reasonText = (person.reasons || []).length ? person.reasons.join("；") : "目前沒有高優先查核原因。";
+          return `
+            <article class="people-status-card ${escapeHtml(person.level || "normal")}">
+              <div class="project-head">
+                <div>
+                  <h3>${escapeHtml(person.name)}</h3>
+                  <p class="subtle">${escapeHtml(person.projects || "")}</p>
+                </div>
+                <span class="status-dot ${dotClass}">${escapeHtml(person.actionText || "持續觀察")}</span>
+              </div>
+              <div class="status-metrics">
+                ${mini("近 7 日更新", person.recentUpdates)}
+                ${mini("需追蹤工項", person.needsFollowUp)}
+                ${mini("未完成案件", person.openCases)}
+                ${mini("逾期案件", person.overdueCases)}
+                ${mini("待查核", person.pendingReview)}
+                ${mini("今日/3日到期", `${formatNumber(person.dueToday)}/${formatNumber(person.dueSoon)}`)}
+              </div>
+              <p class="status-reasons">${escapeHtml(reasonText)}</p>
+            </article>
+          `;
+        }).join("") : '<p class="subtle">目前沒有同仁回報資料。</p>';
       }
 
       function renderAssignmentProjects(projects) {
