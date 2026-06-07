@@ -678,6 +678,11 @@ textarea:focus {
   background: #fffaf1;
 }
 
+.my-work-card.review {
+  border-color: var(--brand);
+  background: #f0fbfc;
+}
+
 .my-work-title {
   display: grid;
   gap: 4px;
@@ -691,6 +696,37 @@ textarea:focus {
 .my-work-card p {
   color: var(--muted);
   font-size: 13px;
+}
+
+.case-reminder-pill {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 24px;
+  border-radius: 999px;
+  padding: 3px 9px;
+  background: #edf2f7;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.case-reminder-pill.overdue,
+.case-reminder-pill.today,
+.case-reminder-pill.urgent {
+  background: #feece8;
+  color: #b8321f;
+}
+
+.case-reminder-pill.soon,
+.case-reminder-pill.high {
+  background: #fff4df;
+  color: #9a6512;
+}
+
+.case-reminder-pill.review {
+  background: #e9f7f8;
+  color: var(--brand);
 }
 
 .my-work-actions {

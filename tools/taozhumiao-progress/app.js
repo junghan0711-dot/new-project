@@ -1505,14 +1505,16 @@
       return;
     }
     cases.slice(0, 18).forEach((record) => {
-      const urgency = caseUrgency(record);
-      const card = myWorkCard(urgency.level === "overdue" ? "alert" : urgency.level ? "soon" : "");
+      const reminder = caseReminder(record);
+      const card = myWorkCard(reminder.cardLevel);
       card.appendChild(myWorkTitle(`${record.caseId ? `${record.caseId} ` : ""}${record.title || "未命名案件"}`, [
+        reminder.label ? `提醒：${reminder.label}` : "",
         record.status ? `狀態：${record.status}` : "",
         record.priority ? `優先序：${record.priority}` : "",
         record.deadline ? `Deadline：${record.deadline}` : "",
-        urgency.label,
+        reminder.detail,
       ]));
+      card.appendChild(myWorkReminderPill(reminder));
       card.appendChild(myWorkText(record.progress || record.instruction || "尚無進度說明"));
       const actions = myWorkActions();
       actions.appendChild(myWorkButton("回報案件", () => openCaseFromMyWork(record)));
@@ -1561,6 +1563,13 @@
     title.appendChild(strong);
     title.appendChild(span);
     return title;
+  }
+
+  function myWorkReminderPill(reminder) {
+    const pill = document.createElement("span");
+    pill.className = `case-reminder-pill ${reminder.level || "normal"}`;
+    pill.textContent = reminder.label || "一般追蹤";
+    return pill;
   }
 
   function myWorkText(text) {
@@ -1745,6 +1754,29 @@
     if (priority === "高") return 2;
     if (priority === "一般") return 1;
     return 0;
+  }
+
+  function caseReminder(record) {
+    const urgency = caseUrgency(record);
+    if (urgency.level === "overdue") {
+      return { label: "已逾期", detail: urgency.label, level: "overdue", cardLevel: "alert", rank: 70 };
+    }
+    if (urgency.level === "today") {
+      return { label: "今天要追", detail: urgency.label, level: "today", cardLevel: "alert", rank: 60 };
+    }
+    if (record.status === "待查核") {
+      return { label: "待查核", detail: "請補齊完成說明或佐證，等待主管確認", level: "review", cardLevel: "review", rank: 55 };
+    }
+    if (urgency.level === "soon") {
+      return { label: "本週追蹤", detail: urgency.label, level: "soon", cardLevel: "soon", rank: 50 };
+    }
+    if (record.priority === "急件") {
+      return { label: "急件", detail: "優先序為急件，請優先處理或回報", level: "urgent", cardLevel: "alert", rank: 45 };
+    }
+    if (record.priority === "高") {
+      return { label: "高優先", detail: "優先序為高，請持續更新進度", level: "high", cardLevel: "soon", rank: 35 };
+    }
+    return { label: "一般追蹤", detail: "", level: "normal", cardLevel: "", rank: 10 };
   }
 
   function caseUrgency(record) {
