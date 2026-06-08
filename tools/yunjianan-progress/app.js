@@ -40,7 +40,6 @@
     $("statusFilter").addEventListener("change", applyFilters);
     $("searchInput").addEventListener("input", applyFilters);
     $("sourceSearchInput").addEventListener("input", renderSourceTable);
-    $("contactSearchInput").addEventListener("input", renderContacts);
     $("progressForm").addEventListener("submit", submitProgress);
     $("completeInput").addEventListener("change", updateSelectedItemStatusDraft);
     $("caseForm").addEventListener("submit", submitCaseTracking);
@@ -283,7 +282,6 @@
     renderRecords();
     renderSupervisor();
     renderManagement();
-    renderContacts();
     populateCaseAssignees();
     populateCaseIds();
     populateMyCaseAssignees();
@@ -481,13 +479,6 @@
       .split(/[\n、,，/]+/)
       .map((name) => name.trim().replace(/\(.+?\)/g, ""))
       .filter((name) => name && !excludedPersonLabels.has(name));
-  }
-
-  function splitEmails(value) {
-    return String(value || "")
-      .split(/[\s\n,，;；]+/)
-      .map((email) => email.trim())
-      .filter((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
   }
 
   function allStaffNames() {
@@ -690,25 +681,6 @@
         record.reporter,
         record.createdAt,
         record.updatedAt,
-      ])),
-      buildSheet("即時-同仁通訊錄", [
-        "單位",
-        "職稱",
-        "姓名",
-        "辦公室電話",
-        "手機",
-        "電子郵件",
-        "Line ID",
-        "備註",
-      ], state.contacts.map((contact) => [
-        contact.unit,
-        contact.title,
-        displayPersonName(contact.name),
-        contact.officePhone,
-        contact.mobile,
-        contact.email,
-        contact.lineId,
-        contact.note,
       ])),
     ];
     return [...liveSheets, ...originalSheets.map((sheet) => ({
@@ -976,110 +948,6 @@
       ].filter(Boolean).join(" / "),
     }));
     $("recordCount").textContent = `${state.updates.length + state.expenses.length} 筆`;
-  }
-
-  function renderContacts() {
-    const list = $("contactList");
-    const count = $("contactCount");
-    if (!list || !count) return;
-    const query = $("contactSearchInput").value.trim().toLowerCase();
-    const contacts = state.contacts
-      .filter((contact) => {
-        if (!query) return true;
-        return [
-          contact.unit,
-          contact.title,
-          contact.name,
-          contact.officePhone,
-          contact.mobile,
-          contact.email,
-          contact.lineId,
-          contact.note,
-        ].join(" ").toLowerCase().includes(query);
-      })
-      .sort((a, b) => {
-        const unitDiff = String(a.unit || "").localeCompare(String(b.unit || ""), "zh-Hant");
-        if (unitDiff) return unitDiff;
-        return String(a.name || "").localeCompare(String(b.name || ""), "zh-Hant");
-      });
-
-    count.textContent = `${contacts.length} 筆`;
-    list.innerHTML = "";
-    if (!contacts.length) {
-      const empty = document.createElement("p");
-      empty.className = "task-meta";
-      empty.textContent = state.contacts.length ? "沒有符合搜尋條件的同仁。" : "尚未建立同仁通訊錄。";
-      list.appendChild(empty);
-      return;
-    }
-
-    contacts.forEach((contact) => {
-      const card = document.createElement("article");
-      card.className = "contact-card";
-      const header = document.createElement("div");
-      header.className = "contact-card-header";
-      const title = document.createElement("div");
-      title.className = "contact-title";
-      const strong = document.createElement("strong");
-      strong.textContent = displayPersonName(contact.name) || "未填姓名";
-      const span = document.createElement("span");
-      span.textContent = [contact.unit, contact.title].filter(Boolean).join(" / ") || "未填單位職稱";
-      title.appendChild(strong);
-      title.appendChild(span);
-      header.appendChild(title);
-      card.appendChild(header);
-
-      const body = document.createElement("div");
-      body.className = "contact-card-body";
-      addContactField(body, "辦公室電話", contact.officePhone);
-      addContactField(body, "手機", contact.mobile);
-      addContactEmailField(body, contact.email);
-      addContactField(body, "LINE ID", contact.lineId || contact.note);
-      card.appendChild(body);
-
-      if (contact.note && contact.note !== contact.lineId) {
-        const note = document.createElement("p");
-        note.className = "contact-note";
-        note.textContent = `備註：${contact.note}`;
-        card.appendChild(note);
-      }
-      list.appendChild(card);
-    });
-  }
-
-  function addContactField(container, label, value) {
-    const field = document.createElement("div");
-    field.className = "contact-field";
-    const fieldLabel = document.createElement("span");
-    fieldLabel.textContent = label;
-    const p = document.createElement("p");
-    p.textContent = value || "未填";
-    field.appendChild(fieldLabel);
-    field.appendChild(p);
-    container.appendChild(field);
-  }
-
-  function addContactEmailField(container, value) {
-    const field = document.createElement("div");
-    field.className = "contact-field";
-    const fieldLabel = document.createElement("span");
-    fieldLabel.textContent = "電子郵件";
-    const p = document.createElement("p");
-    const emails = splitEmails(value);
-    if (!emails.length) {
-      p.textContent = "未填";
-    } else {
-      emails.forEach((email, index) => {
-        if (index > 0) p.appendChild(document.createTextNode(" / "));
-        const link = document.createElement("a");
-        link.href = `mailto:${email}`;
-        link.textContent = email;
-        p.appendChild(link);
-      });
-    }
-    field.appendChild(fieldLabel);
-    field.appendChild(p);
-    container.appendChild(field);
   }
 
   function renderSupervisor() {

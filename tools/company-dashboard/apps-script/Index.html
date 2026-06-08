@@ -131,6 +131,22 @@
         flex-wrap: wrap;
       }
 
+      .dashboard-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        padding: 10px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+        overflow-x: auto;
+      }
+
+      .dashboard-tabs .button {
+        white-space: nowrap;
+      }
+
       .layout {
         width: min(1440px, 100%);
         margin: 0 auto;
@@ -315,6 +331,7 @@
 
       .workload-grid,
       .people-status-grid,
+      .contacts-grid,
       .assignment-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -470,6 +487,59 @@
         gap: 12px;
       }
 
+      .contact-filters {
+        display: grid;
+        grid-template-columns: minmax(240px, 1fr) minmax(180px, 280px);
+        gap: 12px;
+      }
+
+      .contact-card {
+        display: grid;
+        gap: 10px;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: #fbfcfd;
+      }
+
+      .contact-card-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: flex-start;
+      }
+
+      .contact-fields {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .contact-field {
+        min-width: 0;
+        padding: 9px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #ffffff;
+      }
+
+      .contact-field span {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+        margin-bottom: 3px;
+      }
+
+      .contact-field p {
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+      }
+
+      .contact-field a {
+        color: var(--brand);
+        font-weight: 760;
+      }
+
       .text-cell {
         max-width: 320px;
         color: var(--muted);
@@ -560,9 +630,12 @@
         .priority-grid,
         .workload-grid,
         .people-status-grid,
+        .contacts-grid,
         .status-metrics,
         .assignment-grid,
         .review-filters,
+        .contact-filters,
+        .contact-fields,
         .form-grid {
           grid-template-columns: 1fr;
         }
@@ -594,6 +667,13 @@
     <main id="dashboard" class="layout hidden">
       <section id="summaryGrid" class="panel summary-grid" aria-label="公司摘要"></section>
       <section id="projectGrid" class="project-grid" aria-label="專案狀態"></section>
+      <nav id="dashboardTabs" class="dashboard-tabs" aria-label="總控台頁籤">
+        <button class="button compact" type="button" data-scroll-target="reviewPanel">主管待查核</button>
+        <button class="button compact" type="button" data-scroll-target="assignmentPanel">主管交辦</button>
+        <button class="button compact" type="button" data-scroll-target="contactsPanel">同仁通訊錄</button>
+        <button class="button compact" type="button" data-scroll-target="reportPanel">週報月報</button>
+        <button class="button compact" type="button" data-scroll-target="peopleStatusPanel">同仁提醒</button>
+      </nav>
       <section class="priority-grid" aria-label="待辦優先序">
         <section class="panel block">
           <h2>今天必追</h2>
@@ -661,7 +741,7 @@
           </table>
         </div>
       </section>
-      <section class="panel block" aria-label="週報月報產生器">
+      <section id="reportPanel" class="panel block" aria-label="週報月報產生器">
         <div class="project-head">
           <div>
             <h2>週報 / 月報產生器</h2>
@@ -692,7 +772,7 @@
         <p id="reportMessage" class="message" role="status"></p>
       </section>
       <section class="dashboard-grid">
-        <section class="panel block">
+        <section id="assignmentPanel" class="panel block">
           <h2>主管交辦中心</h2>
           <form id="assignmentForm" class="assignment-grid">
             <label>
@@ -766,7 +846,26 @@
           <h2>資料品質提醒</h2>
           <div id="issueList" class="list"></div>
         </section>
-        <section class="panel block" style="grid-column: 1 / -1">
+        <section id="contactsPanel" class="panel block" style="grid-column: 1 / -1" aria-label="同仁通訊錄">
+          <div class="project-head">
+            <div>
+              <h2>同仁通訊錄</h2>
+              <p id="contactCountText" class="subtle">僅限通過 Google 帳號驗證的主管帳號查看。</p>
+            </div>
+          </div>
+          <div class="contact-filters">
+            <label>
+              <span>搜尋</span>
+              <input id="contactSearchInput" type="search" placeholder="姓名、單位、職稱、Email、LINE ID" />
+            </label>
+            <label>
+              <span>專案 / 辦公室</span>
+              <select id="contactOfficeFilter"></select>
+            </label>
+          </div>
+          <div id="contactsGrid" class="contacts-grid"></div>
+        </section>
+        <section id="peopleStatusPanel" class="panel block" style="grid-column: 1 / -1">
           <div class="project-head">
             <div>
               <h2>同仁回報提醒</h2>
@@ -820,9 +919,12 @@
       let peopleStatusFilter = "all";
 
       $("refreshButton").addEventListener("click", loadDashboard);
+      $("dashboardTabs").addEventListener("click", handleDashboardTabClick);
       $("sendReminderButton").addEventListener("click", sendReminderDigest);
       $("copyReminderButton").addEventListener("click", copyReminderText);
       $("assignmentForm").addEventListener("submit", submitAssignment);
+      $("contactSearchInput").addEventListener("input", renderContacts);
+      $("contactOfficeFilter").addEventListener("change", renderContacts);
       $("reviewProjectFilter").addEventListener("change", updateReviewFilters);
       $("reviewAssigneeFilter").addEventListener("change", updateReviewFilters);
       $("reviewStatusFilter").addEventListener("change", updateReviewFilters);
@@ -884,9 +986,19 @@
         renderIssues(payload.issues);
         renderReminder(payload);
         renderReport();
+        renderContactOfficeFilter(payload.contacts || []);
+        renderContacts();
         renderPeopleStatus(payload.peopleStatus || []);
         renderWorkload(payload.workload);
         renderPeople(payload.people);
+      }
+
+      function handleDashboardTabClick(event) {
+        const button = event.target.closest("[data-scroll-target]");
+        if (!button) return;
+        const target = $(button.dataset.scrollTarget);
+        if (!target) return;
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
       }
 
       function renderSummary(totals) {
@@ -1000,6 +1112,78 @@
             </div>
           </article>
         `).join("") : '<p class="subtle">目前沒有工作量資料。</p>';
+      }
+
+      function renderContactOfficeFilter(contacts) {
+        const current = $("contactOfficeFilter").value;
+        const options = uniqueOptions((contacts || []).flatMap((contact) => splitClientNames(contact.offices || contact.projects || "")));
+        setSelectOptions("contactOfficeFilter", options, "全部", current);
+      }
+
+      function renderContacts() {
+        const contacts = filterContacts(dashboardData ? dashboardData.contacts || [] : []);
+        $("contactCountText").textContent = `目前顯示 ${formatNumber(contacts.length)} 筆；此區塊只在公司總控台 Google 帳號驗證通過後顯示。`;
+        $("contactsGrid").innerHTML = contacts.length ? contacts.map((contact) => `
+          <article class="contact-card">
+            <div class="contact-card-head">
+              <div>
+                <h3>${escapeHtml(contact.name || "未填姓名")}</h3>
+                <p class="subtle">${escapeHtml([contact.offices, contact.unit, contact.title].filter(Boolean).join(" / ") || "未填單位職稱")}</p>
+              </div>
+              <span class="status-dot green">${escapeHtml(contact.projects || "通訊錄")}</span>
+            </div>
+            <div class="contact-fields">
+              ${contactField("辦公室電話", contact.officePhone)}
+              ${contactField("手機", contact.mobile)}
+              ${contactEmailField(contact.email)}
+              ${contactField("LINE ID", contact.lineId || contact.note)}
+            </div>
+            ${contact.note && contact.note !== contact.lineId ? `<p class="subtle">備註：${escapeHtml(contact.note)}</p>` : ""}
+          </article>
+        `).join("") : '<p class="subtle">目前沒有符合條件的同仁通訊錄。</p>';
+      }
+
+      function filterContacts(items) {
+        const query = $("contactSearchInput").value.trim().toLowerCase();
+        const office = $("contactOfficeFilter").value;
+        return (items || []).filter((contact) => {
+          const matchesOffice = !office || splitClientNames(contact.offices || contact.projects || "").indexOf(office) >= 0;
+          const haystack = [
+            contact.projects,
+            contact.offices,
+            contact.unit,
+            contact.title,
+            contact.name,
+            contact.officePhone,
+            contact.mobile,
+            contact.email,
+            contact.lineId,
+            contact.note,
+          ].join(" ").toLowerCase();
+          return matchesOffice && (!query || haystack.includes(query));
+        });
+      }
+
+      function contactField(label, value) {
+        return `
+          <div class="contact-field">
+            <span>${escapeHtml(label)}</span>
+            <p>${escapeHtml(value || "未填")}</p>
+          </div>
+        `;
+      }
+
+      function contactEmailField(value) {
+        const emails = splitEmails(value);
+        const content = emails.length
+          ? emails.map((email) => `<a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a>`).join(" / ")
+          : "未填";
+        return `
+          <div class="contact-field">
+            <span>電子郵件</span>
+            <p>${content}</p>
+          </div>
+        `;
       }
 
       function renderPeopleStatus(items) {
@@ -1379,6 +1563,13 @@
           .filter((name) => name && ["主責", "協辦", "主責及協辦", "負責同仁"].indexOf(name) < 0);
       }
 
+      function splitEmails(value) {
+        return String(value || "")
+          .split(/[\s\n,，;；]+/)
+          .map((email) => email.trim())
+          .filter((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+      }
+
       function renderReminder(payload) {
         const emailText = payload.reminderStatus.emailEnabled ? "Email 已啟用" : "Email 未設定";
         const lineText = payload.reminderStatus.lineEnabled ? "LINE 已啟用" : "LINE 尚未設定 webhook";
@@ -1589,7 +1780,13 @@
               setMessage("assignmentMessage", result && result.error ? result.error : "送出失敗", "error");
               return;
             }
-            setMessage("assignmentMessage", `已新增交辦：${result.caseId}`, "success");
+            const notification = result.notification || {};
+            const noticeText = notification.emailSent
+              ? `；已寄出 Email ${formatNumber(notification.emailSent)} 位`
+              : notification.warnings && notification.warnings.length
+                ? `；通知提醒：${notification.warnings[0]}`
+                : "";
+            setMessage("assignmentMessage", `已新增交辦：${result.caseId}${noticeText}`, "success");
             $("assignmentForm").reset();
             loadDashboard();
           })

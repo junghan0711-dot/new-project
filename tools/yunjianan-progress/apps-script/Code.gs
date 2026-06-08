@@ -132,7 +132,6 @@ function listData_() {
     cases: listRecords_(SHEETS.cases),
     caseUpdates: listRecords_(SHEETS.caseUpdates),
     consultations: listRecords_(SHEETS.consultations),
-    contacts: listContacts_(),
   };
 }
 

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>115 雲嘉南多元計畫進度填報</title>
-    <link rel="stylesheet" href="./styles.css?v=contacts-notify-20260609" />
+    <link rel="stylesheet" href="./styles.css?v=contacts-hidden-20260609" />
   </head>
   <body>
     <header class="topbar">
@@ -68,7 +68,6 @@
       <nav class="view-tabs" aria-label="資料檢視">
         <button class="tab-button active" type="button" data-view="tasksView">任務填報</button>
         <button class="tab-button" type="button" data-view="myWorkView">我的工作</button>
-        <button class="tab-button" type="button" data-view="contactsView">同仁通訊錄</button>
         <button class="tab-button" type="button" data-view="sourceView">資料總覽</button>
         <button class="tab-button" type="button" data-view="updatesView">更新與費用紀錄</button>
         <button class="tab-button" type="button" data-view="supervisorView">主管追蹤</button>
@@ -213,23 +212,6 @@
             <div id="myWorkConsultationList" class="my-work-list"></div>
           </section>
         </div>
-      </section>
-
-      <section id="contactsView" class="panel contacts-panel view-section" aria-label="同仁通訊錄">
-        <div class="section-heading">
-          <div>
-            <h2>同仁通訊錄</h2>
-            <p class="subtle">雲嘉南專辦與分署窗口名單，交辦列管案件時會依姓名查找 Email 與 LINE 通知設定。</p>
-          </div>
-          <span id="contactCount">0 筆</span>
-        </div>
-        <div class="contact-toolbar">
-          <label>
-            <span>搜尋同仁</span>
-            <input id="contactSearchInput" type="search" placeholder="姓名、單位、職稱、Email 或 LINE ID" />
-          </label>
-        </div>
-        <div id="contactList" class="contact-list"></div>
       </section>
 
       <section id="sourceView" class="panel source-panel view-section" aria-label="資料總覽">
@@ -667,8 +649,8 @@
       </button>
     </template>
 
-    <script src="./config.js?v=api-contacts-notify-20260609"></script>
+    <script src="./config.js?v=api-contacts-hidden-20260609"></script>
     <script src="./data.js"></script>
-    <script src="./app.js?v=contacts-notify-20260609"></script>
+    <script src="./app.js?v=contacts-hidden-20260609"></script>
   </body>
 </html>

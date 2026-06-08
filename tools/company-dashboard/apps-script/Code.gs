@@ -58,6 +58,7 @@ const SHEETS = {
   cases: ["案件追蹤列管"],
   caseUpdates: ["案件進度紀錄"],
   consultations: ["諮詢輔導場次"],
+  contacts: ["同仁通訊錄"],
 };
 
 function doGet() {
@@ -91,6 +92,7 @@ function getDashboardData() {
     followUps: collectFollowUps_(projects),
     people: collectPeople_(projects),
     peopleStatus: collectPeopleStatus_(projects),
+    contacts: collectContacts_(projects),
     issues: collectIssues_(projects),
     priorities: collectPriorityGroups_(projects),
     reviewQueue: collectReviewQueue_(projects),
@@ -156,12 +158,107 @@ function createAssignment(payload) {
     payload.note || "",
   ]);
 
+  const notification = notifyAssignment_(spreadsheet, project, {
+    caseId,
+    title,
+    assignee,
+    deadline,
+    instruction,
+    checkpoint: payload.checkpoint || "",
+    priority: payload.priority || "一般",
+    status,
+    reporter: auth.email,
+    progress,
+    attachment: payload.attachment || "",
+    note: payload.note || "",
+    timestamp,
+  });
+
   return {
     ok: true,
     caseId,
     project: project.name,
+    notification,
     message: `${project.name} 已新增 ${caseId}`,
   };
+}
+
+function notifyAssignment_(spreadsheet, project, assignment) {
+  const contacts = readRecords_(spreadsheet, SHEETS.contacts).map((record) => summarizeContact_(record));
+  const assignees = splitNames_(assignment.assignee);
+  const matchedContacts = contacts.filter((contact) => assignees.indexOf(contact.name) >= 0);
+  const summary = {
+    emailSent: 0,
+    emailRecipients: [],
+    lineSent: false,
+    warnings: [],
+  };
+  if (!matchedContacts.length) {
+    summary.warnings.push("找不到指定同事的通訊錄資料");
+    return summary;
+  }
+  const subject = `${project.name}交辦通知：${assignment.caseId} ${assignment.title}`;
+  const body = buildAssignmentNotificationText_(project, assignment);
+  matchedContacts.forEach((contact) => {
+    const recipients = splitEmails_(contact.email);
+    if (!recipients.length) {
+      summary.warnings.push(`${contact.name} 未填電子郵件`);
+      return;
+    }
+    try {
+      MailApp.sendEmail({
+        to: recipients.join(","),
+        subject,
+        body,
+      });
+      summary.emailSent += 1;
+      summary.emailRecipients = summary.emailRecipients.concat(recipients);
+    } catch (error) {
+      summary.warnings.push(`${contact.name} Email 發送失敗：${error.message}`);
+    }
+  });
+  if (LINE_WEBHOOK_URL) {
+    try {
+      UrlFetchApp.fetch(LINE_WEBHOOK_URL, {
+        method: "post",
+        contentType: "application/json",
+        payload: JSON.stringify({ text: body.slice(0, 4000) }),
+        muteHttpExceptions: true,
+      });
+      summary.lineSent = true;
+    } catch (error) {
+      summary.warnings.push(`LINE 發送失敗：${error.message}`);
+    }
+  }
+  return summary;
+}
+
+function buildAssignmentNotificationText_(project, assignment) {
+  return [
+    `你有一筆新的${project.name}追蹤案件。`,
+    "",
+    `案件編號：${assignment.caseId}`,
+    `案件名稱：${assignment.title || "未填"}`,
+    `指定同事：${assignment.assignee || "未填"}`,
+    `Deadline：${assignment.deadline || "未填"}`,
+    `狀態：${assignment.status || "待執行"}`,
+    `優先序：${assignment.priority || "一般"}`,
+    `交辦人：${assignment.reporter || "未填"}`,
+    `建立時間：${assignment.timestamp || ""}`,
+    "",
+    "交辦內容：",
+    assignment.instruction || "未填",
+    "",
+    "查核點：",
+    assignment.checkpoint || "未填",
+    "",
+    "目前進度：",
+    assignment.progress || "待指定同事回報進度。",
+    assignment.attachment ? `\n佐證資料：${assignment.attachment}` : "",
+    assignment.note ? `\n備註：${assignment.note}` : "",
+    "",
+    `專案頁：${project.pageUrl}`,
+  ].filter((line) => line !== "").join("\n");
 }
 
 function reviewCaseAction(payload) {
@@ -310,6 +407,7 @@ function summarizeProject_(project) {
   const cases = readRecords_(spreadsheet, SHEETS.cases);
   const caseUpdates = readRecords_(spreadsheet, SHEETS.caseUpdates);
   const consultations = readRecords_(spreadsheet, SHEETS.consultations);
+  const contacts = readRecords_(spreadsheet, SHEETS.contacts);
   const itemSummaries = items.map((item) => summarizeItem_(item, updates));
   const caseSummaries = cases.map((record) => summarizeCase_(record, caseUpdates));
   const people = summarizePeople_(itemSummaries, updates);
@@ -330,6 +428,7 @@ function summarizeProject_(project) {
     reviewItems: projectReviewItems_(caseSummaries),
     recentUpdates: recentUpdates_(updates),
     consultations: summarizeConsultations_(consultations),
+    contacts: contacts.map((record) => summarizeContact_(record)),
     workload: projectWorkload_(itemSummaries, caseSummaries, consultations),
     latestDataTime: latestDataTime_(itemSummaries, updates, cases, caseUpdates, consultations),
   };
@@ -369,9 +468,24 @@ function errorProjectSummary_(project, error) {
       confirmed: 0,
       done: 0,
     },
+    contacts: [],
     workload: [],
     latestDataTime: "讀取失敗",
     error: message,
+  };
+}
+
+function summarizeContact_(record) {
+  return {
+    unit: value_(record, ["單位"]),
+    title: value_(record, ["職稱"]),
+    name: value_(record, ["姓名"]),
+    officePhone: value_(record, ["辦公室電話"]),
+    mobile: value_(record, ["手機"]),
+    email: value_(record, ["電子郵件"]),
+    lineId: value_(record, ["Line ID", "LINE ID", "備註(Line ID)"]),
+    lineUserId: value_(record, ["LINE User ID", "Line User ID"]),
+    note: value_(record, ["備註"]),
   };
 }
 
@@ -740,6 +854,43 @@ function collectPeopleStatus_(projects) {
     .slice(0, 30);
 }
 
+function collectContacts_(projects) {
+  const map = {};
+  projects.forEach((project) => {
+    (project.contacts || []).forEach((contact) => {
+      if (!contact.name) return;
+      const key = [
+        contact.name,
+        contact.email,
+        contact.mobile,
+        contact.unit,
+      ].join("|");
+      if (!map[key]) {
+        map[key] = {
+          ...contact,
+          projects: [],
+          offices: [],
+        };
+      }
+      map[key].projects.push(project.name);
+      map[key].offices.push(project.office);
+    });
+  });
+  return Object.keys(map)
+    .map((key) => ({
+      ...map[key],
+      projects: [...new Set(map[key].projects.filter(Boolean))].join("、"),
+      offices: [...new Set(map[key].offices.filter(Boolean))].join("、"),
+    }))
+    .sort((a, b) => {
+      const officeDiff = String(a.offices || "").localeCompare(String(b.offices || ""), "zh-Hant");
+      if (officeDiff) return officeDiff;
+      const unitDiff = String(a.unit || "").localeCompare(String(b.unit || ""), "zh-Hant");
+      if (unitDiff) return unitDiff;
+      return String(a.name || "").localeCompare(String(b.name || ""), "zh-Hant");
+    });
+}
+
 function ensurePeopleStatus_(map, name) {
   const key = name || "未指定";
   if (!map[key]) {
@@ -1099,6 +1250,13 @@ function splitNames_(value) {
     .split(/[\n、,，/]+/)
     .map((name) => name.trim().replace(/\(.+?\)/g, ""))
     .filter((name) => name && ["主責", "協辦", "主責及協辦", "負責同仁"].indexOf(name) < 0);
+}
+
+function splitEmails_(value) {
+  return String(value || "")
+    .split(/[\s\n,，;；]+/)
+    .map((email) => email.trim())
+    .filter((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
 }
 
 function isRecent_(value, days) {
