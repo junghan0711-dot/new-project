@@ -15,6 +15,7 @@
 - 我的追蹤案件：同仁在案件追蹤列管頁籤最上方輸入或選擇姓名，即可先看到自己負責的未完成追蹤案件，並可一鍵帶入回報表單。
 - 案件編號與解除列管：新增案件會自動產生 `CASE-0001` 這類案件編號；指定同事可用案件編號補最新進度，狀態改為 `已完成` 並填寫完成/解除列管說明後即可解除列管；每次回報會另存到 `案件進度紀錄`
 - 案件卡片會顯示最近 3 筆 `案件進度紀錄`，同事送出最新進度後，可直接回到案件列表查看最新回報內容。
+- 同仁通訊錄：雲嘉南專辦與分署窗口資料放在 Google Sheet 的 `同仁通訊錄` 工作表，網頁可搜尋查看；新增列管案件指定同事時，也會用這張表查找 Email 與 LINE 通知設定。
 
 ## 來源資料
 
@@ -34,7 +35,7 @@
 
 目前連接的 Web App API：
 
-`https://script.google.com/macros/s/AKfycbzhRazYCNo7Wjwz_K60_DamPO0VpYcLMl0N6ns1C-NjyvgQbHyZuyeoSY2cx7034d0-/exec`
+`https://script.google.com/macros/s/AKfycbwNcNlUHsQbkUFD39Wssd_a81OtEXQ2l8QtVXE4GBNY5JDLM7I2FcTgRRGkXLsOXvC8/exec`
 
 Apps Script 專案：
 
@@ -56,3 +57,6 @@ Apps Script 專案：
 - 本版 Apps Script 已提供 `ALLOWED_REPORTERS` 選用白名單；維持空陣列代表不限制，填入姓名後只有名單內填報人可寫入。
 - 表單新增「佐證資料連結」，會寫入 `進度更新紀錄` 的 `佐證資料連結`、`經費支出紀錄` 的 `憑證連結`，以及 `案件追蹤列管` 的 `佐證資料連結`。若既有工作表缺少欄位，Apps Script 會在送出時補上表頭。
 - `案件追蹤列管` 若缺少 `完成/解除列管說明`、`解除列管時間` 欄位，Apps Script 會自動補上；`案件進度紀錄` 不存在時也會自動建立。
+- 新增列管案件時，Apps Script 會依 `同仁通訊錄` 的姓名寄出 Email 通知。若同仁有多個信箱，可用換行、逗號或分號分隔。
+- LINE 直接私訊不能只靠一般 LINE ID；若要啟用 LINE，請在 Apps Script 專案屬性設定 `LINE_WEBHOOK_URL` 做群組/外部 webhook 通知，或設定 `LINE_CHANNEL_ACCESS_TOKEN` 並在通訊錄補 `LINE User ID` 才能用 Messaging API 推播。
+- Apps Script 新增寄信與外部請求 scope 後，若送出案件時出現授權錯誤，請在 Apps Script 編輯器執行一次 `authorize_()` 或任一通知相關函式完成授權。

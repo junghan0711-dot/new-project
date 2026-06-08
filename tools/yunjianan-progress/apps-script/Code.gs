@@ -6,6 +6,7 @@ const SHEETS = {
   cases: "案件追蹤列管",
   caseUpdates: "案件進度紀錄",
   consultations: "諮詢輔導場次",
+  contacts: "同仁通訊錄",
 };
 const ALLOWED_REPORTERS = [];
 const UPDATE_HEADERS = [
@@ -82,6 +83,19 @@ const CONSULTATION_HEADERS = [
   "建立時間",
   "最後更新時間",
 ];
+const CONTACT_HEADERS = [
+  "單位",
+  "職稱",
+  "姓名",
+  "辦公室電話",
+  "手機",
+  "電子郵件",
+  "Line ID",
+  "LINE User ID",
+  "備註",
+];
+const LINE_WEBHOOK_PROPERTY = "LINE_WEBHOOK_URL";
+const LINE_CHANNEL_TOKEN_PROPERTY = "LINE_CHANNEL_ACCESS_TOKEN";
 
 function doGet(e) {
   const params = e && e.parameter ? e.parameter : {};
@@ -99,6 +113,9 @@ function doGet(e) {
     if (action === "prepareConsultations") {
       return jsonp_(params.callback, prepareConsultations_());
     }
+    if (action === "prepareContacts") {
+      return jsonp_(params.callback, prepareContacts_());
+    }
     return jsonp_(params.callback, { ok: false, error: "Unknown action" });
   } catch (error) {
     return jsonp_(params.callback, { ok: false, error: error.message });
@@ -115,6 +132,7 @@ function listData_() {
     cases: listRecords_(SHEETS.cases),
     caseUpdates: listRecords_(SHEETS.caseUpdates),
     consultations: listRecords_(SHEETS.consultations),
+    contacts: listContacts_(),
   };
 }
 
@@ -133,6 +151,15 @@ function prepareConsultations_() {
   return {
     ok: true,
     sheetName: SHEETS.consultations,
+  };
+}
+
+function prepareContacts_() {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  ensureSheet_(spreadsheet, SHEETS.contacts, CONTACT_HEADERS);
+  return {
+    ok: true,
+    sheetName: SHEETS.contacts,
   };
 }
 
@@ -174,6 +201,24 @@ function listRecords_(sheetName) {
   return values.slice(1)
     .filter((row) => row.some((cell) => cell !== ""))
     .map((row) => rowToObject_(headers, row));
+}
+
+function listContacts_() {
+  return listRecords_(SHEETS.contacts).map(contactRecord_);
+}
+
+function contactRecord_(record) {
+  return {
+    unit: record["單位"] || "",
+    title: record["職稱"] || "",
+    name: record["姓名"] || "",
+    officePhone: record["辦公室電話"] || "",
+    mobile: record["手機"] || "",
+    email: record["電子郵件"] || "",
+    lineId: record["Line ID"] || record["LINE ID"] || record["備註(Line ID)"] || "",
+    lineUserId: record["LINE User ID"] || record["Line User ID"] || "",
+    note: record["備註"] || "",
+  };
 }
 
 function doPost(e) {
@@ -281,7 +326,120 @@ function submitCaseTracking_(params) {
     note: params.note,
   }, timestamp);
 
-  return { caseId, updatedAt: timestamp };
+  const notification = notifyCaseAssignees_(params, caseId, timestamp);
+
+  return { caseId, updatedAt: timestamp, notification };
+}
+
+function notifyCaseAssignees_(params, caseId, timestamp) {
+  const contacts = listContacts_();
+  const assignees = splitNames_(params.assignee);
+  const matchedContacts = contacts.filter((contact) => assignees.indexOf(contact.name) >= 0);
+  const summary = {
+    emailSent: 0,
+    emailRecipients: [],
+    lineSent: 0,
+    lineSkipped: 0,
+    warnings: [],
+  };
+
+  if (!matchedContacts.length) {
+    summary.warnings.push("找不到指定同事的通訊錄資料");
+    return summary;
+  }
+
+  const subject = "雲嘉南多元計畫交辦通知：" + caseId + " " + (params.title || "");
+  const body = buildCaseNotificationText_(params, caseId, timestamp);
+  matchedContacts.forEach((contact) => {
+    const recipients = splitEmails_(contact.email);
+    if (recipients.length) {
+      try {
+        MailApp.sendEmail({
+          to: recipients.join(","),
+          subject: subject,
+          body: body,
+        });
+        summary.emailSent += 1;
+        summary.emailRecipients = summary.emailRecipients.concat(recipients);
+      } catch (error) {
+        summary.warnings.push(contact.name + " Email 發送失敗：" + error.message);
+      }
+    } else {
+      summary.warnings.push(contact.name + " 未填電子郵件");
+    }
+
+    const lineResult = sendLineNotification_(contact, body);
+    if (lineResult.sent) {
+      summary.lineSent += 1;
+    } else {
+      summary.lineSkipped += 1;
+      if (lineResult.warning) summary.warnings.push(contact.name + " LINE 未發送：" + lineResult.warning);
+    }
+  });
+
+  return summary;
+}
+
+function buildCaseNotificationText_(params, caseId, timestamp) {
+  return [
+    "你有一筆新的雲嘉南多元計畫追蹤案件。",
+    "",
+    "案件編號：" + caseId,
+    "案件名稱：" + (params.title || "未填"),
+    "指定同事：" + (params.assignee || "未填"),
+    "Deadline：" + (params.deadline || "未填"),
+    "狀態：" + (params.status || "待執行"),
+    "優先序：" + (params.priority || "一般"),
+    "交辦人/回報人：" + (params.reporter || "未填"),
+    "建立時間：" + timestamp,
+    "",
+    "交辦內容：",
+    params.instruction || "未填",
+    "",
+    "查核點：",
+    params.checkpoint || "未填",
+    "",
+    "目前進度：",
+    params.progress || "未填",
+    params.attachment ? "\n佐證資料：" + params.attachment : "",
+    params.note ? "\n備註：" + params.note : "",
+    "",
+    "請至雲嘉南專案網頁的「我的工作」或「案件追蹤列管」查看並回報進度。",
+  ].filter((line) => line !== "").join("\n");
+}
+
+function sendLineNotification_(contact, message) {
+  const properties = PropertiesService.getScriptProperties();
+  const webhookUrl = properties.getProperty(LINE_WEBHOOK_PROPERTY);
+  const channelToken = properties.getProperty(LINE_CHANNEL_TOKEN_PROPERTY);
+  if (channelToken && contact.lineUserId) {
+    UrlFetchApp.fetch("https://api.line.me/v2/bot/message/push", {
+      method: "post",
+      contentType: "application/json",
+      headers: {
+        Authorization: "Bearer " + channelToken,
+      },
+      payload: JSON.stringify({
+        to: contact.lineUserId,
+        messages: [{ type: "text", text: message }],
+      }),
+      muteHttpExceptions: true,
+    });
+    return { sent: true };
+  }
+  if (webhookUrl) {
+    UrlFetchApp.fetch(webhookUrl, {
+      method: "post",
+      contentType: "application/json",
+      payload: JSON.stringify({
+        text: contact.lineId ? "@" + contact.lineId + "\n" + message : message,
+        contact: contact.name,
+      }),
+      muteHttpExceptions: true,
+    });
+    return { sent: true };
+  }
+  return { sent: false, warning: "尚未設定 LINE webhook 或 LINE Messaging API userId/token" };
 }
 
 function submitCaseProgress_(params) {
@@ -520,6 +678,20 @@ function rowToObject_(headers, row) {
     record[header] = row[index] || "";
     return record;
   }, {});
+}
+
+function splitNames_(value) {
+  return String(value || "")
+    .split(/[\n、,，/]+/)
+    .map((name) => name.trim().replace(/\(.+?\)/g, ""))
+    .filter(Boolean);
+}
+
+function splitEmails_(value) {
+  return String(value || "")
+    .split(/[\s\n,，;；]+/)
+    .map((email) => email.trim())
+    .filter((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
 }
 
 function setByHeader_(sheet, headers, row, header, value) {

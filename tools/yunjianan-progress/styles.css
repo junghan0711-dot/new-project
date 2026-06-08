@@ -1240,6 +1240,85 @@ textarea:focus {
   font-weight: 800;
 }
 
+.contacts-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.contact-toolbar {
+  display: grid;
+  grid-template-columns: minmax(260px, 420px);
+  gap: 12px;
+}
+
+.contact-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.contact-card {
+  display: grid;
+  gap: 11px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #ffffff;
+}
+
+.contact-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.contact-title {
+  display: grid;
+  gap: 4px;
+}
+
+.contact-title strong {
+  font-size: 16px;
+}
+
+.contact-title span,
+.contact-field span,
+.contact-note {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.contact-card-body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.contact-field {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid #e3e8ef;
+  border-radius: 6px;
+  background: #fbfcfd;
+}
+
+.contact-field p {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.contact-field a {
+  color: var(--brand);
+  font-weight: 800;
+}
+
+.contact-note {
+  margin: 0;
+}
+
 @media (max-width: 960px) {
   .topbar,
   .top-actions,
@@ -1266,9 +1345,12 @@ textarea:focus {
   .consultation-workspace,
   .consultation-form-grid,
   .consultation-toolbar,
-  .consultation-metrics,
-  .consultation-card-body,
-  .case-workspace,
+    .consultation-metrics,
+    .consultation-card-body,
+    .contact-toolbar,
+    .contact-list,
+    .contact-card-body,
+    .case-workspace,
   .my-cases-toolbar,
   .case-form-grid,
   .case-toolbar,
