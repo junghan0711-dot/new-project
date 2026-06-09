@@ -186,7 +186,7 @@ function createAssignment(payload) {
 function notifyAssignment_(spreadsheet, project, assignment) {
   const contacts = readRecords_(spreadsheet, SHEETS.contacts).map((record) => summarizeContact_(record));
   const assignees = splitNames_(assignment.assignee);
-  const matchedContacts = contacts.filter((contact) => assignees.indexOf(contact.name) >= 0);
+  const matchedContacts = contacts.filter((contact) => assignees.some((assignee) => contactNameMatches_(contact.name, assignee)));
   const summary = {
     emailSent: 0,
     emailRecipients: [],
@@ -231,6 +231,20 @@ function notifyAssignment_(spreadsheet, project, assignment) {
     }
   }
   return summary;
+}
+
+function contactNameMatches_(contactName, assigneeName) {
+  const contact = normalizeName_(contactName);
+  const assignee = normalizeName_(assigneeName);
+  if (!contact || !assignee) return false;
+  return contact === assignee || contact.endsWith(assignee) || assignee.endsWith(contact);
+}
+
+function normalizeName_(value) {
+  return String(value || "")
+    .replace(/\s+/g, "")
+    .replace(/[（(].*?[）)]/g, "")
+    .trim();
 }
 
 function buildAssignmentNotificationText_(project, assignment) {

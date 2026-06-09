@@ -978,7 +978,7 @@
         renderSummary(payload.totals);
         renderProjects(payload.projects);
         renderAssignmentProjects(payload.projects);
-        renderAssignmentPeople(payload.workload);
+        renderAssignmentPeople(payload.workload, payload.contacts);
         renderReviewFilters(payload);
         renderReviewQueue();
         renderPriorities(payload.priorities);
@@ -1329,12 +1329,26 @@
         if (projects.some((project) => project.id === current)) select.value = current;
       }
 
-      function renderAssignmentPeople(people) {
-        const names = [...new Set((people || [])
+      function renderAssignmentPeople(people, contacts) {
+        const names = [...new Set([
+          ...(people || [])
           .map((person) => person.name)
-          .filter((name) => name && name !== "未指定"))]
+          .filter((name) => name && name !== "未指定"),
+          ...(contacts || [])
+            .map((contact) => contact.name)
+            .filter((name) => name && name !== "未指定"),
+        ])]
           .sort((a, b) => a.localeCompare(b, "zh-Hant"));
-        $("assignmentAssigneeOptions").innerHTML = names.map((name) => `<option value="${escapeHtml(name)}"></option>`).join("");
+        const contactMap = new Map((contacts || [])
+          .filter((contact) => contact.name)
+          .map((contact) => [contact.name, contact]));
+        $("assignmentAssigneeOptions").innerHTML = names.map((name) => {
+          const contact = contactMap.get(name);
+          const label = contact
+            ? [contact.offices, contact.unit, contact.title].filter(Boolean).join(" / ")
+            : "";
+          return `<option value="${escapeHtml(name)}" label="${escapeHtml(label)}"></option>`;
+        }).join("");
       }
 
       function renderReviewFilters(payload) {
