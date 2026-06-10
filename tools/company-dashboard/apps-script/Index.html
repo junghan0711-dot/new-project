@@ -417,6 +417,15 @@
         resize: vertical;
       }
 
+      .assignee-picker {
+        display: grid;
+        gap: 6px;
+      }
+
+      .assignee-picker select {
+        font-size: 13px;
+      }
+
       .message {
         min-height: 20px;
         color: var(--muted);
@@ -781,8 +790,11 @@
             </label>
             <label>
               <span>指定同事</span>
-              <input id="assignmentAssigneeInput" type="text" list="assignmentAssigneeOptions" required placeholder="輸入同仁姓名" />
-              <datalist id="assignmentAssigneeOptions"></datalist>
+              <div class="assignee-picker">
+                <select id="assignmentAssigneeSelect" aria-label="從名單選擇同仁"></select>
+                <input id="assignmentAssigneeInput" type="text" list="assignmentAssigneeOptions" required placeholder="可手打姓名或簡稱，例如：玟樺" />
+                <datalist id="assignmentAssigneeOptions"></datalist>
+              </div>
             </label>
             <label>
               <span>案件名稱</span>
@@ -923,6 +935,8 @@
       $("sendReminderButton").addEventListener("click", sendReminderDigest);
       $("copyReminderButton").addEventListener("click", copyReminderText);
       $("assignmentForm").addEventListener("submit", submitAssignment);
+      $("assignmentProjectInput").addEventListener("change", () => renderAssignmentPeople(dashboardData));
+      $("assignmentAssigneeSelect").addEventListener("change", handleAssignmentAssigneeSelect);
       $("contactSearchInput").addEventListener("input", renderContacts);
       $("contactOfficeFilter").addEventListener("change", renderContacts);
       $("reviewProjectFilter").addEventListener("change", updateReviewFilters);
@@ -978,7 +992,7 @@
         renderSummary(payload.totals);
         renderProjects(payload.projects);
         renderAssignmentProjects(payload.projects);
-        renderAssignmentPeople(payload.workload, payload.contacts);
+        renderAssignmentPeople(payload);
         renderReviewFilters(payload);
         renderReviewQueue();
         renderPriorities(payload.priorities);
@@ -1329,26 +1343,86 @@
         if (projects.some((project) => project.id === current)) select.value = current;
       }
 
-      function renderAssignmentPeople(people, contacts) {
-        const names = [...new Set([
-          ...(people || [])
-          .map((person) => person.name)
-          .filter((name) => name && name !== "未指定"),
-          ...(contacts || [])
-            .map((contact) => contact.name)
-            .filter((name) => name && name !== "未指定"),
-        ])]
-          .sort((a, b) => a.localeCompare(b, "zh-Hant"));
-        const contactMap = new Map((contacts || [])
+      function renderAssignmentPeople(payload) {
+        if (!payload) return;
+        const selectedProjectId = $("assignmentProjectInput").value;
+        const selectedProject = (payload.projects || []).find((project) => project.id === selectedProjectId);
+        const contacts = payload.contacts || [];
+        const contactMap = new Map(contacts
           .filter((contact) => contact.name)
           .map((contact) => [contact.name, contact]));
+        const nameMap = new Map();
+        const addName = (name, label) => {
+          if (!isPersonNameCandidate(name)) return;
+          if (!nameMap.has(name)) nameMap.set(name, label || "");
+          if (label && !nameMap.get(name)) nameMap.set(name, label);
+        };
+        const projectMatches = (value) => {
+          if (!selectedProject) return true;
+          return splitClientNames(value).some((part) => (
+            part === selectedProject.office ||
+            part === selectedProject.name ||
+            part === selectedProject.id
+          ));
+        };
+        const addProjectPeople = (project) => {
+          if (!project) return;
+          (project.people || []).forEach((person) => addName(person.name, project.office || project.name));
+          (project.workload || []).forEach((person) => addName(person.name, project.office || project.name));
+          (project.contacts || []).forEach((contact) => {
+            addName(contact.name, [project.office, contact.unit, contact.title].filter(Boolean).join(" / "));
+          });
+          (project.reviewItems || []).forEach((item) => {
+            splitClientNames(item.assignee).forEach((name) => addName(name, project.office || project.name));
+          });
+        };
+        if (selectedProject) {
+          addProjectPeople(selectedProject);
+          contacts
+            .filter((contact) => projectMatches(`${contact.offices || ""}、${contact.projects || ""}`))
+            .forEach((contact) => {
+              addName(contact.name, [contact.offices, contact.unit, contact.title].filter(Boolean).join(" / "));
+            });
+          (payload.reviewQueue || [])
+            .filter((item) => item.projectId === selectedProject.id)
+            .forEach((item) => splitClientNames(item.assignee).forEach((name) => addName(name, item.office || item.project)));
+        } else {
+          (payload.workload || []).forEach((person) => addName(person.name, person.projects));
+          (payload.people || []).forEach((person) => addName(person.name, person.projects));
+          (payload.peopleStatus || []).forEach((person) => addName(person.name, person.projects));
+          contacts.forEach((contact) => {
+            addName(contact.name, [contact.offices, contact.unit, contact.title].filter(Boolean).join(" / "));
+          });
+          (payload.reviewQueue || []).forEach((item) => {
+            splitClientNames(item.assignee).forEach((name) => addName(name, item.office || item.project));
+          });
+          (payload.projects || []).forEach(addProjectPeople);
+        }
+        const names = [...nameMap.keys()].sort((a, b) => a.localeCompare(b, "zh-Hant"));
         $("assignmentAssigneeOptions").innerHTML = names.map((name) => {
           const contact = contactMap.get(name);
           const label = contact
             ? [contact.offices, contact.unit, contact.title].filter(Boolean).join(" / ")
-            : "";
+            : nameMap.get(name) || "";
           return `<option value="${escapeHtml(name)}" label="${escapeHtml(label)}"></option>`;
         }).join("");
+        $("assignmentAssigneeSelect").innerHTML = [
+          `<option value="">${names.length ? "從名單選擇同仁" : "目前沒有同仁名單"}</option>`,
+          ...names.map((name) => {
+            const contact = contactMap.get(name);
+            const label = contact
+              ? [name, contact.offices, contact.unit, contact.title].filter(Boolean).join(" / ")
+              : [name, nameMap.get(name)].filter(Boolean).join(" / ");
+            return `<option value="${escapeHtml(name)}">${escapeHtml(label)}</option>`;
+          }),
+        ].join("");
+      }
+
+      function handleAssignmentAssigneeSelect(event) {
+        const name = event.target.value;
+        if (!name) return;
+        $("assignmentAssigneeInput").value = name;
+        $("assignmentAssigneeInput").focus();
       }
 
       function renderReviewFilters(payload) {
@@ -1574,7 +1648,22 @@
         return String(value || "")
           .split(/[\n、,，/]+/)
           .map((name) => name.trim().replace(/\(.+?\)/g, ""))
-          .filter((name) => name && ["主責", "協辦", "主責及協辦", "負責同仁"].indexOf(name) < 0);
+          .filter(isPersonNameCandidate);
+      }
+
+      function isPersonNameCandidate(name) {
+        const text = String(name || "").trim();
+        const blocked = [
+          "主責",
+          "協辦",
+          "主責及協辦",
+          "負責同仁",
+          "各項主責同仁",
+          "全體同仁",
+          "未指定",
+          "-",
+        ];
+        return Boolean(text) && blocked.indexOf(text) < 0;
       }
 
       function splitEmails(value) {
