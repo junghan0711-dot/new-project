@@ -1345,6 +1345,9 @@
 
       function renderAssignmentPeople(payload) {
         if (!payload) return;
+        const primaryAssigneesByProject = {
+          taozhumiao: ["昱碩", "欐婷", "仁發", "芷安", "珈珈", "莎莎"],
+        };
         const selectedProjectId = $("assignmentProjectInput").value;
         const selectedProject = (payload.projects || []).find((project) => project.id === selectedProjectId);
         const contacts = payload.contacts || [];
@@ -1377,6 +1380,8 @@
           });
         };
         if (selectedProject) {
+          (primaryAssigneesByProject[selectedProject.id] || [])
+            .forEach((name) => addName(name, `${selectedProject.office || selectedProject.name} / 主責同仁`));
           addProjectPeople(selectedProject);
           contacts
             .filter((contact) => projectMatches(`${contact.offices || ""}、${contact.projects || ""}`))
@@ -1397,8 +1402,17 @@
             splitClientNames(item.assignee).forEach((name) => addName(name, item.office || item.project));
           });
           (payload.projects || []).forEach(addProjectPeople);
+          Object.keys(primaryAssigneesByProject).forEach((projectId) => {
+            const project = (payload.projects || []).find((item) => item.id === projectId);
+            primaryAssigneesByProject[projectId].forEach((name) => {
+              addName(name, `${project ? project.office || project.name : projectId} / 主責同仁`);
+            });
+          });
         }
         const names = [...nameMap.keys()].sort((a, b) => a.localeCompare(b, "zh-Hant"));
+        if (!isPersonNameCandidate($("assignmentAssigneeInput").value)) {
+          $("assignmentAssigneeInput").value = "";
+        }
         $("assignmentAssigneeOptions").innerHTML = names.map((name) => {
           const contact = contactMap.get(name);
           const label = contact
