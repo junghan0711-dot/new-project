@@ -31,7 +31,7 @@
   };
 
   const $ = (id) => document.getElementById(id);
-  const excludedPersonLabels = new Set(["主責", "協辦", "主責及協辦", "負責同仁", "各項主責同仁"]);
+  const excludedPersonLabels = new Set(["主責", "協辦", "主責及協辦", "負責同仁", "各項主責同仁", "全體同仁", "未指定", "-", "無", "行政", "財務", "活動聯繫"]);
   const personAliases = {
     hank: "Hank",
     Hank: "Hank",
@@ -362,11 +362,13 @@
     const assigneeFilter = $("caseAssigneeFilter");
     const currentInput = assigneeInput.value;
     const currentFilter = assigneeFilter.value;
-    const names = allStaffNames();
+    const names = assignmentStaffNames();
+    const filterNames = allCaseFilterNames();
     state.cases.forEach((record) => {
-      splitNames(record.assignee).forEach((name) => names.add(name));
+      splitNames(record.assignee).forEach((name) => filterNames.add(name));
     });
-    const sortedNames = [...names].sort((a, b) => a.localeCompare(b, "zh-Hant"));
+    const sortedNames = sortPersonNames(names);
+    const sortedFilterNames = sortPersonNames(filterNames);
 
     assigneeOptions.innerHTML = "";
     assigneeFilter.innerHTML = '<option value="">全部</option>';
@@ -374,11 +376,16 @@
       const option = document.createElement("option");
       option.value = name;
       option.textContent = name;
-      assigneeOptions.appendChild(option.cloneNode(true));
+      assigneeOptions.appendChild(option);
+    });
+    sortedFilterNames.forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
       assigneeFilter.appendChild(option);
     });
     assigneeInput.value = currentInput;
-    assigneeFilter.value = sortedNames.includes(currentFilter) ? currentFilter : "";
+    assigneeFilter.value = sortedFilterNames.includes(currentFilter) ? currentFilter : "";
   }
 
   function populateMyCaseAssignees() {
@@ -493,19 +500,65 @@
   function splitNames(value) {
     return String(value || "")
       .split(/[\n、,，/]+/)
-      .map((name) => name.trim().replace(/\(.+?\)/g, ""))
-      .filter((name) => name && !excludedPersonLabels.has(name));
+      .map(cleanPersonName)
+      .filter(isPersonNameCandidate);
   }
 
   function allStaffNames() {
     const names = new Set();
     state.contacts.forEach((contact) => {
-      if (contact.name) names.add(displayPersonName(contact.name));
+      addPersonName(names, contact.name);
     });
-    state.items.forEach((item) => splitNames(item.owner).forEach((name) => names.add(displayPersonName(name))));
-    state.tasks.forEach((task) => splitNames(task.owner).forEach((name) => names.add(displayPersonName(name))));
-    state.consultations.forEach((record) => splitNames(record.owner).forEach((name) => names.add(displayPersonName(name))));
+    addItemOwnerNames(names);
     return names;
+  }
+
+  function assignmentStaffNames() {
+    const contactNames = contactStaffNames();
+    if (contactNames.size) return contactNames;
+    const names = new Set();
+    addItemOwnerNames(names);
+    return names;
+  }
+
+  function contactStaffNames() {
+    const names = new Set();
+    state.contacts.forEach((contact) => addPersonName(names, contact.name));
+    return names;
+  }
+
+  function allCaseFilterNames() {
+    const names = allStaffNames();
+    state.cases.forEach((record) => splitNames(record.assignee).forEach((name) => addPersonName(names, name)));
+    return names;
+  }
+
+  function addItemOwnerNames(names) {
+    state.items.forEach((item) => splitNames(item.owner).forEach((name) => addPersonName(names, name)));
+  }
+
+  function addPersonName(names, value) {
+    const name = cleanPersonName(value);
+    if (isPersonNameCandidate(name)) names.add(displayPersonName(name));
+  }
+
+  function sortPersonNames(names) {
+    return [...names].filter(isPersonNameCandidate).sort((a, b) => a.localeCompare(b, "zh-Hant"));
+  }
+
+  function cleanPersonName(value) {
+    return String(value || "")
+      .trim()
+      .replace(/[（(].*?[）)]/g, "")
+      .replace(/\s+/g, "");
+  }
+
+  function isPersonNameCandidate(name) {
+    const text = String(name || "").trim();
+    if (!text || excludedPersonLabels.has(text)) return false;
+    if (text.length > 12) return false;
+    if (/[0-9@:/：；;]|https?/i.test(text)) return false;
+    return true;
   }
 
   function findItemForTask(task) {
