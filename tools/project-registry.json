@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "repository": {
+    "name": "new-project",
+    "owner": "junghan0711-dot",
+    "defaultBranch": "main",
+    "pagesBaseUrl": "https://junghan0711-dot.github.io/new-project/"
+  },
+  "projects": [
+    {
+      "id": "yunjianan",
+      "name": "115 雲嘉南多元計畫",
+      "office": "雲嘉南",
+      "type": "progress-tracker",
+      "status": "active",
+      "toolDir": "tools/yunjianan-progress",
+      "pageUrl": "https://junghan0711-dot.github.io/new-project/tools/yunjianan-progress/",
+      "sheetId": "1jF8XdfhtbOI22kJ0GbAU69-NuWHQLAgHLQMIhhynSF0",
+      "sheetUrl": "https://docs.google.com/spreadsheets/d/1jF8XdfhtbOI22kJ0GbAU69-NuWHQLAgHLQMIhhynSF0",
+      "appsScript": {
+        "scriptId": "1eNCAio-SX2IcxY1cu6Rme_-hQxqG6utZb4RJ5iz6gEKitokF1VAyg9C9",
+        "deploymentId": "AKfycbwNcNlUHsQbkUFD39Wssd_a81OtEXQ2l8QtVXE4GBNY5JDLM7I2FcTgRRGkXLsOXvC8",
+        "webAppUrl": "https://script.google.com/macros/s/AKfycbwNcNlUHsQbkUFD39Wssd_a81OtEXQ2l8QtVXE4GBNY5JDLM7I2FcTgRRGkXLsOXvC8/exec",
+        "executeAs": "USER_DEPLOYING",
+        "access": "ANYONE_ANONYMOUS"
+      },
+      "features": {
+        "progressUpdates": true,
+        "caseTracking": true,
+        "consultations": true,
+        "expenses": true,
+        "contacts": true,
+        "modificationHistory": true
+      }
+    },
+    {
+      "id": "taozhumiao",
+      "name": "115 桃竹苗多元計畫",
+      "office": "桃竹苗",
+      "type": "progress-tracker",
+      "status": "active",
+      "toolDir": "tools/taozhumiao-progress",
+      "pageUrl": "https://junghan0711-dot.github.io/new-project/tools/taozhumiao-progress/",
+      "sheetId": "1_vblpEZtfs7oj7yH2EXzOUMZYI_8OmG9hdc4ASQd3e8",
+      "sheetUrl": "https://docs.google.com/spreadsheets/d/1_vblpEZtfs7oj7yH2EXzOUMZYI_8OmG9hdc4ASQd3e8",
+      "appsScript": {
+        "scriptId": "1oth99FZYz4PkRoeK8X0XMBpheucDs9F7nqnWLzx-IjF2bvinNmxPR1AZ",
+        "deploymentId": "AKfycbwbPhlynzzmp2_bvEeRCG4OOokn1OsgYqrD-C-TvvVwpGATutVJHW-sv7BiZ8dRoM_tTA",
+        "webAppUrl": "https://script.google.com/macros/s/AKfycbwbPhlynzzmp2_bvEeRCG4OOokn1OsgYqrD-C-TvvVwpGATutVJHW-sv7BiZ8dRoM_tTA/exec",
+        "executeAs": "USER_DEPLOYING",
+        "access": "ANYONE_ANONYMOUS"
+      },
+      "features": {
+        "progressUpdates": true,
+        "caseTracking": true,
+        "consultations": true,
+        "expenses": true,
+        "contacts": false,
+        "modificationHistory": true
+      }
+    },
+    {
+      "id": "company-dashboard",
+      "name": "公司專案總控台",
+      "office": "總控台",
+      "type": "apps-script-dashboard",
+      "status": "active",
+      "toolDir": "tools/company-dashboard",
+      "pageUrl": "https://script.google.com/macros/s/AKfycbyknQkwIo9PXksPGtCCCDkO8C-d2Vje4ZkBgWGU2gNo_dQU5o7hTlYtja1kVoXzfbLP/exec",
+      "appsScript": {
+        "scriptId": "1H25gQRkKRNxZSAAhZol2Nhlm1lukOnbT5P44rfX-D_rpN7G1q1oMZajU",
+        "deploymentId": "AKfycbyknQkwIo9PXksPGtCCCDkO8C-d2Vje4ZkBgWGU2gNo_dQU5o7hTlYtja1kVoXzfbLP",
+        "webAppUrl": "https://script.google.com/macros/s/AKfycbyknQkwIo9PXksPGtCCCDkO8C-d2Vje4ZkBgWGU2gNo_dQU5o7hTlYtja1kVoXzfbLP/exec",
+        "executeAs": "USER_ACCESSING",
+        "access": "ANYONE"
+      },
+      "features": {
+        "aggregateProjects": true,
+        "assignments": true,
+        "contacts": true,
+        "modificationHistory": true,
+        "reports": true,
+        "reminders": true
+      }
+    }
+  ]
+}

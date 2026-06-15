@@ -2,6 +2,26 @@
 
 這個資料夾放「政府計畫進度填報網頁」的重複建置工具，讓下次新增類似桃竹苗、雲嘉南的內部管理網頁時少走手動流程。
 
+## 0. 專案註冊表
+
+所有已上線或準備維護的工具，先集中登錄在：
+
+```bash
+tools/project-registry.json
+```
+
+目前註冊表會記錄：
+
+- `id`、`name`、`office`：專案識別、顯示名稱與辦公室/區域
+- `type`：工具類型，例如 `progress-tracker` 或 `apps-script-dashboard`
+- `toolDir`：本機工具資料夾
+- `pageUrl`：前端或總控台網址
+- `sheetId` / `sheetUrl`：專案底表
+- `appsScript.scriptId`、`deploymentId`、`webAppUrl`：Apps Script 專案與固定部署
+- `features`：是否啟用案件追蹤、諮詢輔導、修改歷程等功能
+
+新增專案時，先建立工具資料夾，再把專案加入這份註冊表。後續巡檢、部署與總控台整合都應優先讀這份檔案，避免把專案資訊散落在多個腳本。
+
 ## 1. 用新專案模板快速建立
 
 先複製範本：
@@ -58,6 +78,17 @@ tools/scripts/create-progress-tracker.py \
 
 ## 3. 部署 Apps Script
 
+已登錄到 `tools/project-registry.json` 的工具，優先用專案 id 部署：
+
+```bash
+tools/scripts/deploy-registered-tool.sh yunjianan \
+  --description "Update case tracking"
+```
+
+這會自動讀取對應的 `toolDir` 與 `appsScript.deploymentId`，並更新既有部署網址。
+
+若是尚未登錄的新工具，才直接指定工具資料夾：
+
 ```bash
 tools/scripts/deploy-apps-script.sh tools/example-progress \
   --title "115 某某計畫進度填報 API" \
@@ -95,4 +126,4 @@ tools/scripts/check-progress-tracker.py tools/example-progress \
 tools/scripts/check-all-web-tools.sh
 ```
 
-這會檢查雲嘉南、桃竹苗的 GitHub Pages / Apps Script API health / README 與 config URL 一致性，並對公司專案總控台做 Apps Script 語法與 manifest 檢查。
+這會讀取 `tools/project-registry.json`，檢查所有 `status: active` 的工具。`progress-tracker` 會檢查 GitHub Pages / Apps Script API health / README 與 config URL 一致性；`apps-script-dashboard` 會做 Apps Script 語法與 manifest 檢查。
