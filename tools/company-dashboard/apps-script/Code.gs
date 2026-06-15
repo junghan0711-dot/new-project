@@ -59,6 +59,7 @@ const SHEETS = {
   caseUpdates: ["案件進度紀錄"],
   consultations: ["諮詢輔導場次"],
   contacts: ["同仁通訊錄"],
+  modificationHistory: ["修改歷程"],
 };
 
 function doGet() {
@@ -93,6 +94,7 @@ function getDashboardData() {
     people: collectPeople_(projects),
     peopleStatus: collectPeopleStatus_(projects),
     contacts: collectContacts_(projects),
+    modificationHistory: collectModificationHistory_(projects),
     issues: collectIssues_(projects),
     priorities: collectPriorityGroups_(projects),
     reviewQueue: collectReviewQueue_(projects),
@@ -422,6 +424,7 @@ function summarizeProject_(project) {
   const caseUpdates = readRecords_(spreadsheet, SHEETS.caseUpdates);
   const consultations = readRecords_(spreadsheet, SHEETS.consultations);
   const contacts = readRecords_(spreadsheet, SHEETS.contacts);
+  const modificationHistory = readRecords_(spreadsheet, SHEETS.modificationHistory);
   const itemSummaries = items.map((item) => summarizeItem_(item, updates));
   const caseSummaries = cases.map((record) => summarizeCase_(record, caseUpdates));
   const people = summarizePeople_(itemSummaries, updates);
@@ -443,6 +446,7 @@ function summarizeProject_(project) {
     recentUpdates: recentUpdates_(updates),
     consultations: summarizeConsultations_(consultations),
     contacts: contacts.map((record) => summarizeContact_(record)),
+    modificationHistory: modificationHistory.map((record) => summarizeModification_(record)),
     workload: projectWorkload_(itemSummaries, caseSummaries, consultations),
     latestDataTime: latestDataTime_(itemSummaries, updates, cases, caseUpdates, consultations),
   };
@@ -483,6 +487,7 @@ function errorProjectSummary_(project, error) {
       done: 0,
     },
     contacts: [],
+    modificationHistory: [],
     workload: [],
     latestDataTime: "讀取失敗",
     error: message,
@@ -500,6 +505,20 @@ function summarizeContact_(record) {
     lineId: value_(record, ["Line ID", "LINE ID", "備註(Line ID)"]),
     lineUserId: value_(record, ["LINE User ID", "Line User ID"]),
     note: value_(record, ["備註"]),
+  };
+}
+
+function summarizeModification_(record) {
+  return {
+    historyId: value_(record, ["修改ID"]),
+    sheetName: value_(record, ["資料表"]),
+    recordId: value_(record, ["記錄ID"]),
+    field: value_(record, ["欄位"]),
+    oldValue: value_(record, ["原值"]),
+    newValue: value_(record, ["新值"]),
+    modifiedBy: value_(record, ["修改人"]),
+    modifiedAt: value_(record, ["修改時間"]),
+    source: value_(record, ["修改來源"]),
   };
 }
 
@@ -903,6 +922,20 @@ function collectContacts_(projects) {
       if (unitDiff) return unitDiff;
       return String(a.name || "").localeCompare(String(b.name || ""), "zh-Hant");
     });
+}
+
+function collectModificationHistory_(projects) {
+  return projects
+    .flatMap((project) => (project.modificationHistory || []).map((record) => ({
+      ...record,
+      project: project.name,
+      projectId: project.id,
+      office: project.office,
+      spreadsheetUrl: project.spreadsheetUrl,
+      pageUrl: project.pageUrl,
+    })))
+    .sort((a, b) => compareDate_(b.modifiedAt, a.modifiedAt))
+    .slice(0, 300);
 }
 
 function ensurePeopleStatus_(map, name) {

@@ -490,7 +490,14 @@
         min-width: 1280px;
       }
 
-      .review-filters {
+      .history-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 1320px;
+      }
+
+      .review-filters,
+      .history-filters {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 12px;
@@ -678,6 +685,7 @@
       <section id="projectGrid" class="project-grid" aria-label="專案狀態"></section>
       <nav id="dashboardTabs" class="dashboard-tabs" aria-label="總控台頁籤">
         <button class="button compact" type="button" data-scroll-target="reviewPanel">主管待查核</button>
+        <button class="button compact" type="button" data-scroll-target="historyPanel">修改歷程</button>
         <button class="button compact" type="button" data-scroll-target="assignmentPanel">主管交辦</button>
         <button class="button compact" type="button" data-scroll-target="contactsPanel">同仁通訊錄</button>
         <button class="button compact" type="button" data-scroll-target="reportPanel">週報月報</button>
@@ -747,6 +755,58 @@
               </tr>
             </thead>
             <tbody id="reviewRows"></tbody>
+          </table>
+        </div>
+      </section>
+      <section id="historyPanel" class="panel block" aria-label="修改歷程">
+        <div class="project-head">
+          <div>
+            <h2>修改歷程</h2>
+            <p id="historyCountText" class="subtle"></p>
+          </div>
+          <div class="top-actions">
+            <button id="copyHistoryButton" class="button compact" type="button">複製目前清單</button>
+          </div>
+        </div>
+        <div class="history-filters">
+          <label>
+            <span>專案</span>
+            <select id="historyProjectFilter"></select>
+          </label>
+          <label>
+            <span>修改人</span>
+            <select id="historyActorFilter"></select>
+          </label>
+          <label>
+            <span>資料表</span>
+            <select id="historySheetFilter"></select>
+          </label>
+          <label>
+            <span>欄位</span>
+            <select id="historyFieldFilter"></select>
+          </label>
+        </div>
+        <label>
+          <span>搜尋</span>
+          <input id="historySearchInput" type="search" placeholder="記錄ID、欄位、原值、新值、修改來源" />
+        </label>
+        <p id="historyMessage" class="message" role="status"></p>
+        <div class="table-wrap">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th>修改時間</th>
+                <th>專案</th>
+                <th>資料表</th>
+                <th>記錄ID</th>
+                <th>欄位</th>
+                <th>修改人</th>
+                <th>原值</th>
+                <th>新值</th>
+                <th>來源</th>
+              </tr>
+            </thead>
+            <tbody id="historyRows"></tbody>
           </table>
         </div>
       </section>
@@ -928,6 +988,13 @@
         status: "",
         priority: "",
       };
+      const historyFilters = {
+        projectId: "",
+        actor: "",
+        sheet: "",
+        field: "",
+        query: "",
+      };
       let peopleStatusFilter = "all";
 
       $("refreshButton").addEventListener("click", loadDashboard);
@@ -945,6 +1012,12 @@
       $("reviewPriorityFilter").addEventListener("change", updateReviewFilters);
       $("reviewRows").addEventListener("click", handleReviewActionClick);
       $("copyReviewQueueButton").addEventListener("click", copyCurrentReviewQueue);
+      $("historyProjectFilter").addEventListener("change", updateHistoryFilters);
+      $("historyActorFilter").addEventListener("change", updateHistoryFilters);
+      $("historySheetFilter").addEventListener("change", updateHistoryFilters);
+      $("historyFieldFilter").addEventListener("change", updateHistoryFilters);
+      $("historySearchInput").addEventListener("input", updateHistoryFilters);
+      $("copyHistoryButton").addEventListener("click", copyCurrentModificationHistory);
       $("reportTypeInput").addEventListener("change", handleReportTypeChange);
       $("reportPeriodInput").addEventListener("input", renderReport);
       $("reportNoteInput").addEventListener("input", renderReport);
@@ -995,6 +1068,8 @@
         renderAssignmentPeople(payload);
         renderReviewFilters(payload);
         renderReviewQueue();
+        renderModificationHistoryFilters(payload);
+        renderModificationHistory();
         renderPriorities(payload.priorities);
         renderFollowUps(payload.followUps);
         renderIssues(payload.issues);
@@ -1638,6 +1713,109 @@
           if (reviewFilters.priority && item.priority !== reviewFilters.priority) return false;
           return true;
         });
+      }
+
+      function renderModificationHistoryFilters(payload) {
+        const records = payload.modificationHistory || [];
+        setSelectOptions("historyProjectFilter", payload.projects.map((project) => ({
+          value: project.id,
+          label: project.name,
+        })), "全部專案", historyFilters.projectId);
+        setSelectOptions("historyActorFilter", uniqueOptions(records.map((record) => record.modifiedBy)), "全部修改人", historyFilters.actor);
+        setSelectOptions("historySheetFilter", uniqueOptions(records.map((record) => record.sheetName)), "全部資料表", historyFilters.sheet);
+        setSelectOptions("historyFieldFilter", uniqueOptions(records.map((record) => record.field)), "全部欄位", historyFilters.field);
+      }
+
+      function updateHistoryFilters() {
+        historyFilters.projectId = $("historyProjectFilter").value;
+        historyFilters.actor = $("historyActorFilter").value;
+        historyFilters.sheet = $("historySheetFilter").value;
+        historyFilters.field = $("historyFieldFilter").value;
+        historyFilters.query = $("historySearchInput").value.trim().toLowerCase();
+        renderModificationHistory();
+      }
+
+      function renderModificationHistory() {
+        const items = filterModificationHistory(dashboardData ? dashboardData.modificationHistory || [] : []);
+        $("historyCountText").textContent = `目前顯示 ${formatNumber(items.length)} 筆異動，依修改時間新到舊排序。`;
+        $("historyRows").innerHTML = items.length ? items.slice(0, 120).map((item) => `
+          <tr>
+            <td>${escapeHtml(item.modifiedAt || "未記錄")}</td>
+            <td>${escapeHtml(item.office || item.project || "")}</td>
+            <td>${escapeHtml(item.sheetName || "")}</td>
+            <td><strong>${escapeHtml(item.recordId || "")}</strong></td>
+            <td>${escapeHtml(item.field || "")}</td>
+            <td>${escapeHtml(item.modifiedBy || "未記錄")}</td>
+            <td class="text-cell">${escapeHtml(shortText(item.oldValue || "", 90))}</td>
+            <td class="text-cell">${escapeHtml(shortText(item.newValue || "", 90))}</td>
+            <td>${escapeHtml(item.source || "")}</td>
+          </tr>
+        `).join("") : '<tr><td colspan="9">目前沒有符合條件的修改歷程。</td></tr>';
+      }
+
+      function filterModificationHistory(items) {
+        return (items || []).filter((item) => {
+          if (historyFilters.projectId && item.projectId !== historyFilters.projectId) return false;
+          if (historyFilters.actor && item.modifiedBy !== historyFilters.actor) return false;
+          if (historyFilters.sheet && item.sheetName !== historyFilters.sheet) return false;
+          if (historyFilters.field && item.field !== historyFilters.field) return false;
+          if (!historyFilters.query) return true;
+          const haystack = [
+            item.project,
+            item.office,
+            item.sheetName,
+            item.recordId,
+            item.field,
+            item.modifiedBy,
+            item.oldValue,
+            item.newValue,
+            item.source,
+            item.modifiedAt,
+          ].join(" ").toLowerCase();
+          return haystack.includes(historyFilters.query);
+        });
+      }
+
+      async function copyCurrentModificationHistory() {
+        if (!dashboardData) {
+          setMessage("historyMessage", "資料尚未讀取完成。", "error");
+          return;
+        }
+        const items = filterModificationHistory(dashboardData.modificationHistory || []);
+        if (!items.length) {
+          setMessage("historyMessage", "目前篩選沒有可複製的修改歷程。", "error");
+          return;
+        }
+        const filters = [
+          `專案：${selectedOptionText("historyProjectFilter")}`,
+          `修改人：${selectedOptionText("historyActorFilter")}`,
+          `資料表：${selectedOptionText("historySheetFilter")}`,
+          `欄位：${selectedOptionText("historyFieldFilter")}`,
+          `搜尋：${historyFilters.query || "未設定"}`,
+        ].join(" / ");
+        const text = [
+          "修改歷程",
+          `資料時間：${dashboardData.generatedAt || ""}`,
+          `篩選：${filters}`,
+          `件數：${formatNumber(items.length)}`,
+          "",
+          ...items.slice(0, 80).map((item, index) => buildModificationHistorySummary(item, index + 1)),
+        ].join("\n");
+        try {
+          await copyText(text);
+          setMessage("historyMessage", `已複製目前 ${formatNumber(items.length)} 筆修改歷程。`, "success");
+        } catch (error) {
+          setMessage("historyMessage", "複製失敗，請改用手動選取。", "error");
+        }
+      }
+
+      function buildModificationHistorySummary(item, index) {
+        return [
+          `${index}. ${item.modifiedAt || "未記錄時間"} / ${item.office || item.project || ""} / ${item.sheetName || ""} / ${item.recordId || ""}`,
+          `   欄位：${item.field || "未記錄"} / 修改人：${item.modifiedBy || "未記錄"} / 來源：${item.source || "未記錄"}`,
+          `   原值：${shortText(item.oldValue || "", 120)}`,
+          `   新值：${shortText(item.newValue || "", 120)}`,
+        ].join("\n");
       }
 
       function setSelectOptions(id, options, allLabel, currentValue) {
