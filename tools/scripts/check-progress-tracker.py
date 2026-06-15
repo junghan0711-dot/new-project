@@ -12,6 +12,7 @@ import sys
 import urllib.request
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlencode
 
 
 def parse_args() -> argparse.Namespace:
@@ -55,6 +56,26 @@ def find_node() -> Optional[str]:
 
 def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
+
+
+def extract_config_value(config: str, key: str) -> str:
+    match = re.search(rf'{re.escape(key)}:\s*"([^"]*)"', config)
+    return match.group(1) if match else ""
+
+
+def fetch_text(url: str, reporter: Reporter, label: str, timeout: int = 10) -> str:
+    request = urllib.request.Request(url, headers={"Cache-Control": "no-cache"})
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            body = response.read(262144).decode("utf-8", errors="ignore")
+            if response.status == 200:
+                reporter.ok(f"{label} returns 200")
+            else:
+                reporter.fail(f"{label} returned HTTP {response.status}: {url}")
+            return body
+    except Exception as error:  # noqa: BLE001 - command-line preflight should report all URL failures
+        reporter.fail(f"{label} failed: {error}")
+        return ""
 
 
 def check_required_files(tool_dir: Path, reporter: Reporter) -> None:
@@ -117,14 +138,38 @@ def check_data(tool_dir: Path, reporter: Reporter) -> None:
 
 def check_config(tool_dir: Path, reporter: Reporter) -> None:
     config = read_text(tool_dir / "config.js")
-    if re.search(r"sheetUrl:\s*\"https://docs\.google\.com/spreadsheets/d/", config):
+    sheet_url = extract_config_value(config, "sheetUrl")
+    api_url = extract_config_value(config, "apiUrl")
+    if sheet_url.startswith("https://docs.google.com/spreadsheets/d/"):
         reporter.ok("config.js has Google Sheet URL")
     else:
         reporter.warn("config.js sheetUrl is blank or not a Google Sheet URL")
-    if re.search(r"apiUrl:\s*\"https://script\.google\.com/macros/s/", config):
+    if api_url.startswith("https://script.google.com/macros/s/"):
         reporter.ok("config.js has Apps Script API URL")
     else:
         reporter.warn("config.js apiUrl is blank; page will use snapshot only")
+    readme = read_text(tool_dir / "README.md")
+    readme_api_urls = sorted(set(re.findall(r"https://script\.google\.com/macros/s/[^)`\s]+/exec", readme)))
+    if api_url and readme_api_urls:
+        if api_url in readme_api_urls:
+            reporter.ok("README Web App URL matches config.js apiUrl")
+        else:
+            reporter.fail(
+                "README Web App URL does not match config.js apiUrl: "
+                f"config={api_url}; README={', '.join(readme_api_urls)}"
+            )
+    if api_url:
+        health_url = f"{api_url}?{urlencode({'action': 'health'})}"
+        body = fetch_text(health_url, reporter, "Apps Script health")
+        try:
+            payload = json.loads(body) if body else {}
+        except json.JSONDecodeError:
+            reporter.fail("Apps Script health did not return JSON")
+        else:
+            if payload.get("ok") is True:
+                reporter.ok("Apps Script health returned ok=true")
+            elif body:
+                reporter.fail(f"Apps Script health returned unexpected payload: {body[:200]}")
 
 
 def check_dom_ids(tool_dir: Path, reporter: Reporter) -> None:
@@ -165,20 +210,27 @@ def check_manifest(tool_dir: Path, reporter: Reporter) -> None:
 def check_url(url: str, reporter: Reporter) -> None:
     if not url:
         return
-    request = urllib.request.Request(url, headers={"Cache-Control": "no-cache"})
-    try:
-        with urllib.request.urlopen(request, timeout=10) as response:
-            body = response.read(65536).decode("utf-8", errors="ignore")
-            if response.status == 200:
-                reporter.ok(f"URL returns 200: {url}")
-            else:
-                reporter.fail(f"URL returned HTTP {response.status}: {url}")
-            if "data.js" in body and "app.js" in body:
-                reporter.ok("Deployed page references app.js and data.js")
-            else:
-                reporter.warn("Deployed page did not include expected script references in first 4KB")
-    except Exception as error:  # noqa: BLE001 - command-line preflight should report all URL failures
-        reporter.fail(f"URL check failed: {error}")
+    body = fetch_text(url, reporter, f"URL check: {url}")
+    if not body:
+        return
+    if "data.js" in body and "app.js" in body:
+        reporter.ok("Deployed page references app.js and data.js")
+    else:
+        reporter.warn("Deployed page did not include expected script references")
+
+
+def check_deployed_assets(tool_dir: Path, url: str, reporter: Reporter) -> None:
+    if not url:
+        return
+    local_html = read_text(tool_dir / "index.html")
+    deployed_html = fetch_text(url, reporter, "Deployed page asset check")
+    if not deployed_html:
+        return
+    for asset in re.findall(r'(?:script src|link rel="stylesheet" href)="([^"]+)"', local_html):
+        if asset in deployed_html:
+            reporter.ok(f"Deployed page references current asset: {asset}")
+        else:
+            reporter.warn(f"Deployed page does not reference current local asset: {asset}")
 
 
 def main() -> int:
@@ -196,6 +248,7 @@ def main() -> int:
         check_dom_ids(tool_dir, reporter)
         check_manifest(tool_dir, reporter)
         check_url(args.url, reporter)
+        check_deployed_assets(tool_dir, args.url, reporter)
     print()
     print(f"Summary: {len(reporter.failures)} failure(s), {len(reporter.warnings)} warning(s)")
     return 1 if reporter.failures else 0

@@ -57,6 +57,7 @@ Apps Script 專案：
 - 本版 Apps Script 已提供 `ALLOWED_REPORTERS` 選用白名單；維持空陣列代表不限制，填入姓名後只有名單內填報人可寫入。
 - 表單新增「佐證資料連結」，會寫入 `進度更新紀錄` 的 `佐證資料連結`、`經費支出紀錄` 的 `憑證連結`，以及 `案件追蹤列管` 的 `佐證資料連結`。若既有工作表缺少欄位，Apps Script 會在送出時補上表頭。
 - `案件追蹤列管` 若缺少 `完成/解除列管說明`、`解除列管時間` 欄位，Apps Script 會自動補上；`案件進度紀錄` 不存在時也會自動建立。
+- 編輯既有工項回報、追蹤案件、案件進度或諮詢輔導場次時，Apps Script 會自動建立 `修改歷程` 工作表，記錄資料表、記錄ID、欄位、原值、新值、修改人與修改時間；原本送出的日期/建立時間不會被覆蓋。
 - 新增列管案件時，Apps Script 會依 `同仁通訊錄` 的姓名寄出 Email 通知。若同仁有多個信箱，可用換行、逗號或分號分隔。
 - LINE 直接私訊不能只靠一般 LINE ID；若要啟用 LINE，請在 Apps Script 專案屬性設定 `LINE_WEBHOOK_URL` 做群組/外部 webhook 通知，或設定 `LINE_CHANNEL_ACCESS_TOKEN` 並在通訊錄補 `LINE User ID` 才能用 Messaging API 推播。
 - Apps Script 新增寄信與外部請求 scope 後，若送出案件時出現授權錯誤，請在 Apps Script 編輯器執行一次 `authorize_()` 或任一通知相關函式完成授權。

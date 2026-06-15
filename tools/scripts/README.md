@@ -88,3 +88,11 @@ tools/scripts/check-progress-tracker.py tools/example-progress \
 - `app.js` 參照的 DOM id 是否都存在於 `index.html`
 - Apps Script manifest 權限與 scopes
 - GitHub Pages URL 是否回 200
+
+若要一次檢查目前主要線上工具：
+
+```bash
+tools/scripts/check-all-web-tools.sh
+```
+
+這會檢查雲嘉南、桃竹苗的 GitHub Pages / Apps Script API health / README 與 config URL 一致性，並對公司專案總控台做 Apps Script 語法與 manifest 檢查。

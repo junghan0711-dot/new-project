@@ -7,6 +7,7 @@ const SHEETS = {
   caseUpdates: "案件進度紀錄",
   consultations: "諮詢輔導場次",
   contacts: "同仁通訊錄",
+  modificationHistory: "修改歷程",
 };
 const ALLOWED_REPORTERS = [];
 const UPDATE_HEADERS = [
@@ -90,6 +91,17 @@ const CONSULTATION_HEADERS = [
   "最後更新時間",
   "最後修改人",
   "最後修改時間",
+];
+const MODIFICATION_HISTORY_HEADERS = [
+  "修改ID",
+  "資料表",
+  "記錄ID",
+  "欄位",
+  "原值",
+  "新值",
+  "修改人",
+  "修改時間",
+  "修改來源",
 ];
 const CONTACT_HEADERS = [
   "單位",
@@ -328,23 +340,24 @@ function editConsultationSession_(params) {
   if (!row) throw new Error("找不到場次ID：" + params.sessionId);
 
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  setByHeader_(sheet, headers, row, "工項ID", params.itemId || "ITEM001");
-  setByHeader_(sheet, headers, row, "月份", params.month || "");
-  setByHeader_(sheet, headers, row, "單位名稱", params.unitName || "");
-  setByHeader_(sheet, headers, row, "輔導日期", params.date || "");
-  setByHeader_(sheet, headers, row, "開始時間", params.startTime || "");
-  setByHeader_(sheet, headers, row, "結束時間", params.endTime || "");
-  setByHeader_(sheet, headers, row, "地點", params.location || "");
-  setByHeader_(sheet, headers, row, "輔導老師", params.teacher || "");
-  setByHeader_(sheet, headers, row, "分署人員", params.branchStaff || "");
-  setByHeader_(sheet, headers, row, "單位人員", params.unitStaff || "");
-  setByHeader_(sheet, headers, row, "相關人員", params.relatedStaff || "");
-  setByHeader_(sheet, headers, row, "負責同仁", params.owner || "");
-  setByHeader_(sheet, headers, row, "狀態", params.status || "預排");
-  setByHeader_(sheet, headers, row, "輔導主題", params.topic || "");
-  setByHeader_(sheet, headers, row, "會議紀錄/備註", params.note || "");
-  setByHeader_(sheet, headers, row, "佐證資料連結", params.attachment || "");
-  setByHeader_(sheet, headers, row, "建立人", params.reporter || "");
+  const history = buildModificationContext_(spreadsheet, SHEETS.consultations, params.sessionId, params.reporter, timestamp, "editConsultationSession");
+  setByHeaderWithHistory_(sheet, headers, row, "工項ID", params.itemId || "ITEM001", history);
+  setByHeaderWithHistory_(sheet, headers, row, "月份", params.month || "", history);
+  setByHeaderWithHistory_(sheet, headers, row, "單位名稱", params.unitName || "", history);
+  setByHeaderWithHistory_(sheet, headers, row, "輔導日期", params.date || "", history);
+  setByHeaderWithHistory_(sheet, headers, row, "開始時間", params.startTime || "", history);
+  setByHeaderWithHistory_(sheet, headers, row, "結束時間", params.endTime || "", history);
+  setByHeaderWithHistory_(sheet, headers, row, "地點", params.location || "", history);
+  setByHeaderWithHistory_(sheet, headers, row, "輔導老師", params.teacher || "", history);
+  setByHeaderWithHistory_(sheet, headers, row, "分署人員", params.branchStaff || "", history);
+  setByHeaderWithHistory_(sheet, headers, row, "單位人員", params.unitStaff || "", history);
+  setByHeaderWithHistory_(sheet, headers, row, "相關人員", params.relatedStaff || "", history);
+  setByHeaderWithHistory_(sheet, headers, row, "負責同仁", params.owner || "", history);
+  setByHeaderWithHistory_(sheet, headers, row, "狀態", params.status || "預排", history);
+  setByHeaderWithHistory_(sheet, headers, row, "輔導主題", params.topic || "", history);
+  setByHeaderWithHistory_(sheet, headers, row, "會議紀錄/備註", params.note || "", history);
+  setByHeaderWithHistory_(sheet, headers, row, "佐證資料連結", params.attachment || "", history);
+  setByHeaderWithHistory_(sheet, headers, row, "建立人", params.reporter || "", history);
   setByHeader_(sheet, headers, row, "最後更新時間", timestamp);
   setByHeader_(sheet, headers, row, "最後修改人", params.reporter || "");
   setByHeader_(sheet, headers, row, "最後修改時間", timestamp);
@@ -402,22 +415,23 @@ function editCaseTracking_(params) {
   if (!caseRow) throw new Error("找不到案件ID：" + params.caseId);
 
   const headers = caseSheet.getRange(1, 1, 1, caseSheet.getLastColumn()).getValues()[0];
-  setByHeader_(caseSheet, headers, caseRow, "案件名稱", params.title || "");
-  setByHeader_(caseSheet, headers, caseRow, "指定同事", params.assignee || "");
-  setByHeader_(caseSheet, headers, caseRow, "交辦內容", params.instruction || "");
-  setByHeader_(caseSheet, headers, caseRow, "查核點", params.checkpoint || "");
-  setByHeader_(caseSheet, headers, caseRow, "Deadline", params.deadline || "");
-  setByHeader_(caseSheet, headers, caseRow, "目前進度說明", params.progress || "");
-  setByHeader_(caseSheet, headers, caseRow, "狀態", params.status || "待執行");
-  setByHeader_(caseSheet, headers, caseRow, "優先序", params.priority || "一般");
-  setByHeader_(caseSheet, headers, caseRow, "回報人", params.reporter || "");
-  setByHeader_(caseSheet, headers, caseRow, "備註", params.note || "");
-  setByHeader_(caseSheet, headers, caseRow, "佐證資料連結", params.attachment || "");
+  const history = buildModificationContext_(spreadsheet, SHEETS.cases, params.caseId, params.reporter, timestamp, "editCaseTracking");
+  setByHeaderWithHistory_(caseSheet, headers, caseRow, "案件名稱", params.title || "", history);
+  setByHeaderWithHistory_(caseSheet, headers, caseRow, "指定同事", params.assignee || "", history);
+  setByHeaderWithHistory_(caseSheet, headers, caseRow, "交辦內容", params.instruction || "", history);
+  setByHeaderWithHistory_(caseSheet, headers, caseRow, "查核點", params.checkpoint || "", history);
+  setByHeaderWithHistory_(caseSheet, headers, caseRow, "Deadline", params.deadline || "", history);
+  setByHeaderWithHistory_(caseSheet, headers, caseRow, "目前進度說明", params.progress || "", history);
+  setByHeaderWithHistory_(caseSheet, headers, caseRow, "狀態", params.status || "待執行", history);
+  setByHeaderWithHistory_(caseSheet, headers, caseRow, "優先序", params.priority || "一般", history);
+  setByHeaderWithHistory_(caseSheet, headers, caseRow, "回報人", params.reporter || "", history);
+  setByHeaderWithHistory_(caseSheet, headers, caseRow, "備註", params.note || "", history);
+  setByHeaderWithHistory_(caseSheet, headers, caseRow, "佐證資料連結", params.attachment || "", history);
   if (params.status === "已完成") {
     const completion = getByHeader_(caseSheet, headers, caseRow, "完成/解除列管說明") || params.completion || params.progress || "";
-    setByHeader_(caseSheet, headers, caseRow, "完成/解除列管說明", completion);
+    setByHeaderWithHistory_(caseSheet, headers, caseRow, "完成/解除列管說明", completion, history);
     if (!getByHeader_(caseSheet, headers, caseRow, "解除列管時間")) {
-      setByHeader_(caseSheet, headers, caseRow, "解除列管時間", timestamp);
+      setByHeaderWithHistory_(caseSheet, headers, caseRow, "解除列管時間", timestamp, history);
     }
   }
   setByHeader_(caseSheet, headers, caseRow, "最後修改人", params.reporter || "");
@@ -572,13 +586,14 @@ function editCaseProgress_(params) {
 
   const updateHeaders = updateSheet.getRange(1, 1, 1, updateSheet.getLastColumn()).getValues()[0];
   const originalCaseId = getByHeader_(updateSheet, updateHeaders, updateRow, "案件ID") || params.caseId || "";
-  setByHeader_(updateSheet, updateHeaders, updateRow, "案件ID", originalCaseId);
-  setByHeader_(updateSheet, updateHeaders, updateRow, "回報人", params.reporter || "");
-  setByHeader_(updateSheet, updateHeaders, updateRow, "最新進度", params.progress || "");
-  setByHeader_(updateSheet, updateHeaders, updateRow, "狀態", params.status || "進行中");
-  setByHeader_(updateSheet, updateHeaders, updateRow, "完成/解除列管說明", params.completion || "");
-  setByHeader_(updateSheet, updateHeaders, updateRow, "佐證資料連結", params.attachment || "");
-  setByHeader_(updateSheet, updateHeaders, updateRow, "備註", params.note || "");
+  const updateHistory = buildModificationContext_(spreadsheet, SHEETS.caseUpdates, params.updateId, params.reporter, timestamp, "editCaseProgress");
+  setByHeaderWithHistory_(updateSheet, updateHeaders, updateRow, "案件ID", originalCaseId, updateHistory);
+  setByHeaderWithHistory_(updateSheet, updateHeaders, updateRow, "回報人", params.reporter || "", updateHistory);
+  setByHeaderWithHistory_(updateSheet, updateHeaders, updateRow, "最新進度", params.progress || "", updateHistory);
+  setByHeaderWithHistory_(updateSheet, updateHeaders, updateRow, "狀態", params.status || "進行中", updateHistory);
+  setByHeaderWithHistory_(updateSheet, updateHeaders, updateRow, "完成/解除列管說明", params.completion || "", updateHistory);
+  setByHeaderWithHistory_(updateSheet, updateHeaders, updateRow, "佐證資料連結", params.attachment || "", updateHistory);
+  setByHeaderWithHistory_(updateSheet, updateHeaders, updateRow, "備註", params.note || "", updateHistory);
   setByHeader_(updateSheet, updateHeaders, updateRow, "最後修改人", params.reporter || "");
   setByHeader_(updateSheet, updateHeaders, updateRow, "最後修改時間", timestamp);
 
@@ -586,15 +601,16 @@ function editCaseProgress_(params) {
     const caseRow = findCaseRow_(caseSheet, originalCaseId);
     if (caseRow) {
       const caseHeaders = caseSheet.getRange(1, 1, 1, caseSheet.getLastColumn()).getValues()[0];
-      setByHeader_(caseSheet, caseHeaders, caseRow, "目前進度說明", params.progress || "");
-      setByHeader_(caseSheet, caseHeaders, caseRow, "狀態", params.status || "進行中");
-      setByHeader_(caseSheet, caseHeaders, caseRow, "回報人", params.reporter || "");
-      if (params.note) setByHeader_(caseSheet, caseHeaders, caseRow, "備註", params.note);
-      if (params.attachment) setByHeader_(caseSheet, caseHeaders, caseRow, "佐證資料連結", params.attachment);
+      const caseHistory = buildModificationContext_(spreadsheet, SHEETS.cases, originalCaseId, params.reporter, timestamp, "editCaseProgress:latestCaseSync");
+      setByHeaderWithHistory_(caseSheet, caseHeaders, caseRow, "目前進度說明", params.progress || "", caseHistory);
+      setByHeaderWithHistory_(caseSheet, caseHeaders, caseRow, "狀態", params.status || "進行中", caseHistory);
+      setByHeaderWithHistory_(caseSheet, caseHeaders, caseRow, "回報人", params.reporter || "", caseHistory);
+      if (params.note) setByHeaderWithHistory_(caseSheet, caseHeaders, caseRow, "備註", params.note, caseHistory);
+      if (params.attachment) setByHeaderWithHistory_(caseSheet, caseHeaders, caseRow, "佐證資料連結", params.attachment, caseHistory);
       if (params.status === "已完成") {
-        setByHeader_(caseSheet, caseHeaders, caseRow, "完成/解除列管說明", params.completion || params.progress || "");
+        setByHeaderWithHistory_(caseSheet, caseHeaders, caseRow, "完成/解除列管說明", params.completion || params.progress || "", caseHistory);
         if (!getByHeader_(caseSheet, caseHeaders, caseRow, "解除列管時間")) {
-          setByHeader_(caseSheet, caseHeaders, caseRow, "解除列管時間", timestamp);
+          setByHeaderWithHistory_(caseSheet, caseHeaders, caseRow, "解除列管時間", timestamp, caseHistory);
         }
       }
       setByHeader_(caseSheet, caseHeaders, caseRow, "最後修改人", params.reporter || "");
@@ -683,12 +699,13 @@ function editItemProgress_(params) {
 
   const updateHeaders = updateSheet.getRange(1, 1, 1, updateSheet.getLastColumn()).getValues()[0];
   const originalItemId = getByHeader_(updateSheet, updateHeaders, updateRow, "工項ID") || params.itemId || "";
-  setByHeader_(updateSheet, updateHeaders, updateRow, "工項ID", originalItemId);
-  setByHeader_(updateSheet, updateHeaders, updateRow, "進度內容", params.progress);
-  setByHeader_(updateSheet, updateHeaders, updateRow, "完成狀態", params.status || "未確認");
-  setByHeader_(updateSheet, updateHeaders, updateRow, "下次追蹤日期", params.nextDate || "");
-  setByHeader_(updateSheet, updateHeaders, updateRow, "備註", params.note || "");
-  setByHeader_(updateSheet, updateHeaders, updateRow, "佐證資料連結", params.voucher || "");
+  const updateHistory = buildModificationContext_(spreadsheet, SHEETS.updates, params.updateId, params.reporter, timestamp, "editItemProgress");
+  setByHeaderWithHistory_(updateSheet, updateHeaders, updateRow, "工項ID", originalItemId, updateHistory);
+  setByHeaderWithHistory_(updateSheet, updateHeaders, updateRow, "進度內容", params.progress, updateHistory);
+  setByHeaderWithHistory_(updateSheet, updateHeaders, updateRow, "完成狀態", params.status || "未確認", updateHistory);
+  setByHeaderWithHistory_(updateSheet, updateHeaders, updateRow, "下次追蹤日期", params.nextDate || "", updateHistory);
+  setByHeaderWithHistory_(updateSheet, updateHeaders, updateRow, "備註", params.note || "", updateHistory);
+  setByHeaderWithHistory_(updateSheet, updateHeaders, updateRow, "佐證資料連結", params.voucher || "", updateHistory);
   setByHeader_(updateSheet, updateHeaders, updateRow, "最後修改人", params.reporter || "");
   setByHeader_(updateSheet, updateHeaders, updateRow, "最後修改時間", timestamp);
 
@@ -696,8 +713,9 @@ function editItemProgress_(params) {
     const itemRow = findItemRow_(itemSheet, originalItemId);
     if (itemRow) {
       const itemHeaders = itemSheet.getRange(1, 1, 1, itemSheet.getLastColumn()).getValues()[0];
-      setScheduleSummary_(itemSheet, itemHeaders, itemRow, params.scheduleSummary || "");
-      setByHeader_(itemSheet, itemHeaders, itemRow, "執行現況說明", params.progress);
+      const itemHistory = buildModificationContext_(spreadsheet, itemSheet.getName(), originalItemId, params.reporter, timestamp, "editItemProgress:latestItemSync");
+      setScheduleSummaryWithHistory_(itemSheet, itemHeaders, itemRow, params.scheduleSummary || "", itemHistory);
+      setByHeaderWithHistory_(itemSheet, itemHeaders, itemRow, "執行現況說明", params.progress, itemHistory);
     }
   }
 
@@ -717,6 +735,15 @@ function setScheduleSummary_(sheet, headers, row, value) {
     return;
   }
   sheet.getRange(row, 8).setValue(value);
+}
+
+function setScheduleSummaryWithHistory_(sheet, headers, row, value, history) {
+  const index = headers.indexOf("表定時間摘要");
+  if (index >= 0) {
+    setByHeaderWithHistory_(sheet, headers, row, "表定時間摘要", value, history);
+    return;
+  }
+  setCellWithHistory_(sheet, row, 8, "表定時間摘要", value, history);
 }
 
 function listTasks_() {
@@ -934,6 +961,53 @@ function splitEmails_(value) {
 function setByHeader_(sheet, headers, row, header, value) {
   const index = headers.indexOf(header);
   if (index >= 0) sheet.getRange(row, index + 1).setValue(value);
+}
+
+function setByHeaderWithHistory_(sheet, headers, row, header, value, history) {
+  const index = headers.indexOf(header);
+  if (index < 0) return;
+  setCellWithHistory_(sheet, row, index + 1, header, value, history);
+}
+
+function setCellWithHistory_(sheet, row, column, header, value, history) {
+  const range = sheet.getRange(row, column);
+  const oldValue = range.getDisplayValue();
+  const newValue = normalizeHistoryValue_(value);
+  if (oldValue === newValue) return;
+  range.setValue(value);
+  appendModificationHistory_(history, header, oldValue, newValue);
+}
+
+function buildModificationContext_(spreadsheet, sheetName, recordId, reporter, timestamp, source) {
+  return {
+    spreadsheet,
+    sheetName,
+    recordId: recordId || "",
+    reporter: reporter || "",
+    timestamp,
+    source,
+  };
+}
+
+function appendModificationHistory_(history, field, oldValue, newValue) {
+  const sheet = ensureSheet_(history.spreadsheet, SHEETS.modificationHistory, MODIFICATION_HISTORY_HEADERS);
+  const historyId = "MOD" + Utilities.formatDate(new Date(), "Asia/Taipei", "yyyyMMddHHmmss") + "-" + Utilities.getUuid().slice(0, 8);
+  sheet.appendRow([
+    historyId,
+    history.sheetName,
+    history.recordId,
+    field,
+    oldValue,
+    newValue,
+    history.reporter,
+    history.timestamp,
+    history.source,
+  ]);
+}
+
+function normalizeHistoryValue_(value) {
+  if (value === null || typeof value === "undefined") return "";
+  return String(value);
 }
 
 function getByHeader_(sheet, headers, row, header) {

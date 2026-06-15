@@ -44,7 +44,7 @@ Google Drive 對應檔案：
 
 Web App URL：
 
-`https://script.google.com/macros/s/AKfycbzfv-OJBRCF3ADFljrT5h0qxOpXdE0rPAqd3GbKmmIPPvPHYPfrsqwvLteWqf3MfElMaA/exec`
+`https://script.google.com/macros/s/AKfycbwbPhlynzzmp2_bvEeRCG4OOokn1OsgYqrD-C-TvvVwpGATutVJHW-sv7BiZ8dRoM_tTA/exec`
 
 Apps Script 會使用以下工作表：
 
@@ -54,6 +54,8 @@ Apps Script 會使用以下工作表：
 - `經費支出紀錄`
 - `案件追蹤列管`
 - `案件進度紀錄`
+- `諮詢輔導場次`
+- `修改歷程`
 
 ## 部署 Apps Script
 
@@ -70,3 +72,4 @@ Apps Script 會使用以下工作表：
 - 本版 Apps Script 已提供 `ALLOWED_REPORTERS` 選用白名單；維持空陣列代表不限制，填入姓名後只有名單內填報人可寫入。
 - 新增案件會自動產生 `CASE-0001` 這類案件編號；指定同事可用案件編號補最新進度，狀態改為 `已完成` 並填寫完成/解除列管說明後即可解除列管。
 - 案件卡片會顯示最近 3 筆 `案件進度紀錄`，同事送出最新進度後，可直接回到案件列表查看最新回報內容。
+- 編輯既有工項回報、追蹤案件、案件進度或諮詢輔導場次時，Apps Script 會自動建立 `修改歷程` 工作表，記錄資料表、記錄ID、欄位、原值、新值、修改人與修改時間；原本送出的日期/建立時間不會被覆蓋。
