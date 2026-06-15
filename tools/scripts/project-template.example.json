@@ -1,12 +1,23 @@
 {
+  "projectId": "example",
   "toolName": "example-progress",
   "projectName": "115 某某計畫",
   "office": "北部",
   "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/PUT_GOOGLE_SHEET_ID_HERE/edit",
   "sourceUrl": "",
   "apiUrl": "",
+  "appsScriptScriptId": "",
+  "appsScriptDeploymentId": "",
+  "registryStatus": "setup",
+  "registerProject": true,
   "xlsx": "/path/to/source.xlsx",
   "template": "tools/taozhumiao-progress",
   "addToDashboard": true,
+  "progressUpdates": true,
+  "caseTracking": true,
+  "consultations": true,
+  "expenses": true,
+  "contacts": false,
+  "modificationHistory": true,
   "force": false
 }

@@ -86,6 +86,7 @@ tools/scripts/deploy-registered-tool.sh yunjianan \
 ```
 
 這會自動讀取對應的 `toolDir` 與 `appsScript.deploymentId`，並更新既有部署網址。
+若新專案尚未有 `appsScript.deploymentId`，腳本會建立新的 Apps Script 部署；部署完成後請把輸出的 deployment id / Web App URL 回填到 `tools/project-registry.json`，並把專案 `status` 從 `setup` 改為 `active`。
 
 若是尚未登錄的新工具，才直接指定工具資料夾：
 

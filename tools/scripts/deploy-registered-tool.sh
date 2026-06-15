@@ -54,9 +54,14 @@ PY
 )"
 
 IFS=$'\t' read -r tool_dir deployment_id <<<"$project_info"
-if [[ -z "$tool_dir" || -z "$deployment_id" ]]; then
-  echo "ERROR: Registry entry for $project_id must include toolDir and appsScript.deploymentId" >&2
+if [[ -z "$tool_dir" ]]; then
+  echo "ERROR: Registry entry for $project_id must include toolDir" >&2
   exit 2
 fi
 
-tools/scripts/deploy-apps-script.sh "$tool_dir" --deployment-id "$deployment_id" "$@"
+if [[ -n "$deployment_id" ]]; then
+  tools/scripts/deploy-apps-script.sh "$tool_dir" --deployment-id "$deployment_id" "$@"
+else
+  echo "WARN Registry entry for $project_id has no Apps Script deployment id; creating a new deployment."
+  tools/scripts/deploy-apps-script.sh "$tool_dir" "$@"
+fi
