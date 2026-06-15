@@ -387,6 +387,22 @@ textarea:focus {
   background: #fbfcfd;
 }
 
+.edit-banner {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid #e1c16f;
+  border-radius: 7px;
+  background: #fff8e6;
+  color: #72510b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.edit-banner.hidden {
+  display: none;
+}
+
 .source-detail p,
 .record-card p,
 .source-table td {
@@ -495,6 +511,19 @@ textarea:focus {
   border: 1px solid var(--line);
   border-radius: 7px;
   background: #fbfcfd;
+}
+
+.record-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.record-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .record-card span {

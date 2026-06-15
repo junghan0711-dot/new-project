@@ -20,6 +20,8 @@ const UPDATE_HEADERS = [
   "下次追蹤日期",
   "備註",
   "佐證資料連結",
+  "最後修改人",
+  "最後修改時間",
 ];
 const CASE_UPDATE_HEADERS = [
   "案件更新ID",
@@ -31,6 +33,8 @@ const CASE_UPDATE_HEADERS = [
   "完成/解除列管說明",
   "佐證資料連結",
   "備註",
+  "最後修改人",
+  "最後修改時間",
 ];
 const EXPENSE_HEADERS = [
   "經費ID",
@@ -60,6 +64,8 @@ const CASE_HEADERS = [
   "佐證資料連結",
   "完成/解除列管說明",
   "解除列管時間",
+  "最後修改人",
+  "最後修改時間",
 ];
 const CONSULTATION_HEADERS = [
   "場次ID",
@@ -82,6 +88,8 @@ const CONSULTATION_HEADERS = [
   "建立人",
   "建立時間",
   "最後更新時間",
+  "最後修改人",
+  "最後修改時間",
 ];
 const CONTACT_HEADERS = [
   "單位",
@@ -164,7 +172,7 @@ function prepareContacts_() {
 
 function listItems_() {
   const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = spreadsheet.getSheetByName("工項主檔") || spreadsheet.getSheetByName("工項總表");
+  const sheet = getItemSheet_(spreadsheet);
   if (!sheet) return [];
   const values = sheet.getDataRange().getDisplayValues();
   if (values.length < 2) return [];
@@ -230,9 +238,19 @@ function doPost(e) {
       const result = submitItemProgress_(params);
       return json_({ ok: true, result });
     }
+    if (params.action === "editItemProgress") {
+      checkReporter_(params.reporter);
+      const result = editItemProgress_(params);
+      return json_({ ok: true, result });
+    }
     if (params.action === "submitCaseTracking") {
       checkReporter_(params.reporter);
       const result = submitCaseTracking_(params);
+      return json_({ ok: true, result });
+    }
+    if (params.action === "editCaseTracking") {
+      checkReporter_(params.reporter);
+      const result = editCaseTracking_(params);
       return json_({ ok: true, result });
     }
     if (params.action === "submitCaseProgress") {
@@ -240,9 +258,19 @@ function doPost(e) {
       const result = submitCaseProgress_(params);
       return json_({ ok: true, result });
     }
+    if (params.action === "editCaseProgress") {
+      checkReporter_(params.reporter);
+      const result = editCaseProgress_(params);
+      return json_({ ok: true, result });
+    }
     if (params.action === "submitConsultationSession") {
       checkReporter_(params.reporter);
       const result = submitConsultationSession_(params);
+      return json_({ ok: true, result });
+    }
+    if (params.action === "editConsultationSession") {
+      checkReporter_(params.reporter);
+      const result = editConsultationSession_(params);
       return json_({ ok: true, result });
     }
     if (params.action !== "submitProgress") {
@@ -285,9 +313,43 @@ function submitConsultationSession_(params) {
     params.reporter || "",
     timestamp,
     timestamp,
+    "",
+    "",
   ]);
 
   return { sessionId, updatedAt: timestamp };
+}
+
+function editConsultationSession_(params) {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ensureSheet_(spreadsheet, SHEETS.consultations, CONSULTATION_HEADERS);
+  const timestamp = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
+  const row = findSessionRow_(sheet, params.sessionId);
+  if (!row) throw new Error("找不到場次ID：" + params.sessionId);
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  setByHeader_(sheet, headers, row, "工項ID", params.itemId || "ITEM001");
+  setByHeader_(sheet, headers, row, "月份", params.month || "");
+  setByHeader_(sheet, headers, row, "單位名稱", params.unitName || "");
+  setByHeader_(sheet, headers, row, "輔導日期", params.date || "");
+  setByHeader_(sheet, headers, row, "開始時間", params.startTime || "");
+  setByHeader_(sheet, headers, row, "結束時間", params.endTime || "");
+  setByHeader_(sheet, headers, row, "地點", params.location || "");
+  setByHeader_(sheet, headers, row, "輔導老師", params.teacher || "");
+  setByHeader_(sheet, headers, row, "分署人員", params.branchStaff || "");
+  setByHeader_(sheet, headers, row, "單位人員", params.unitStaff || "");
+  setByHeader_(sheet, headers, row, "相關人員", params.relatedStaff || "");
+  setByHeader_(sheet, headers, row, "負責同仁", params.owner || "");
+  setByHeader_(sheet, headers, row, "狀態", params.status || "預排");
+  setByHeader_(sheet, headers, row, "輔導主題", params.topic || "");
+  setByHeader_(sheet, headers, row, "會議紀錄/備註", params.note || "");
+  setByHeader_(sheet, headers, row, "佐證資料連結", params.attachment || "");
+  setByHeader_(sheet, headers, row, "建立人", params.reporter || "");
+  setByHeader_(sheet, headers, row, "最後更新時間", timestamp);
+  setByHeader_(sheet, headers, row, "最後修改人", params.reporter || "");
+  setByHeader_(sheet, headers, row, "最後修改時間", timestamp);
+
+  return { sessionId: params.sessionId, modifiedAt: timestamp };
 }
 
 function submitCaseTracking_(params) {
@@ -313,6 +375,8 @@ function submitCaseTracking_(params) {
     params.attachment || "",
     params.status === "已完成" ? (params.completion || params.progress || "") : "",
     params.status === "已完成" ? timestamp : "",
+    "",
+    "",
   ]);
 
   appendCaseUpdate_(updateSheet, {
@@ -328,6 +392,38 @@ function submitCaseTracking_(params) {
   const notification = notifyCaseAssignees_(params, caseId, timestamp);
 
   return { caseId, updatedAt: timestamp, notification };
+}
+
+function editCaseTracking_(params) {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const caseSheet = ensureSheet_(spreadsheet, SHEETS.cases, CASE_HEADERS);
+  const timestamp = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
+  const caseRow = findCaseRow_(caseSheet, params.caseId);
+  if (!caseRow) throw new Error("找不到案件ID：" + params.caseId);
+
+  const headers = caseSheet.getRange(1, 1, 1, caseSheet.getLastColumn()).getValues()[0];
+  setByHeader_(caseSheet, headers, caseRow, "案件名稱", params.title || "");
+  setByHeader_(caseSheet, headers, caseRow, "指定同事", params.assignee || "");
+  setByHeader_(caseSheet, headers, caseRow, "交辦內容", params.instruction || "");
+  setByHeader_(caseSheet, headers, caseRow, "查核點", params.checkpoint || "");
+  setByHeader_(caseSheet, headers, caseRow, "Deadline", params.deadline || "");
+  setByHeader_(caseSheet, headers, caseRow, "目前進度說明", params.progress || "");
+  setByHeader_(caseSheet, headers, caseRow, "狀態", params.status || "待執行");
+  setByHeader_(caseSheet, headers, caseRow, "優先序", params.priority || "一般");
+  setByHeader_(caseSheet, headers, caseRow, "回報人", params.reporter || "");
+  setByHeader_(caseSheet, headers, caseRow, "備註", params.note || "");
+  setByHeader_(caseSheet, headers, caseRow, "佐證資料連結", params.attachment || "");
+  if (params.status === "已完成") {
+    const completion = getByHeader_(caseSheet, headers, caseRow, "完成/解除列管說明") || params.completion || params.progress || "";
+    setByHeader_(caseSheet, headers, caseRow, "完成/解除列管說明", completion);
+    if (!getByHeader_(caseSheet, headers, caseRow, "解除列管時間")) {
+      setByHeader_(caseSheet, headers, caseRow, "解除列管時間", timestamp);
+    }
+  }
+  setByHeader_(caseSheet, headers, caseRow, "最後修改人", params.reporter || "");
+  setByHeader_(caseSheet, headers, caseRow, "最後修改時間", timestamp);
+
+  return { caseId: params.caseId, modifiedAt: timestamp };
 }
 
 function notifyCaseAssignees_(params, caseId, timestamp) {
@@ -466,6 +562,49 @@ function submitCaseProgress_(params) {
   return { caseId: params.caseId, updatedAt: timestamp };
 }
 
+function editCaseProgress_(params) {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const caseSheet = ensureSheet_(spreadsheet, SHEETS.cases, CASE_HEADERS);
+  const updateSheet = ensureSheet_(spreadsheet, SHEETS.caseUpdates, CASE_UPDATE_HEADERS);
+  const timestamp = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
+  const updateRow = findCaseUpdateRow_(updateSheet, params.updateId);
+  if (!updateRow) throw new Error("找不到案件更新ID：" + params.updateId);
+
+  const updateHeaders = updateSheet.getRange(1, 1, 1, updateSheet.getLastColumn()).getValues()[0];
+  const originalCaseId = getByHeader_(updateSheet, updateHeaders, updateRow, "案件ID") || params.caseId || "";
+  setByHeader_(updateSheet, updateHeaders, updateRow, "案件ID", originalCaseId);
+  setByHeader_(updateSheet, updateHeaders, updateRow, "回報人", params.reporter || "");
+  setByHeader_(updateSheet, updateHeaders, updateRow, "最新進度", params.progress || "");
+  setByHeader_(updateSheet, updateHeaders, updateRow, "狀態", params.status || "進行中");
+  setByHeader_(updateSheet, updateHeaders, updateRow, "完成/解除列管說明", params.completion || "");
+  setByHeader_(updateSheet, updateHeaders, updateRow, "佐證資料連結", params.attachment || "");
+  setByHeader_(updateSheet, updateHeaders, updateRow, "備註", params.note || "");
+  setByHeader_(updateSheet, updateHeaders, updateRow, "最後修改人", params.reporter || "");
+  setByHeader_(updateSheet, updateHeaders, updateRow, "最後修改時間", timestamp);
+
+  if (originalCaseId && isLatestCaseUpdateRow_(updateSheet, updateHeaders, updateRow, originalCaseId)) {
+    const caseRow = findCaseRow_(caseSheet, originalCaseId);
+    if (caseRow) {
+      const caseHeaders = caseSheet.getRange(1, 1, 1, caseSheet.getLastColumn()).getValues()[0];
+      setByHeader_(caseSheet, caseHeaders, caseRow, "目前進度說明", params.progress || "");
+      setByHeader_(caseSheet, caseHeaders, caseRow, "狀態", params.status || "進行中");
+      setByHeader_(caseSheet, caseHeaders, caseRow, "回報人", params.reporter || "");
+      if (params.note) setByHeader_(caseSheet, caseHeaders, caseRow, "備註", params.note);
+      if (params.attachment) setByHeader_(caseSheet, caseHeaders, caseRow, "佐證資料連結", params.attachment);
+      if (params.status === "已完成") {
+        setByHeader_(caseSheet, caseHeaders, caseRow, "完成/解除列管說明", params.completion || params.progress || "");
+        if (!getByHeader_(caseSheet, caseHeaders, caseRow, "解除列管時間")) {
+          setByHeader_(caseSheet, caseHeaders, caseRow, "解除列管時間", timestamp);
+        }
+      }
+      setByHeader_(caseSheet, caseHeaders, caseRow, "最後修改人", params.reporter || "");
+      setByHeader_(caseSheet, caseHeaders, caseRow, "最後修改時間", timestamp);
+    }
+  }
+
+  return { updateId: params.updateId, caseId: originalCaseId, modifiedAt: timestamp };
+}
+
 function appendCaseUpdate_(sheet, params, timestamp) {
   const updateId = "CASE-UPD" + Utilities.formatDate(new Date(), "Asia/Taipei", "yyyyMMddHHmmss");
   sheet.appendRow([
@@ -478,12 +617,14 @@ function appendCaseUpdate_(sheet, params, timestamp) {
     params.completion || "",
     params.attachment || "",
     params.note || "",
+    "",
+    "",
   ]);
 }
 
 function submitItemProgress_(params) {
   const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const itemSheet = spreadsheet.getSheetByName("工項主檔") || spreadsheet.getSheetByName("工項總表");
+  const itemSheet = getItemSheet_(spreadsheet);
   const updateSheet = ensureSheet_(spreadsheet, SHEETS.updates, UPDATE_HEADERS);
   const expenseSheet = ensureSheet_(spreadsheet, SHEETS.expenses, EXPENSE_HEADERS);
   const timestamp = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
@@ -492,6 +633,7 @@ function submitItemProgress_(params) {
   if (!itemRow) throw new Error("找不到工項ID：" + params.itemId);
 
   const itemHeaders = itemSheet.getRange(1, 1, 1, itemSheet.getLastColumn()).getValues()[0];
+  setScheduleSummary_(itemSheet, itemHeaders, itemRow, params.scheduleSummary || "");
   setByHeader_(itemSheet, itemHeaders, itemRow, "執行現況說明", params.progress);
   setByHeader_(itemSheet, itemHeaders, itemRow, "最後更新人", params.reporter);
   setByHeader_(itemSheet, itemHeaders, itemRow, "最後更新時間", timestamp);
@@ -508,6 +650,8 @@ function submitItemProgress_(params) {
     params.nextDate || "",
     params.note || "",
     params.voucher || "",
+    "",
+    "",
   ]);
 
   if (Number(params.expense) > 0 || params.expenseDetail) {
@@ -527,6 +671,52 @@ function submitItemProgress_(params) {
   }
 
   return { itemId: params.itemId, updatedAt: timestamp };
+}
+
+function editItemProgress_(params) {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const itemSheet = getItemSheet_(spreadsheet);
+  const updateSheet = ensureSheet_(spreadsheet, SHEETS.updates, UPDATE_HEADERS);
+  const timestamp = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
+  const updateRow = findUpdateRow_(updateSheet, params.updateId);
+  if (!updateRow) throw new Error("找不到更新ID：" + params.updateId);
+
+  const updateHeaders = updateSheet.getRange(1, 1, 1, updateSheet.getLastColumn()).getValues()[0];
+  const originalItemId = getByHeader_(updateSheet, updateHeaders, updateRow, "工項ID") || params.itemId || "";
+  setByHeader_(updateSheet, updateHeaders, updateRow, "工項ID", originalItemId);
+  setByHeader_(updateSheet, updateHeaders, updateRow, "進度內容", params.progress);
+  setByHeader_(updateSheet, updateHeaders, updateRow, "完成狀態", params.status || "未確認");
+  setByHeader_(updateSheet, updateHeaders, updateRow, "下次追蹤日期", params.nextDate || "");
+  setByHeader_(updateSheet, updateHeaders, updateRow, "備註", params.note || "");
+  setByHeader_(updateSheet, updateHeaders, updateRow, "佐證資料連結", params.voucher || "");
+  setByHeader_(updateSheet, updateHeaders, updateRow, "最後修改人", params.reporter || "");
+  setByHeader_(updateSheet, updateHeaders, updateRow, "最後修改時間", timestamp);
+
+  if (itemSheet && originalItemId && isLatestItemUpdateRow_(updateSheet, updateHeaders, updateRow, originalItemId)) {
+    const itemRow = findItemRow_(itemSheet, originalItemId);
+    if (itemRow) {
+      const itemHeaders = itemSheet.getRange(1, 1, 1, itemSheet.getLastColumn()).getValues()[0];
+      setScheduleSummary_(itemSheet, itemHeaders, itemRow, params.scheduleSummary || "");
+      setByHeader_(itemSheet, itemHeaders, itemRow, "執行現況說明", params.progress);
+    }
+  }
+
+  return { updateId: params.updateId, itemId: originalItemId, modifiedAt: timestamp };
+}
+
+function getItemSheet_(spreadsheet) {
+  return spreadsheet.getSheetByName("資料總覽")
+    || spreadsheet.getSheetByName("工項主檔")
+    || spreadsheet.getSheetByName("工項總表");
+}
+
+function setScheduleSummary_(sheet, headers, row, value) {
+  const index = headers.indexOf("表定時間摘要");
+  if (index >= 0) {
+    sheet.getRange(row, index + 1).setValue(value);
+    return;
+  }
+  sheet.getRange(row, 8).setValue(value);
 }
 
 function listTasks_() {
@@ -596,6 +786,8 @@ function submitProgress_(params) {
     params.nextDate || "",
     params.note || "",
     params.voucher || "",
+    "",
+    "",
   ]);
 
   if (Number(params.expense) > 0 || params.expenseDetail) {
@@ -625,6 +817,25 @@ function findTaskRow_(sheet, taskId) {
   return 0;
 }
 
+function findUpdateRow_(sheet, updateId) {
+  const values = sheet.getRange(1, 1, sheet.getLastRow(), 1).getDisplayValues();
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] === updateId) return i + 1;
+  }
+  return 0;
+}
+
+function isLatestItemUpdateRow_(sheet, headers, targetRow, itemId) {
+  const itemIdIndex = headers.indexOf("工項ID");
+  if (itemIdIndex < 0) return true;
+  const lastRow = sheet.getLastRow();
+  for (let row = lastRow; row >= 2; row--) {
+    const currentItemId = sheet.getRange(row, itemIdIndex + 1).getDisplayValue();
+    if (currentItemId === itemId) return row === targetRow;
+  }
+  return true;
+}
+
 function findItemRow_(sheet, itemId) {
   const values = sheet.getRange(1, 1, sheet.getLastRow(), 1).getValues();
   for (let i = 1; i < values.length; i++) {
@@ -637,6 +848,33 @@ function findCaseRow_(sheet, caseId) {
   const values = sheet.getRange(1, 1, sheet.getLastRow(), 1).getDisplayValues();
   for (let i = 1; i < values.length; i++) {
     if (values[i][0] === caseId) return i + 1;
+  }
+  return 0;
+}
+
+function findCaseUpdateRow_(sheet, updateId) {
+  const values = sheet.getRange(1, 1, sheet.getLastRow(), 1).getDisplayValues();
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] === updateId) return i + 1;
+  }
+  return 0;
+}
+
+function isLatestCaseUpdateRow_(sheet, headers, targetRow, caseId) {
+  const caseIdIndex = headers.indexOf("案件ID");
+  if (caseIdIndex < 0) return true;
+  const lastRow = sheet.getLastRow();
+  for (let row = lastRow; row >= 2; row--) {
+    const currentCaseId = sheet.getRange(row, caseIdIndex + 1).getDisplayValue();
+    if (currentCaseId === caseId) return row === targetRow;
+  }
+  return true;
+}
+
+function findSessionRow_(sheet, sessionId) {
+  const values = sheet.getRange(1, 1, sheet.getLastRow(), 1).getDisplayValues();
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] === sessionId) return i + 1;
   }
   return 0;
 }

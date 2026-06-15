@@ -16,6 +16,14 @@
     filteredCases: [],
     filteredConsultations: [],
     itemStatusDrafts: {},
+    editingItemUpdateId: "",
+    editingItemUpdateOriginalDate: "",
+    editingCaseId: "",
+    editingCaseOriginalReportedAt: "",
+    editingCaseUpdateId: "",
+    editingCaseUpdateOriginalDate: "",
+    editingConsultationSessionId: "",
+    editingConsultationOriginalCreatedAt: "",
     selectedItemId: "",
     selectedSheetName: "",
     loading: false,
@@ -43,6 +51,10 @@
     $("sourceSearchInput").addEventListener("input", renderSourceTable);
     $("progressForm").addEventListener("submit", submitProgress);
     $("completeInput").addEventListener("change", updateSelectedItemStatusDraft);
+    $("cancelEditButton").addEventListener("click", cancelItemUpdateEdit);
+    $("cancelCaseEditButton").addEventListener("click", cancelCaseEdit);
+    $("cancelCaseProgressEditButton").addEventListener("click", cancelCaseProgressEdit);
+    $("cancelConsultationEditButton").addEventListener("click", cancelConsultationEdit);
     $("caseForm").addEventListener("submit", submitCaseTracking);
     $("caseProgressForm").addEventListener("submit", submitCaseProgress);
     $("consultationForm").addEventListener("submit", submitConsultationSession);
@@ -232,6 +244,8 @@
       attachment: record.attachment || record["佐證資料連結"] || record["附件連結"] || "",
       completion: record.completion || record["完成/解除列管說明"] || record["完成說明"] || "",
       releasedAt: record.releasedAt || record["解除列管時間"] || "",
+      modifiedBy: record.modifiedBy || record["最後修改人"] || "",
+      modifiedAt: record.modifiedAt || record["最後修改時間"] || "",
     };
   }
 
@@ -257,6 +271,8 @@
       reporter: record.reporter || record["建立人"] || "",
       createdAt: record.createdAt || record["建立時間"] || "",
       updatedAt: record.updatedAt || record["最後更新時間"] || "",
+      modifiedBy: record.modifiedBy || record["最後修改人"] || "",
+      modifiedAt: record.modifiedAt || record["最後修改時間"] || "",
     };
   }
 
@@ -544,6 +560,8 @@
         "下次追蹤日期",
         "備註",
         "佐證資料連結",
+        "最後修改人",
+        "最後修改時間",
       ], state.updates.map((record) => [
         record.updateId || record["更新ID"],
         record.taskId || record["任務ID"],
@@ -555,6 +573,8 @@
         record.nextDate || record["下次追蹤日期"],
         record.note || record["備註"],
         record.voucher || record["佐證資料連結"] || record["憑證連結"],
+        displayPersonName(record.modifiedBy || record["最後修改人"]),
+        record.modifiedAt || record["最後修改時間"],
       ])),
       buildSheet("即時-經費支出紀錄", [
         "經費ID",
@@ -595,6 +615,8 @@
         "佐證資料連結",
         "完成/解除列管說明",
         "解除列管時間",
+        "最後修改人",
+        "最後修改時間",
       ], state.cases.map((record) => [
         record.caseId,
         record.title,
@@ -611,6 +633,8 @@
         record.attachment,
         record.completion,
         record.releasedAt,
+        displayPersonName(record.modifiedBy),
+        record.modifiedAt,
       ])),
       buildSheet("即時-案件進度紀錄", [
         "案件更新ID",
@@ -622,6 +646,8 @@
         "完成/解除列管說明",
         "佐證資料連結",
         "備註",
+        "最後修改人",
+        "最後修改時間",
       ], state.caseUpdates.map((record) => [
         record.updateId || record["案件更新ID"],
         record.caseId || record["案件ID"],
@@ -632,6 +658,8 @@
         record.completion || record["完成/解除列管說明"],
         record.attachment || record["佐證資料連結"],
         record.note || record["備註"],
+        displayPersonName(record.modifiedBy || record["最後修改人"]),
+        record.modifiedAt || record["最後修改時間"],
       ])),
       buildSheet("即時-諮詢輔導場次", [
         "場次ID",
@@ -654,6 +682,8 @@
         "建立人",
         "建立時間",
         "最後更新時間",
+        "最後修改人",
+        "最後修改時間",
       ], state.consultations.map((record) => [
         record.sessionId,
         record.itemId,
@@ -675,6 +705,8 @@
         record.reporter,
         record.createdAt,
         record.updatedAt,
+        displayPersonName(record.modifiedBy),
+        record.modifiedAt,
       ])),
     ];
     return [...liveSheets, ...originalSheets.map((sheet) => ({
@@ -801,9 +833,10 @@
     renderManagement();
   }
 
-  function selectItem(itemId) {
+  function selectItem(itemId, options = {}) {
     const item = state.items.find((entry) => entry.itemId === itemId);
     if (!item) return;
+    if (!options.keepEditMode) resetItemUpdateEdit();
     state.selectedItemId = itemId;
     $("emptyState").classList.add("hidden");
     $("progressForm").classList.remove("hidden");
@@ -815,10 +848,10 @@
     $("selectedProgressText").textContent = item.currentStatus || "未填";
     $("selectedSourceNote").textContent = [
       item.performance ? `履約內容：\n${item.performance}` : "",
-      item.schedule ? `工作執行時程規劃：\n${item.schedule}` : "",
       item.expenseNote ? `經費說明：\n${item.expenseNote}` : "",
     ].filter(Boolean).join("\n\n") || "未填";
     setStatusPill($("selectedStatus"), itemStatus(item));
+    $("scheduleInput").value = item.schedule || "";
     $("progressInput").value = item.currentStatus || "";
     $("completeInput").value = statusOption(itemStatus(item));
     $("nextDateInput").value = "";
@@ -828,6 +861,194 @@
     $("voucherInput").value = "";
     renderMessage("", "");
     renderTasks();
+  }
+
+  function setItemUpdateEditMode(record) {
+    const updateId = record.updateId || record["更新ID"] || "";
+    const itemId = record.itemId || record["工項ID"] || "";
+    const item = state.items.find((entry) => entry.itemId === itemId);
+    if (!updateId || !item) {
+      window.alert("這筆更新紀錄缺少更新ID或工項ID，暫時無法編輯。");
+      return;
+    }
+    selectItem(itemId, { keepEditMode: true });
+    state.editingItemUpdateId = updateId;
+    state.editingItemUpdateOriginalDate = record.date || record["更新日期"] || "";
+    $("progressInput").value = record.progress || record["進度內容"] || "";
+    $("completeInput").value = statusOption(record.status || record["完成狀態"] || itemStatus(item));
+    $("nextDateInput").value = normalizeDateInput(record.nextDate || record["下次追蹤日期"] || "");
+    $("noteInput").value = record.note || record["備註"] || "";
+    $("voucherInput").value = record.voucher || record["佐證資料連結"] || record["憑證連結"] || "";
+    $("expenseInput").value = "";
+    $("expenseDetailInput").value = "";
+    $("expenseInput").disabled = true;
+    $("expenseDetailInput").disabled = true;
+    $("editUpdateText").textContent = `正在編輯 ${updateId}，原送出日期：${state.editingItemUpdateOriginalDate || "未記錄"}。儲存修改不會改變原本送出時間。`;
+    $("editUpdateBanner").classList.remove("hidden");
+    $("cancelEditButton").classList.remove("hidden");
+    $("submitButton").textContent = "儲存修改";
+    setStatusPill($("selectedStatus"), $("completeInput").value);
+    switchView("tasksView");
+    $("progressForm").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function cancelItemUpdateEdit() {
+    const itemId = state.selectedItemId;
+    resetItemUpdateEdit();
+    if (itemId) selectItem(itemId);
+  }
+
+  function resetItemUpdateEdit() {
+    state.editingItemUpdateId = "";
+    state.editingItemUpdateOriginalDate = "";
+    $("editUpdateText").textContent = "";
+    $("editUpdateBanner").classList.add("hidden");
+    $("cancelEditButton").classList.add("hidden");
+    $("submitButton").textContent = "送出更新";
+    $("expenseInput").disabled = false;
+    $("expenseDetailInput").disabled = false;
+  }
+
+  function normalizeDateInput(value) {
+    const text = String(value || "").trim();
+    const match = text.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+    if (!match) return "";
+    return `${match[1]}-${String(match[2]).padStart(2, "0")}-${String(match[3]).padStart(2, "0")}`;
+  }
+
+  function normalizeDateTimeInput(value) {
+    const text = String(value || "").trim();
+    const match = text.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?/);
+    if (!match) return "";
+    const date = `${match[1]}-${String(match[2]).padStart(2, "0")}-${String(match[3]).padStart(2, "0")}`;
+    if (!match[4]) return date;
+    return `${date}T${String(match[4]).padStart(2, "0")}:${match[5]}`;
+  }
+
+  function setCaseEditMode(record) {
+    if (!record.caseId) {
+      window.alert("這筆案件缺少案件ID，暫時無法編輯。");
+      return;
+    }
+    state.editingCaseId = record.caseId;
+    state.editingCaseOriginalReportedAt = record.reportedAt || "";
+    $("caseTitleInput").value = record.title || "";
+    $("caseAssigneeInput").value = record.assignee || "";
+    $("caseDeadlineInput").value = normalizeDateTimeInput(record.deadline);
+    $("caseStatusInput").value = record.status || "待執行";
+    $("caseInstructionInput").value = record.instruction || "";
+    $("caseCheckpointInput").value = record.checkpoint || "";
+    $("caseProgressInput").value = record.progress || "";
+    $("caseReporterInput").value = record.reporter || $("reporterInput").value.trim();
+    $("casePriorityInput").value = record.priority || "一般";
+    $("caseNoteInput").value = record.note || "";
+    $("caseAttachmentInput").value = record.attachment || "";
+    $("caseEditText").textContent = `正在編輯 ${record.caseId}，原送出時間：${state.editingCaseOriginalReportedAt || "未記錄"}。儲存修改不會改變原本送出時間。`;
+    $("caseEditBanner").classList.remove("hidden");
+    $("cancelCaseEditButton").classList.remove("hidden");
+    $("caseSubmitButton").textContent = "儲存修改";
+    switchView("casesView");
+    $("caseForm").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function cancelCaseEdit() {
+    resetCaseEdit();
+    $("caseForm").reset();
+    $("caseReporterInput").value = $("reporterInput").value.trim();
+  }
+
+  function resetCaseEdit() {
+    state.editingCaseId = "";
+    state.editingCaseOriginalReportedAt = "";
+    $("caseEditText").textContent = "";
+    $("caseEditBanner").classList.add("hidden");
+    $("cancelCaseEditButton").classList.add("hidden");
+    $("caseSubmitButton").textContent = "送出列管";
+  }
+
+  function setCaseProgressEditMode(update, caseRecord) {
+    const updateId = caseUpdateValue(update, "updateId", "案件更新ID");
+    const caseId = caseUpdateValue(update, "caseId", "案件ID") || (caseRecord && caseRecord.caseId) || "";
+    if (!updateId || !caseId) {
+      window.alert("這筆案件回報缺少更新ID或案件ID，暫時無法編輯。");
+      return;
+    }
+    state.editingCaseUpdateId = updateId;
+    state.editingCaseUpdateOriginalDate = caseUpdateValue(update, "date", "回報日期") || "";
+    $("caseProgressIdInput").value = caseId;
+    $("caseProgressReporterInput").value = caseUpdateValue(update, "reporter", "回報人") || $("reporterInput").value.trim();
+    $("caseProgressStatusInput").value = caseUpdateValue(update, "status", "狀態") || "進行中";
+    $("caseProgressUpdateInput").value = caseUpdateValue(update, "progress", "最新進度") || "";
+    $("caseCompletionInput").value = caseUpdateValue(update, "completion", "完成/解除列管說明") || "";
+    $("caseProgressAttachmentInput").value = caseUpdateValue(update, "attachment", "佐證資料連結") || "";
+    $("caseProgressNoteInput").value = caseUpdateValue(update, "note", "備註") || "";
+    $("caseProgressEditText").textContent = `正在編輯 ${updateId}，原回報日期：${state.editingCaseUpdateOriginalDate || "未記錄"}。儲存修改不會改變原本回報日期。`;
+    $("caseProgressEditBanner").classList.remove("hidden");
+    $("cancelCaseProgressEditButton").classList.remove("hidden");
+    $("caseProgressSubmitButton").textContent = "儲存修改";
+    switchView("casesView");
+    $("caseProgressForm").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function cancelCaseProgressEdit() {
+    resetCaseProgressEdit();
+    $("caseProgressForm").reset();
+    $("caseProgressReporterInput").value = $("reporterInput").value.trim();
+  }
+
+  function resetCaseProgressEdit() {
+    state.editingCaseUpdateId = "";
+    state.editingCaseUpdateOriginalDate = "";
+    $("caseProgressEditText").textContent = "";
+    $("caseProgressEditBanner").classList.add("hidden");
+    $("cancelCaseProgressEditButton").classList.add("hidden");
+    $("caseProgressSubmitButton").textContent = "送出進度";
+  }
+
+  function setConsultationEditMode(record) {
+    if (!record.sessionId) {
+      window.alert("這筆諮詢輔導場次缺少場次ID，暫時無法編輯。");
+      return;
+    }
+    state.editingConsultationSessionId = record.sessionId;
+    state.editingConsultationOriginalCreatedAt = record.createdAt || "";
+    $("consultationMonthInput").value = record.month || "";
+    $("consultationUnitInput").value = record.unitName || "";
+    $("consultationDateInput").value = normalizeDateInput(record.date);
+    $("consultationOwnerInput").value = record.owner || "";
+    $("consultationStartInput").value = record.startTime || "";
+    $("consultationEndInput").value = record.endTime || "";
+    $("consultationLocationInput").value = record.location || "";
+    $("consultationStatusInput").value = record.status || "預排";
+    $("consultationTeacherInput").value = record.teacher || "";
+    $("consultationBranchStaffInput").value = record.branchStaff || "";
+    $("consultationUnitStaffInput").value = record.unitStaff || "";
+    $("consultationRelatedStaffInput").value = record.relatedStaff || "";
+    $("consultationTopicInput").value = record.topic || "";
+    $("consultationNoteInput").value = record.note || "";
+    $("consultationAttachmentInput").value = record.attachment || "";
+    $("consultationEditText").textContent = `正在編輯 ${record.sessionId}，原建立時間：${state.editingConsultationOriginalCreatedAt || "未記錄"}。儲存修改不會改變原本建立時間。`;
+    $("consultationEditBanner").classList.remove("hidden");
+    $("cancelConsultationEditButton").classList.remove("hidden");
+    $("consultationSubmitButton").textContent = "儲存修改";
+    switchView("consultationView");
+    $("consultationForm").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function cancelConsultationEdit() {
+    resetConsultationEdit();
+    $("consultationForm").reset();
+    $("consultationMonthInput").value = currentMonthValue();
+    $("consultationDateInput").value = currentDateValue();
+  }
+
+  function resetConsultationEdit() {
+    state.editingConsultationSessionId = "";
+    state.editingConsultationOriginalCreatedAt = "";
+    $("consultationEditText").textContent = "";
+    $("consultationEditBanner").classList.add("hidden");
+    $("cancelConsultationEditButton").classList.add("hidden");
+    $("consultationSubmitButton").textContent = "送出場次";
   }
 
   function statusOption(status) {
@@ -929,7 +1150,12 @@
         displayPersonName(record.reporter || record["更新人"]),
         record.note || record["備註"],
         record.voucher || record["佐證資料連結"] || record["憑證連結"],
+        record.modifiedAt || record["最後修改時間"] ? `最後修改：${displayPersonName(record.modifiedBy || record["最後修改人"]) || "未填"} ${record.modifiedAt || record["最後修改時間"]}` : "",
       ].filter(Boolean).join(" / "),
+      action: record.updateId || record["更新ID"] ? {
+        label: "編輯",
+        onClick: () => setItemUpdateEditMode(record),
+      } : null,
     }));
     renderRecordList("expensesList", state.expenses, (record) => ({
       title: `${record.taskId || record["任務ID"] || ""} ${formatMoney(record.amount || record["金額"])}`,
@@ -1276,8 +1502,17 @@
       ].filter(Boolean).join(" / ");
       title.appendChild(strong);
       title.appendChild(span);
+      const actionStack = document.createElement("div");
+      actionStack.className = "status-stack";
+      actionStack.appendChild(status);
+      const editButton = document.createElement("button");
+      editButton.className = "button compact";
+      editButton.type = "button";
+      editButton.textContent = "編輯場次";
+      editButton.addEventListener("click", () => setConsultationEditMode(record));
+      actionStack.appendChild(editButton);
       header.appendChild(title);
-      header.appendChild(status);
+      header.appendChild(actionStack);
 
       const body = document.createElement("div");
       body.className = "consultation-card-body";
@@ -1317,6 +1552,7 @@
         record.reporter ? `建立人：${displayPersonName(record.reporter)}` : "",
         record.createdAt ? `建立時間：${record.createdAt}` : "",
         record.updatedAt ? `最後更新：${record.updatedAt}` : "",
+        record.modifiedAt ? `最後修改：${displayPersonName(record.modifiedBy) || "未填"} ${record.modifiedAt}` : "",
       ].filter(Boolean).join(" / ");
 
       card.appendChild(header);
@@ -1686,6 +1922,12 @@
       button.textContent = "回報此案";
       button.addEventListener("click", () => fillCaseProgressForm(record));
       actions.appendChild(button);
+      const editButton = document.createElement("button");
+      editButton.className = "button compact";
+      editButton.type = "button";
+      editButton.textContent = "編輯列管";
+      editButton.addEventListener("click", () => setCaseEditMode(record));
+      actions.appendChild(editButton);
 
       main.appendChild(title);
       main.appendChild(actions);
@@ -1734,6 +1976,12 @@
     fillButton.textContent = "回報此案";
     fillButton.addEventListener("click", () => fillCaseProgressForm(record));
     statusStack.appendChild(fillButton);
+    const editButton = document.createElement("button");
+    editButton.className = "button compact";
+    editButton.type = "button";
+    editButton.textContent = "編輯列管";
+    editButton.addEventListener("click", () => setCaseEditMode(record));
+    statusStack.appendChild(editButton);
     header.appendChild(title);
     header.appendChild(statusStack);
     return header;
@@ -1887,8 +2135,17 @@
       ].filter(Boolean).join(" / ");
       const progress = document.createElement("p");
       progress.textContent = caseUpdateValue(update, "progress", "最新進度") || "未填最新進度";
+      const actions = document.createElement("div");
+      actions.className = "record-actions";
+      const editButton = document.createElement("button");
+      editButton.className = "button compact";
+      editButton.type = "button";
+      editButton.textContent = "編輯回報";
+      editButton.addEventListener("click", () => setCaseProgressEditMode(update, record));
+      actions.appendChild(editButton);
       article.appendChild(meta);
       article.appendChild(progress);
+      article.appendChild(actions);
       list.appendChild(article);
     });
     field.appendChild(list);
@@ -1922,9 +2179,19 @@
         record.assignee ? `指定同事：${record.assignee}` : "",
         record.releasedAt ? `解除時間：${record.releasedAt}` : "",
         record.reporter ? `回報人：${displayPersonName(record.reporter)}` : "",
+        record.modifiedAt ? `最後修改：${displayPersonName(record.modifiedBy) || "未填"} ${record.modifiedAt}` : "",
       ].filter(Boolean).join(" / ");
       header.appendChild(title);
+      const actions = document.createElement("div");
+      actions.className = "record-actions";
+      const editButton = document.createElement("button");
+      editButton.className = "button compact";
+      editButton.type = "button";
+      editButton.textContent = "編輯列管";
+      editButton.addEventListener("click", () => setCaseEditMode(record));
+      actions.appendChild(editButton);
       header.appendChild(meta);
+      header.appendChild(actions);
 
       const body = document.createElement("div");
       body.className = "released-case-body";
@@ -1994,10 +2261,18 @@
       const data = mapper(record);
       const article = document.createElement("article");
       article.className = "record-card";
-      article.innerHTML = `<strong></strong><p></p><span></span>`;
+      article.innerHTML = `<div class="record-card-top"><strong></strong><div class="record-actions"></div></div><p></p><span></span>`;
       article.querySelector("strong").textContent = data.title;
       article.querySelector("p").textContent = data.body || "未填";
       article.querySelector("span").textContent = data.meta || "";
+      if (data.action) {
+        const button = document.createElement("button");
+        button.className = "button compact";
+        button.type = "button";
+        button.textContent = data.action.label;
+        button.addEventListener("click", data.action.onClick);
+        article.querySelector(".record-actions").appendChild(button);
+      }
       list.appendChild(article);
     });
   }
@@ -2025,11 +2300,14 @@
       renderMessage("目前尚未設定 Apps Script API URL，頁面可完整瀏覽資料，但不能寫入。", "error");
       return;
     }
+    const isEditing = Boolean(state.editingItemUpdateId);
     const payload = {
-      action: "submitItemProgress",
+      action: isEditing ? "editItemProgress" : "submitItemProgress",
+      updateId: state.editingItemUpdateId,
       itemId: item.itemId,
       itemName: item.itemName,
       reporter,
+      scheduleSummary: $("scheduleInput").value.trim(),
       progress: $("progressInput").value.trim(),
       status: $("completeInput").value,
       nextDate: $("nextDateInput").value,
@@ -2038,21 +2316,24 @@
       note: $("noteInput").value.trim(),
       voucher: $("voucherInput").value.trim(),
     };
-    if (!confirmSubmission("請確認本次工項更新", [
+    if (!confirmSubmission(isEditing ? "請確認儲存修改" : "請確認本次工項更新", [
+      isEditing ? ["更新ID", payload.updateId] : null,
       ["工項", item.itemName],
       ["填報人", reporter],
+      ["表定時間摘要", payload.scheduleSummary || "未填"],
       ["完成狀態", payload.status],
       ["下次追蹤日期", payload.nextDate || "未填"],
-      ["本次費用", payload.expense ? formatMoney(payload.expense) : "0"],
+      isEditing ? ["原送出日期", state.editingItemUpdateOriginalDate || "未記錄"] : ["本次費用", payload.expense ? formatMoney(payload.expense) : "0"],
       ["佐證資料連結", payload.voucher || "未填"],
-    ])) return;
+    ].filter(Boolean))) return;
     $("submitButton").disabled = true;
     renderMessage("送出中...", "");
     try {
       await postNoCors(config.apiUrl, payload);
-      renderMessage("已送出更新。系統會重新讀取最新資料。", "success");
+      renderMessage(isEditing ? "已儲存修改。系統會重新讀取最新資料。" : "已送出更新。系統會重新讀取最新資料。", "success");
       await wait(900);
       await loadData();
+      resetItemUpdateEdit();
       selectItem(item.itemId);
     } catch (error) {
       renderMessage(`送出失敗：${error.message}`, "error");
@@ -2073,8 +2354,10 @@
       $("caseReporterInput").focus();
       return;
     }
+    const isEditing = Boolean(state.editingCaseId);
     const payload = {
-      action: "submitCaseTracking",
+      action: isEditing ? "editCaseTracking" : "submitCaseTracking",
+      caseId: state.editingCaseId,
       title: $("caseTitleInput").value.trim(),
       assignee: $("caseAssigneeInput").value,
       deadline: $("caseDeadlineInput").value,
@@ -2088,21 +2371,24 @@
       attachment: $("caseAttachmentInput").value.trim(),
       completion: "",
     };
-    if (!confirmSubmission("請確認本次案件列管", [
+    if (!confirmSubmission(isEditing ? "請確認儲存列管修改" : "請確認本次案件列管", [
+      isEditing ? ["案件編號", payload.caseId] : null,
       ["案件名稱", payload.title],
       ["指定同事", payload.assignee],
       ["Deadline", payload.deadline],
       ["狀態", payload.status],
       ["優先序", payload.priority],
       ["回報人", reporter],
+      isEditing ? ["原送出時間", state.editingCaseOriginalReportedAt || "未記錄"] : null,
       ["佐證資料連結", payload.attachment || "未填"],
-    ])) return;
+    ].filter(Boolean))) return;
     $("caseSubmitButton").disabled = true;
     renderCaseMessage("送出中...", "");
     try {
       await postNoCors(config.apiUrl, payload);
-      renderCaseMessage("已送出列管紀錄。系統會重新讀取最新資料。", "success");
+      renderCaseMessage(isEditing ? "已儲存列管修改。系統會重新讀取最新資料。" : "已送出列管紀錄。系統會重新讀取最新資料。", "success");
       $("caseForm").reset();
+      resetCaseEdit();
       $("caseReporterInput").value = reporter;
       await wait(900);
       await loadData();
@@ -2139,8 +2425,10 @@
       $("caseCompletionInput").focus();
       return;
     }
+    const isEditing = Boolean(state.editingCaseUpdateId);
     const payload = {
-      action: "submitCaseProgress",
+      action: isEditing ? "editCaseProgress" : "submitCaseProgress",
+      updateId: state.editingCaseUpdateId,
       caseId,
       reporter,
       status,
@@ -2149,21 +2437,24 @@
       attachment: $("caseProgressAttachmentInput").value.trim(),
       note: $("caseProgressNoteInput").value.trim(),
     };
-    if (!confirmSubmission("請確認本次案件進度", [
+    if (!confirmSubmission(isEditing ? "請確認儲存案件回報修改" : "請確認本次案件進度", [
+      isEditing ? ["案件更新ID", payload.updateId] : null,
       ["案件編號", payload.caseId],
       ["案件名稱", record.title],
       ["指定同事", record.assignee],
       ["狀態", payload.status],
       ["回報人", reporter],
+      isEditing ? ["原回報日期", state.editingCaseUpdateOriginalDate || "未記錄"] : null,
       ["完成/解除列管說明", payload.completion || "未填"],
-    ])) return;
+    ].filter(Boolean))) return;
     $("caseProgressSubmitButton").disabled = true;
     renderCaseProgressMessage("送出中...", "");
     try {
       await postNoCors(config.apiUrl, payload);
-      applyLocalCaseProgress(payload);
-      renderCaseProgressMessage("已送出案件進度，畫面已先更新最新回報紀錄。系統會重新讀取 Google Sheet。", "success");
+      if (!isEditing) applyLocalCaseProgress(payload);
+      renderCaseProgressMessage(isEditing ? "已儲存案件回報修改。系統會重新讀取 Google Sheet。" : "已送出案件進度，畫面已先更新最新回報紀錄。系統會重新讀取 Google Sheet。", "success");
       $("caseProgressForm").reset();
+      resetCaseProgressEdit();
       $("caseProgressReporterInput").value = reporter;
       await wait(900);
       await loadData();
@@ -2186,8 +2477,10 @@
       $("reporterInput").focus();
       return;
     }
+    const isEditing = Boolean(state.editingConsultationSessionId);
     const payload = {
-      action: "submitConsultationSession",
+      action: isEditing ? "editConsultationSession" : "submitConsultationSession",
+      sessionId: state.editingConsultationSessionId,
       itemId: "ITEM001",
       month: $("consultationMonthInput").value,
       unitName: $("consultationUnitInput").value.trim(),
@@ -2206,7 +2499,8 @@
       attachment: $("consultationAttachmentInput").value.trim(),
       reporter,
     };
-    if (!confirmSubmission("請確認本次諮詢輔導場次", [
+    if (!confirmSubmission(isEditing ? "請確認儲存場次修改" : "請確認本次諮詢輔導場次", [
+      isEditing ? ["場次ID", payload.sessionId] : null,
       ["月份", payload.month],
       ["單位名稱", payload.unitName],
       ["輔導日期", payload.date],
@@ -2214,13 +2508,15 @@
       ["負責同仁", payload.owner],
       ["狀態", payload.status],
       ["建立人", reporter],
-    ])) return;
+      isEditing ? ["原建立時間", state.editingConsultationOriginalCreatedAt || "未記錄"] : null,
+    ].filter(Boolean))) return;
     $("consultationSubmitButton").disabled = true;
     renderConsultationMessage("送出中...", "");
     try {
       await postNoCors(config.apiUrl, payload);
-      renderConsultationMessage("已送出諮詢輔導場次。系統會重新讀取 Google Sheet。", "success");
+      renderConsultationMessage(isEditing ? "已儲存場次修改。系統會重新讀取 Google Sheet。" : "已送出諮詢輔導場次。系統會重新讀取 Google Sheet。", "success");
       $("consultationForm").reset();
+      resetConsultationEdit();
       $("consultationMonthInput").value = payload.month || currentMonthValue();
       $("consultationDateInput").value = currentDateValue();
       $("consultationOwnerInput").value = payload.owner;
