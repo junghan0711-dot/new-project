@@ -363,10 +363,7 @@
     const currentInput = assigneeInput.value;
     const currentFilter = assigneeFilter.value;
     const names = assignmentStaffNames();
-    const filterNames = allCaseFilterNames();
-    state.cases.forEach((record) => {
-      splitNames(record.assignee).forEach((name) => filterNames.add(name));
-    });
+    const filterNames = assignmentStaffNames();
     const sortedNames = sortPersonNames(names);
     const sortedFilterNames = sortPersonNames(filterNames);
 
@@ -391,11 +388,10 @@
   function populateMyCaseAssignees() {
     const select = $("myCaseAssigneeInput");
     const currentValue = select.value;
-    const names = allStaffNames();
-    state.cases.forEach((record) => splitNames(record.assignee).forEach((name) => names.add(name)));
+    const names = assignmentStaffNames();
     const reporter = $("reporterInput").value.trim();
-    if (reporter) names.add(displayPersonName(reporter));
-    const sortedNames = [...names].sort((a, b) => a.localeCompare(b, "zh-Hant"));
+    if (reporter) addPersonName(names, reporter);
+    const sortedNames = sortPersonNames(names);
     select.innerHTML = '<option value="">請選擇同仁</option>';
     sortedNames.forEach((name) => {
       const option = document.createElement("option");
@@ -524,12 +520,6 @@
   function contactStaffNames() {
     const names = new Set();
     state.contacts.forEach((contact) => addPersonName(names, contact.name));
-    return names;
-  }
-
-  function allCaseFilterNames() {
-    const names = allStaffNames();
-    state.cases.forEach((record) => splitNames(record.assignee).forEach((name) => addPersonName(names, name)));
     return names;
   }
 
