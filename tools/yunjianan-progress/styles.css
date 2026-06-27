@@ -758,6 +758,11 @@ textarea:focus {
   color: var(--brand);
 }
 
+.case-reminder-pill.normal {
+  background: #eef7f1;
+  color: var(--ok);
+}
+
 .my-work-actions {
   display: flex;
   gap: 8px;

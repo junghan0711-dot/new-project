@@ -1379,6 +1379,7 @@
       ["3 日內到期", metrics.soon],
       ["待查核", metrics.awaitingReview],
       ["急件", metrics.urgent],
+      ["待回報工項", metrics.itemNeedsFollowUp],
       ["近 7 日更新", metrics.recentUpdates],
       ["經費支出", formatMoney(metrics.expenseTotal)],
     ].forEach(([label, value]) => {
@@ -1412,12 +1413,15 @@
 
   function managementMetrics() {
     const openCases = state.cases.filter((record) => record.status !== "已完成");
+    const supervisor = supervisorSummary();
     return {
       overdue: openCases.filter((record) => caseUrgency(record).level === "overdue").length,
       today: openCases.filter((record) => caseUrgency(record).level === "today").length,
       soon: openCases.filter((record) => caseUrgency(record).level === "soon").length,
       awaitingReview: openCases.filter((record) => record.status === "待查核").length,
       urgent: openCases.filter((record) => record.priority === "急件").length,
+      itemNeedsFollowUp: supervisor.needs.length,
+      itemNeeds: supervisor.needs,
       recentUpdates: state.updates.filter((record) => isRecentRecord(record.date || record["更新日期"] || record.updatedAt || record["最後更新時間"], 7)).length,
       expenseTotal: state.expenses.reduce((sum, record) => sum + (Number(String(record.amount || record["金額"] || 0).replace(/,/g, "")) || 0), 0),
     };
@@ -1465,13 +1469,17 @@
   function buildManagementReport(metrics, issues) {
     const openCases = state.cases.filter((record) => record.status !== "已完成");
     const topCases = [...openCases].sort(compareCases).slice(0, 5);
+    const topItemNeeds = (metrics.itemNeeds || []).slice(0, 5);
     return [
       `${config.projectName || "115 雲嘉南多元計畫"}進度摘要`,
       `資料時間：${latestDataTime()}`,
       "",
       `工項：${state.items.length} 筆，已完成 ${state.items.filter((item) => itemStatus(item) === "已完成").length} 筆，待追蹤 ${Math.max(state.items.length - state.items.filter((item) => itemStatus(item) === "已完成").length, 0)} 筆。`,
-      `案件：逾期 ${metrics.overdue} 筆，今日到期 ${metrics.today} 筆，3 日內到期 ${metrics.soon} 筆，待查核 ${metrics.awaitingReview} 筆，急件 ${metrics.urgent} 筆。`,
+      `案件：逾期 ${metrics.overdue} 筆，今日到期 ${metrics.today} 筆，3 日內到期 ${metrics.soon} 筆，待查核 ${metrics.awaitingReview} 筆，急件 ${metrics.urgent} 筆；待回報工項 ${metrics.itemNeedsFollowUp} 筆。`,
       `近 7 日進度更新 ${metrics.recentUpdates} 筆，經費支出累計 ${formatMoney(metrics.expenseTotal)} 元。`,
+      "",
+      "本週待回報工項：",
+      ...(topItemNeeds.length ? topItemNeeds.map((item, index) => `${index + 1}. ${item.itemName || "未命名工項"} / ${displayNames(item.owner) || "未填主責"} / ${item.reason}`) : ["1. 目前沒有超過 7 天未更新或尚無更新紀錄的工項。"]),
       "",
       "優先追蹤：",
       ...(topCases.length ? topCases.map((record, index) => `${index + 1}. ${record.title || "未命名案件"} / ${record.assignee || "未指定"} / ${record.status || "未填狀態"} / ${record.deadline || "未填 Deadline"}`) : ["1. 目前沒有未完成案件。"]),
@@ -1768,14 +1776,22 @@
     }
     items.slice(0, 18).forEach((item) => {
       const status = itemStatus(item);
-      const card = myWorkCard(status !== "已完成" ? "soon" : "");
+      const reminder = itemReminder(item);
+      const card = myWorkCard(reminder.cardLevel);
       card.appendChild(myWorkTitle(item.itemName || "未命名工項", [
         status ? `狀態：${status}` : "",
         item.period ? `時程：${item.period}` : "",
+        reminder.detail,
       ]));
+      card.appendChild(myWorkReminderPill(reminder));
       card.appendChild(myWorkText(item.currentStatus || item.schedule || "尚無進度說明"));
       const actions = myWorkActions();
       actions.appendChild(myWorkButton("回報工項", () => openItemFromMyWork(item)));
+      if (status !== "已完成") {
+        actions.appendChild(myWorkButton("無異動", (event) => quickReportItem(event.currentTarget, item, "unchanged")));
+        actions.appendChild(myWorkButton("進行中", (event) => quickReportItem(event.currentTarget, item, "ongoing")));
+        actions.appendChild(myWorkButton("卡關填寫", () => openBlockedItemFromMyWork(item)));
+      }
       card.appendChild(actions);
       list.appendChild(card);
     });
@@ -1878,9 +1894,53 @@
   }
 
   function compareMyWorkItems(a, b) {
+    const reminderDiff = itemReminderWeight(itemReminder(b)) - itemReminderWeight(itemReminder(a));
+    if (reminderDiff) return reminderDiff;
     const statusDiff = (itemStatus(a) === "已完成" ? 1 : 0) - (itemStatus(b) === "已完成" ? 1 : 0);
     if (statusDiff) return statusDiff;
     return String(a.period || "").localeCompare(String(b.period || ""), "zh-Hant");
+  }
+
+  function itemReminder(item) {
+    const status = itemStatus(item);
+    const latest = latestItemUpdate(item.itemId);
+    if (status === "已完成") {
+      return {
+        level: "normal",
+        cardLevel: "",
+        label: "已完成",
+        detail: latest ? `最近更新：${latest.date}` : "",
+      };
+    }
+    if (!latest) {
+      return {
+        level: "overdue",
+        cardLevel: "alert",
+        label: "尚未回報",
+        detail: "最近更新：尚無紀錄",
+      };
+    }
+    if (!isRecentRecord(latest.date, 7)) {
+      return {
+        level: "soon",
+        cardLevel: "soon",
+        label: "待回報",
+        detail: `最近更新：${latest.date} / ${displayPersonName(latest.reporter) || "未填更新人"}`,
+      };
+    }
+    return {
+      level: "review",
+      cardLevel: "review",
+      label: "本週已更新",
+      detail: `最近更新：${latest.date} / ${displayPersonName(latest.reporter) || "未填更新人"}`,
+    };
+  }
+
+  function itemReminderWeight(reminder) {
+    if (reminder.level === "overdue") return 3;
+    if (reminder.level === "soon") return 2;
+    if (reminder.level === "review") return 1;
+    return 0;
   }
 
   function workPersonMatches(value, person) {
@@ -1892,6 +1952,74 @@
     switchView("tasksView");
     selectItem(item.itemId);
     $("progressForm").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function openBlockedItemFromMyWork(item) {
+    openItemFromMyWork(item);
+    $("completeInput").value = "未完成";
+    $("progressInput").value = "";
+    $("progressInput").placeholder = "請簡短寫卡在哪裡、需要誰協助、下一步預計何時處理";
+    $("progressInput").focus();
+  }
+
+  async function quickReportItem(button, item, mode) {
+    const reporter = $("reporterInput").value.trim() || $("myWorkPersonInput").value;
+    if (!reporter) {
+      window.alert("請先在上方填寫填報人，或在我的工作選擇姓名。");
+      $("reporterInput").focus();
+      return;
+    }
+    if (!config.apiUrl) {
+      window.alert("目前尚未設定 Apps Script API URL，無法寫入快速回報。");
+      return;
+    }
+    const latest = latestItemUpdate(item.itemId);
+    const status = mode === "unchanged" ? statusOption(itemStatus(item)) : "進行中";
+    const progress = mode === "unchanged"
+      ? [
+        "無異動，延續前次進度。",
+        latest && latest.date ? `前次更新：${latest.date}` : "",
+        item.currentStatus ? `目前狀況：${item.currentStatus}` : "",
+      ].filter(Boolean).join("\n")
+      : [
+        "持續進行中。",
+        item.currentStatus || item.schedule || "",
+      ].filter(Boolean).join("\n");
+    const payload = {
+      action: "submitItemProgress",
+      itemId: item.itemId,
+      itemName: item.itemName,
+      reporter,
+      scheduleSummary: item.schedule || "",
+      progress,
+      status,
+      nextDate: "",
+      expense: "",
+      expenseDetail: "",
+      note: mode === "unchanged" ? "我的工作一鍵回報：無異動" : "我的工作一鍵回報：進行中",
+      voucher: "",
+    };
+    if (!confirmSubmission("請確認快速回報", [
+      ["工項", item.itemName],
+      ["填報人", reporter],
+      ["回報類型", mode === "unchanged" ? "無異動" : "進行中"],
+      ["完成狀態", payload.status],
+    ])) return;
+
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = "送出中";
+    try {
+      await postNoCors(config.apiUrl, payload);
+      await wait(900);
+      await loadData();
+      window.alert("已送出快速回報。");
+    } catch (error) {
+      window.alert(`快速回報失敗：${error.message}`);
+    } finally {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
   }
 
   function openCaseFromMyWork(record) {

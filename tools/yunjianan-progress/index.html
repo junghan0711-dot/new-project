@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>115 雲嘉南多元計畫進度填報</title>
-    <link rel="stylesheet" href="./styles.css?v=editable-records-20260615" />
+    <link rel="stylesheet" href="./styles.css?v=my-work-first-20260627" />
   </head>
   <body>
     <header class="topbar">
@@ -66,8 +66,8 @@
       </section>
 
       <nav class="view-tabs" aria-label="資料檢視">
-        <button class="tab-button active" type="button" data-view="tasksView">任務填報</button>
-        <button class="tab-button" type="button" data-view="myWorkView">我的工作</button>
+        <button class="tab-button active" type="button" data-view="myWorkView">我的工作</button>
+        <button class="tab-button" type="button" data-view="tasksView">任務填報</button>
         <button class="tab-button" type="button" data-view="sourceView">資料總覽</button>
         <button class="tab-button" type="button" data-view="updatesView">更新與費用紀錄</button>
         <button class="tab-button" type="button" data-view="supervisorView">主管追蹤</button>
@@ -76,7 +76,7 @@
         <button class="tab-button" type="button" data-view="casesView">案件追蹤列管</button>
       </nav>
 
-      <section id="tasksView" class="workspace view-section active">
+      <section id="tasksView" class="workspace view-section">
         <aside class="panel task-list-panel" aria-label="任務清單">
           <div class="section-heading">
             <h2>工項清單</h2>
@@ -182,11 +182,11 @@
         </section>
       </section>
 
-      <section id="myWorkView" class="panel my-work-panel view-section" aria-label="我的工作">
+      <section id="myWorkView" class="panel my-work-panel view-section active" aria-label="我的工作">
         <div class="section-heading">
           <div>
-            <h2>我的工作</h2>
-            <p class="subtle">輸入或選擇姓名後，集中查看自己負責的工項、追蹤案件與諮詢輔導。</p>
+            <h2>我的待回報</h2>
+            <p class="subtle">輸入或選擇姓名後，先處理待回報工項與追蹤案件；無異動可直接一鍵回報。</p>
           </div>
           <span id="myWorkTotalCount">0 筆</span>
         </div>
@@ -673,6 +673,6 @@
 
     <script src="./config.js?v=api-contacts-hidden-20260609"></script>
     <script src="./data.js"></script>
-    <script src="./app.js?v=case-assignee-list-20260615"></script>
+    <script src="./app.js?v=my-work-first-20260627"></script>
   </body>
 </html>
