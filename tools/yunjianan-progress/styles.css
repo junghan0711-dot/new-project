@@ -430,7 +430,8 @@ textarea:focus {
 .source-panel,
 .updates-panel,
 .cases-panel,
-.consultation-panel {
+.consultation-panel,
+.calendar-panel {
   overflow: hidden;
 }
 
@@ -534,7 +535,8 @@ textarea:focus {
 #formMessage,
 #caseFormMessage,
 #caseProgressMessage,
-#consultationMessage {
+#consultationMessage,
+#calendarMessage {
   color: var(--muted);
   font-size: 13px;
   flex: 1;
@@ -543,14 +545,16 @@ textarea:focus {
 #formMessage.error,
 #caseFormMessage.error,
 #caseProgressMessage.error,
-#consultationMessage.error {
+#consultationMessage.error,
+#calendarMessage.error {
   color: var(--accent);
 }
 
 #formMessage.success,
 #caseFormMessage.success,
 #caseProgressMessage.success,
-#consultationMessage.success {
+#consultationMessage.success,
+#calendarMessage.success {
   color: var(--ok);
 }
 
@@ -1095,6 +1099,11 @@ textarea:focus {
   color: #876100;
 }
 
+.deadline-pill.normal {
+  background: #eef2f6;
+  color: var(--muted);
+}
+
 .case-card-body {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1239,6 +1248,199 @@ textarea:focus {
   gap: 4px;
 }
 
+.calendar-workspace {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.82fr) minmax(520px, 1.18fr);
+  gap: 16px;
+  padding: 16px;
+  align-items: start;
+}
+
+.calendar-form,
+.calendar-board,
+.calendar-agenda {
+  display: grid;
+  gap: 14px;
+}
+
+.calendar-form,
+.calendar-agenda {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fbfcfd;
+}
+
+.calendar-form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.calendar-toolbar {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+
+.calendar-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.calendar-board-grid {
+  display: grid;
+  grid-template-columns: minmax(520px, 1fr) minmax(320px, 0.58fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(84px, 1fr));
+  gap: 1px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--line);
+}
+
+.calendar-weekday {
+  min-height: 34px;
+  padding: 8px;
+  background: #f1f4f8;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.calendar-day {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-height: 122px;
+  padding: 8px;
+  background: #ffffff;
+}
+
+.calendar-day.blank {
+  background: #f8fafc;
+}
+
+.calendar-day.today {
+  box-shadow: inset 0 0 0 2px var(--brand);
+}
+
+.calendar-day > strong {
+  font-size: 13px;
+}
+
+.calendar-chip {
+  width: 100%;
+  min-height: 26px;
+  border: 1px solid #dce2eb;
+  border-radius: 5px;
+  padding: 4px 6px;
+  background: #f7fafc;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-chip:hover {
+  border-color: var(--brand);
+  background: #edf7f8;
+}
+
+.calendar-chip.overdue,
+.calendar-agenda-card.overdue {
+  border-color: #d14b32;
+  background: #fffafa;
+}
+
+.calendar-chip.today,
+.calendar-agenda-card.today {
+  border-color: #d8841b;
+  background: #fffaf1;
+}
+
+.calendar-chip.soon,
+.calendar-agenda-card.soon {
+  border-color: #e6b04a;
+  background: #fffdf7;
+}
+
+.calendar-more {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.calendar-agenda-list {
+  display: grid;
+  gap: 10px;
+  max-height: 720px;
+  overflow: auto;
+}
+
+.calendar-agenda-card {
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #ffffff;
+}
+
+.calendar-agenda-card.focused {
+  outline: 3px solid rgba(31, 111, 120, 0.22);
+  border-color: var(--brand);
+}
+
+.calendar-agenda-header,
+.calendar-agenda-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.calendar-agenda-title {
+  display: grid;
+  gap: 4px;
+}
+
+.calendar-agenda-title strong {
+  font-size: 15px;
+}
+
+.calendar-agenda-title span,
+.calendar-agenda-card p,
+.calendar-agenda-meta {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.calendar-agenda-card p {
+  white-space: pre-wrap;
+}
+
+.calendar-agenda-meta {
+  flex-wrap: wrap;
+}
+
+.calendar-agenda-meta a {
+  color: var(--brand);
+  font-weight: 800;
+}
+
 .consultation-card-title strong {
   font-size: 15px;
 }
@@ -1376,20 +1578,29 @@ textarea:focus {
   .my-work-controls,
   .my-work-grid,
   .mini-metrics,
+  .calendar-workspace,
+  .calendar-form-grid,
+  .calendar-toolbar,
+  .calendar-metrics,
+  .calendar-board-grid,
   .consultation-workspace,
   .consultation-form-grid,
   .consultation-toolbar,
-    .consultation-metrics,
-    .consultation-card-body,
-    .contact-toolbar,
-    .contact-list,
-    .contact-card-body,
-    .case-workspace,
+  .consultation-metrics,
+  .consultation-card-body,
+  .contact-toolbar,
+  .contact-list,
+  .contact-card-body,
+  .case-workspace,
   .my-cases-toolbar,
   .case-form-grid,
   .case-toolbar,
   .case-card-body {
     grid-template-columns: 1fr;
+  }
+
+  .calendar-grid {
+    grid-template-columns: repeat(7, minmax(76px, 1fr));
   }
 
   .case-note-field {

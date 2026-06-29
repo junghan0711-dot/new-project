@@ -28,6 +28,7 @@
         "progressUpdates": true,
         "caseTracking": true,
         "consultations": true,
+        "calendar": true,
         "expenses": true,
         "contacts": true,
         "modificationHistory": true

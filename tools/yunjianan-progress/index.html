@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>115 雲嘉南多元計畫進度填報</title>
-    <link rel="stylesheet" href="./styles.css?v=my-work-first-20260627" />
+    <link rel="stylesheet" href="./styles.css?v=work-calendar-20260629" />
   </head>
   <body>
     <header class="topbar">
@@ -67,6 +67,7 @@
 
       <nav class="view-tabs" aria-label="資料檢視">
         <button class="tab-button active" type="button" data-view="myWorkView">我的工作</button>
+        <button class="tab-button" type="button" data-view="calendarView">行事曆</button>
         <button class="tab-button" type="button" data-view="tasksView">任務填報</button>
         <button class="tab-button" type="button" data-view="sourceView">資料總覽</button>
         <button class="tab-button" type="button" data-view="updatesView">更新與費用紀錄</button>
@@ -221,6 +222,144 @@
             </div>
             <div id="myWorkConsultationList" class="my-work-list"></div>
           </section>
+        </div>
+      </section>
+
+      <section id="calendarView" class="panel calendar-panel view-section" aria-label="工作行事曆">
+        <div class="section-heading">
+          <div>
+            <h2>工作行事曆</h2>
+            <p class="subtle">彙整同仁自填提醒、工項下次追蹤、案件 Deadline 與諮詢輔導場次。</p>
+          </div>
+          <span id="calendarEventCount">0 筆</span>
+        </div>
+
+        <div class="calendar-workspace">
+          <form id="calendarForm" class="calendar-form">
+            <div class="form-caption">
+              <h3>新增工作提醒</h3>
+              <p>同仁可把預計辦理時間、提醒事項與相關連結填在這裡，送出後會寫入 Google Sheet 的工作行事曆。</p>
+            </div>
+
+            <div class="form-grid calendar-form-grid">
+              <label>
+                <span>提醒標題</span>
+                <input id="calendarTitleInput" type="text" required placeholder="例：完成 7 月工作坊場地確認" />
+              </label>
+              <label>
+                <span>負責同仁</span>
+                <input id="calendarOwnerInput" list="calendarOwnerOptions" type="text" required placeholder="輸入或選擇同仁" />
+                <datalist id="calendarOwnerOptions"></datalist>
+              </label>
+              <label>
+                <span>日期</span>
+                <input id="calendarDateInput" type="date" required />
+              </label>
+              <label>
+                <span>提醒類型</span>
+                <select id="calendarTypeInput">
+                  <option value="工作提醒">工作提醒</option>
+                  <option value="工項追蹤">工項追蹤</option>
+                  <option value="案件 Deadline">案件 Deadline</option>
+                  <option value="會議/活動">會議/活動</option>
+                  <option value="交付文件">交付文件</option>
+                  <option value="主管查核">主管查核</option>
+                </select>
+              </label>
+              <label>
+                <span>開始時間</span>
+                <input id="calendarStartInput" type="time" />
+              </label>
+              <label>
+                <span>結束時間</span>
+                <input id="calendarEndInput" type="time" />
+              </label>
+              <label>
+                <span>狀態</span>
+                <select id="calendarStatusInput">
+                  <option value="待辦">待辦</option>
+                  <option value="進行中">進行中</option>
+                  <option value="待查核">待查核</option>
+                  <option value="已完成">已完成</option>
+                  <option value="延期">延期</option>
+                  <option value="取消">取消</option>
+                </select>
+              </label>
+              <label>
+                <span>提醒時間</span>
+                <select id="calendarReminderInput">
+                  <option value="當天">當天</option>
+                  <option value="提前1天">提前 1 天</option>
+                  <option value="提前3天">提前 3 天</option>
+                  <option value="提前7天">提前 7 天</option>
+                </select>
+              </label>
+            </div>
+
+            <label>
+              <span>關聯工項 / 案件</span>
+              <input id="calendarRelatedInput" list="calendarRelatedOptions" type="text" placeholder="可選工項、案件或自行輸入" />
+              <datalist id="calendarRelatedOptions"></datalist>
+            </label>
+
+            <label>
+              <span>提醒內容 / 進度說明</span>
+              <textarea id="calendarNoteInput" rows="4" placeholder="填寫當天要做什麼、目前進度、需要誰協助或主管要看的重點"></textarea>
+            </label>
+
+            <label>
+              <span>佐證資料連結</span>
+              <input id="calendarAttachmentInput" type="url" placeholder="貼上雲端資料夾、文件、表單、會議連結或照片連結" />
+            </label>
+
+            <div class="form-actions">
+              <p id="calendarMessage" role="status"></p>
+              <button id="calendarSubmitButton" class="button primary" type="submit">新增提醒</button>
+            </div>
+          </form>
+
+          <div class="calendar-board">
+            <div class="calendar-toolbar">
+              <label>
+                <span>月份</span>
+                <input id="calendarMonthInput" type="month" />
+              </label>
+              <label>
+                <span>負責同仁</span>
+                <select id="calendarPersonFilter">
+                  <option value="">全部</option>
+                </select>
+              </label>
+              <label>
+                <span>提醒類型</span>
+                <select id="calendarTypeFilter">
+                  <option value="">全部</option>
+                  <option value="工作提醒">工作提醒</option>
+                  <option value="工項追蹤">工項追蹤</option>
+                  <option value="案件 Deadline">案件 Deadline</option>
+                  <option value="諮詢輔導">諮詢輔導</option>
+                  <option value="會議/活動">會議/活動</option>
+                  <option value="交付文件">交付文件</option>
+                  <option value="主管查核">主管查核</option>
+                </select>
+              </label>
+              <label>
+                <span>搜尋</span>
+                <input id="calendarSearchInput" type="search" placeholder="標題、同仁、進度、關聯案件" />
+              </label>
+            </div>
+            <div id="calendarMetrics" class="calendar-metrics"></div>
+            <div class="calendar-board-grid">
+              <div id="calendarGrid" class="calendar-grid"></div>
+              <div class="calendar-agenda">
+                <div class="form-caption">
+                  <h3>近期提醒</h3>
+                  <p>依日期與緊急程度排序，適合主管快速看大家接下來要辦理的工作。</p>
+                </div>
+                <div id="calendarAgendaList" class="calendar-agenda-list"></div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -673,6 +812,6 @@
 
     <script src="./config.js?v=api-contacts-hidden-20260609"></script>
     <script src="./data.js"></script>
-    <script src="./app.js?v=my-work-first-20260627"></script>
+    <script src="./app.js?v=work-calendar-20260629"></script>
   </body>
 </html>

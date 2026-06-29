@@ -6,6 +6,7 @@ const SHEETS = {
   cases: "案件追蹤列管",
   caseUpdates: "案件進度紀錄",
   consultations: "諮詢輔導場次",
+  calendarEvents: "工作行事曆",
   contacts: "同仁通訊錄",
   modificationHistory: "修改歷程",
 };
@@ -92,6 +93,23 @@ const CONSULTATION_HEADERS = [
   "最後修改人",
   "最後修改時間",
 ];
+const CALENDAR_HEADERS = [
+  "提醒ID",
+  "提醒標題",
+  "負責同仁",
+  "日期",
+  "開始時間",
+  "結束時間",
+  "提醒類型",
+  "狀態",
+  "提醒時間",
+  "關聯工項/案件",
+  "提醒內容/進度說明",
+  "佐證資料連結",
+  "建立人",
+  "建立時間",
+  "最後更新時間",
+];
 const MODIFICATION_HISTORY_HEADERS = [
   "修改ID",
   "資料表",
@@ -133,6 +151,9 @@ function doGet(e) {
     if (action === "prepareConsultations") {
       return jsonp_(params.callback, prepareConsultations_());
     }
+    if (action === "prepareCalendar") {
+      return jsonp_(params.callback, prepareCalendar_());
+    }
     if (action === "prepareContacts") {
       return jsonp_(params.callback, prepareContacts_());
     }
@@ -152,6 +173,7 @@ function listData_() {
     cases: listRecords_(SHEETS.cases),
     caseUpdates: listRecords_(SHEETS.caseUpdates),
     consultations: listRecords_(SHEETS.consultations),
+    calendarEvents: listRecords_(SHEETS.calendarEvents),
   };
 }
 
@@ -170,6 +192,15 @@ function prepareConsultations_() {
   return {
     ok: true,
     sheetName: SHEETS.consultations,
+  };
+}
+
+function prepareCalendar_() {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  ensureSheet_(spreadsheet, SHEETS.calendarEvents, CALENDAR_HEADERS);
+  return {
+    ok: true,
+    sheetName: SHEETS.calendarEvents,
   };
 }
 
@@ -285,6 +316,11 @@ function doPost(e) {
       const result = editConsultationSession_(params);
       return json_({ ok: true, result });
     }
+    if (params.action === "submitCalendarEvent") {
+      checkReporter_(params.reporter);
+      const result = submitCalendarEvent_(params);
+      return json_({ ok: true, result });
+    }
     if (params.action !== "submitProgress") {
       return json_({ ok: false, error: "Unknown action" });
     }
@@ -296,6 +332,33 @@ function doPost(e) {
   } finally {
     lock.releaseLock();
   }
+}
+
+function submitCalendarEvent_(params) {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ensureSheet_(spreadsheet, SHEETS.calendarEvents, CALENDAR_HEADERS);
+  const timestamp = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
+  const eventId = nextCalendarEventId_(sheet, params.date || timestamp.slice(0, 10));
+
+  sheet.appendRow([
+    eventId,
+    params.title || "",
+    params.owner || "",
+    params.date || "",
+    params.startTime || "",
+    params.endTime || "",
+    params.type || "工作提醒",
+    params.status || "待辦",
+    params.reminder || "當天",
+    params.related || "",
+    params.note || "",
+    params.attachment || "",
+    params.reporter || "",
+    timestamp,
+    timestamp,
+  ]);
+
+  return { eventId, updatedAt: timestamp };
 }
 
 function submitConsultationSession_(params) {
@@ -924,6 +987,24 @@ function nextConsultationId_(sheet, month) {
     .replace(/[^0-9]/g, "")
     .slice(0, 6) || Utilities.formatDate(new Date(), "Asia/Taipei", "yyyyMM");
   const prefix = "CONS-" + normalizedMonth + "-";
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return prefix + "001";
+  const values = sheet.getRange(2, 1, lastRow - 1, 1).getDisplayValues();
+  let maxSerial = 0;
+  values.forEach((row) => {
+    const value = String(row[0] || "");
+    if (!value.startsWith(prefix)) return;
+    const serial = Number(value.slice(prefix.length));
+    if (Number.isFinite(serial)) maxSerial = Math.max(maxSerial, serial);
+  });
+  return prefix + String(maxSerial + 1).padStart(3, "0");
+}
+
+function nextCalendarEventId_(sheet, dateText) {
+  const normalizedDate = String(dateText || "")
+    .replace(/[^0-9]/g, "")
+    .slice(0, 8) || Utilities.formatDate(new Date(), "Asia/Taipei", "yyyyMMdd");
+  const prefix = "CAL-" + normalizedDate + "-";
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return prefix + "001";
   const values = sheet.getRange(2, 1, lastRow - 1, 1).getDisplayValues();
