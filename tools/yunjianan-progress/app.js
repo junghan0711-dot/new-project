@@ -623,6 +623,7 @@
         "主責及協辦",
         "預計執行時程",
         "執行進度比例",
+        "目前狀態",
         "核定/預估經費",
         "執行現況說明",
         "表定時間摘要",
@@ -635,6 +636,7 @@
         displayNames(item.owner) || item.owner,
         item.period,
         item.progressRatio,
+        itemStatus(item),
         item.budget,
         item.currentStatus,
         item.schedule,
@@ -1225,10 +1227,13 @@
     const tbody = document.createElement("tbody");
     visibleRows.forEach((row) => {
       const tr = document.createElement("tr");
+      const rowStatus = sourceRowStatus(sheet, row);
+      if (rowStatus.className) tr.classList.add(rowStatus.className);
       tr.appendChild(rowHeaderCell(row.rowNumber));
       for (let col = 0; col < maxColumn; col += 1) {
         const td = document.createElement("td");
         td.textContent = row.values[col] == null ? "" : row.values[col];
+        if (rowStatus.statusColumn === col) td.classList.add("source-status-cell");
         tr.appendChild(td);
       }
       tbody.appendChild(tr);
@@ -1239,6 +1244,52 @@
       caption.textContent = `目前顯示前 ${visibleRows.length} 筆，請用搜尋縮小範圍。`;
       table.appendChild(caption);
     }
+  }
+
+  function sourceRowStatus(sheet, row) {
+    if (!row || row.rowNumber === 1) return { className: "", statusColumn: -1 };
+    const headers = sourceSheetHeaders(sheet);
+    const values = row.values || [];
+    let status = "";
+    let statusColumn = -1;
+
+    if (sheet.name === "即時-工項主檔") {
+      const itemId = values[headers.indexOf("工項ID")] || values[0] || "";
+      const item = state.items.find((entry) => entry.itemId === itemId);
+      status = item ? itemStatus(item) : "";
+      statusColumn = headers.indexOf("目前狀態");
+    } else {
+      statusColumn = ["目前狀態", "完成狀態", "是否完成", "狀態", "工作進度", "執行進度比例"]
+        .map((header) => headers.indexOf(header))
+        .find((index) => index >= 0);
+      status = statusColumn >= 0 ? String(values[statusColumn] || "").trim() : "";
+    }
+
+    if (isSourceDoneStatus(status)) return { className: "source-row-done", statusColumn };
+    if (isSourceOpenStatus(status)) return { className: "source-row-open", statusColumn };
+    return { className: "", statusColumn };
+  }
+
+  function sourceSheetHeaders(sheet) {
+    const headerRow = (sheet.rows || []).find((row) => row.rowNumber === 1) || (sheet.rows || [])[0] || {};
+    return headerRow.values || [];
+  }
+
+  function isSourceDoneStatus(status) {
+    const text = String(status || "").trim();
+    const numeric = Number(text.replace("%", ""));
+    if (text === "已完成" || text === "完成") return true;
+    return Number.isFinite(numeric) && (text.includes("%") ? numeric >= 100 : numeric >= 1);
+  }
+
+  function isSourceOpenStatus(status) {
+    const text = String(status || "").trim();
+    if (!text) return false;
+    if (isSourceDoneStatus(text)) return false;
+    return ["未確認", "進行中", "未完成", "待執行", "待查核", "預排", "已確認", "延期", "待辦"].includes(text)
+      || /[1-9][0-9]?%/.test(text)
+      || text === "0%"
+      || text === "0";
   }
 
   function headerCell(text) {

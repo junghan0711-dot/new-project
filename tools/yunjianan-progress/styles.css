@@ -488,6 +488,36 @@ textarea:focus {
   width: 54px;
 }
 
+.source-table tbody tr.source-row-done th,
+.source-table tbody tr.source-row-done td {
+  background: #f0faf4;
+}
+
+.source-table tbody tr.source-row-open th,
+.source-table tbody tr.source-row-open td {
+  background: #fffaf0;
+}
+
+.source-table tbody tr.source-row-done th {
+  border-left: 4px solid var(--ok);
+}
+
+.source-table tbody tr.source-row-open th {
+  border-left: 4px solid #d8841b;
+}
+
+.source-table td.source-status-cell {
+  font-weight: 800;
+}
+
+.source-table tr.source-row-done td.source-status-cell {
+  color: var(--ok);
+}
+
+.source-table tr.source-row-open td.source-status-cell {
+  color: var(--warn);
+}
+
 .records-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
