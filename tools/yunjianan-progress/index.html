@@ -296,10 +296,11 @@
                   <span>提醒標題</span>
                   <input id="calendarTitleInput" type="text" required placeholder="例：完成 7 月工作坊場地確認" />
                 </label>
-                <label>
+                <label class="calendar-owner-field">
                   <span>負責同仁</span>
-                  <input id="calendarOwnerInput" list="calendarOwnerOptions" type="text" required placeholder="輸入或選擇同仁" />
-                  <datalist id="calendarOwnerOptions"></datalist>
+                  <input id="calendarOwnerInput" type="hidden" />
+                  <div id="calendarOwnerChoices" class="calendar-owner-choices" aria-label="負責同仁複選"></div>
+                  <input id="calendarOwnerOtherInput" type="text" placeholder="其他同仁，可用、分隔多位" />
                 </label>
                 <label>
                   <span>日期</span>

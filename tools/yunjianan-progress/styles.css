@@ -1306,6 +1306,50 @@ textarea:focus {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.calendar-owner-field {
+  align-content: start;
+}
+
+.calendar-owner-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: 116px;
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid #cbd3df;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.calendar-owner-choice {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  width: auto;
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid #dce2eb;
+  border-radius: 999px;
+  background: #f7fafc;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.calendar-owner-choice input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--brand);
+}
+
+.calendar-owner-choice:has(input:checked) {
+  border-color: var(--brand);
+  background: #edf7f8;
+  color: var(--brand-dark);
+}
+
 .calendar-toolbar {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

@@ -80,6 +80,7 @@
     $("consultationStatusFilter").addEventListener("change", applyConsultationFilters);
     $("consultationSearchInput").addEventListener("input", applyConsultationFilters);
     $("calendarForm").addEventListener("submit", submitCalendarEvent);
+    $("calendarOwnerOtherInput").addEventListener("input", syncCalendarOwnerInput);
     $("calendarDateInput").addEventListener("change", () => updateCalendarDialogDateText($("calendarDateInput").value));
     document.querySelectorAll("[data-calendar-close]").forEach((element) => {
       element.addEventListener("click", closeCalendarModal);
@@ -107,7 +108,7 @@
       syncMyWorkPersonFromReporter();
       const calendarOwnerInput = $("calendarOwnerInput");
       if (calendarOwnerInput && !calendarOwnerInput.value.trim()) {
-        calendarOwnerInput.value = displayPersonName(event.target.value.trim());
+        setCalendarOwners([displayPersonName(event.target.value.trim())]);
       }
     });
     $("caseReporterInput").value = $("reporterInput").value;
@@ -1804,10 +1805,11 @@
 
   function populateCalendarControls() {
     const ownerInput = $("calendarOwnerInput");
-    const ownerOptions = $("calendarOwnerOptions");
+    const ownerChoices = $("calendarOwnerChoices");
+    const ownerOtherInput = $("calendarOwnerOtherInput");
     const personFilter = $("calendarPersonFilter");
     const relatedOptions = $("calendarRelatedOptions");
-    const currentOwner = ownerInput.value;
+    const currentOwners = getCalendarOwnerNames();
     const currentPerson = personFilter.value;
     const names = allStaffNames();
     state.calendarEvents.forEach((record) => splitNames(record.owner).forEach((name) => addPersonName(names, name)));
@@ -1815,16 +1817,30 @@
     state.consultations.forEach((record) => splitNames(record.owner).forEach((name) => addPersonName(names, name)));
     const sortedNames = sortPersonNames(names);
 
-    ownerOptions.innerHTML = "";
+    ownerChoices.innerHTML = "";
     personFilter.innerHTML = '<option value="">全部</option>';
+    const selectedNames = new Set(currentOwners);
     sortedNames.forEach((name) => {
+      const choice = document.createElement("label");
+      choice.className = "calendar-owner-choice";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = name;
+      checkbox.checked = selectedNames.has(name);
+      checkbox.addEventListener("change", syncCalendarOwnerInput);
+      const text = document.createElement("span");
+      text.textContent = name;
+      choice.appendChild(checkbox);
+      choice.appendChild(text);
+      ownerChoices.appendChild(choice);
+
       const option = document.createElement("option");
       option.value = name;
       option.textContent = name;
-      ownerOptions.appendChild(option.cloneNode(true));
       personFilter.appendChild(option);
     });
-    ownerInput.value = currentOwner;
+    ownerOtherInput.value = currentOwners.filter((name) => !sortedNames.includes(name)).join("、");
+    syncCalendarOwnerInput();
     personFilter.value = sortedNames.includes(currentPerson) ? currentPerson : "";
 
     relatedOptions.innerHTML = "";
@@ -1839,7 +1855,34 @@
     });
 
     const reporter = displayPersonName($("reporterInput").value.trim());
-    if (reporter && !ownerInput.value && sortedNames.includes(reporter)) ownerInput.value = reporter;
+    if (reporter && !ownerInput.value) setCalendarOwners([reporter]);
+  }
+
+  function getCalendarOwnerNames() {
+    const checkedNames = [...document.querySelectorAll("#calendarOwnerChoices input:checked")]
+      .map((input) => input.value);
+    const otherNames = splitNames($("calendarOwnerOtherInput").value);
+    const explicitNames = [...new Set([...checkedNames, ...otherNames])].filter(Boolean);
+    if (explicitNames.length || document.querySelectorAll("#calendarOwnerChoices input").length) return explicitNames;
+    const hiddenNames = splitNames($("calendarOwnerInput").value);
+    return [...new Set(hiddenNames)].filter(Boolean);
+  }
+
+  function syncCalendarOwnerInput() {
+    const checkedNames = [...document.querySelectorAll("#calendarOwnerChoices input:checked")]
+      .map((input) => input.value);
+    const otherNames = splitNames($("calendarOwnerOtherInput").value);
+    $("calendarOwnerInput").value = [...new Set([...checkedNames, ...otherNames])].filter(Boolean).join("、");
+  }
+
+  function setCalendarOwners(names) {
+    const normalizedNames = [...new Set((names || []).map(displayPersonName).map(cleanPersonName).filter(isPersonNameCandidate))];
+    document.querySelectorAll("#calendarOwnerChoices input").forEach((input) => {
+      input.checked = normalizedNames.includes(input.value);
+    });
+    const knownNames = [...document.querySelectorAll("#calendarOwnerChoices input")].map((input) => input.value);
+    $("calendarOwnerOtherInput").value = normalizedNames.filter((name) => !knownNames.includes(name)).join("、");
+    syncCalendarOwnerInput();
   }
 
   function applyCalendarFilters() {
@@ -1993,7 +2036,7 @@
     const reporter = $("reporterInput").value.trim();
     $("calendarForm").reset();
     $("calendarDateInput").value = selectedDate;
-    $("calendarOwnerInput").value = reporter ? displayPersonName(reporter) : "";
+    setCalendarOwners(reporter ? [displayPersonName(reporter)] : []);
     $("calendarTypeInput").value = "工作提醒";
     $("calendarStatusInput").value = "待辦";
     $("calendarReminderInput").value = "當天";
@@ -3289,7 +3332,7 @@
     const payload = {
       action: "submitCalendarEvent",
       title: $("calendarTitleInput").value.trim(),
-      owner: $("calendarOwnerInput").value.trim(),
+      owner: getCalendarOwnerNames().join("、"),
       date: $("calendarDateInput").value,
       startTime: $("calendarStartInput").value,
       endTime: $("calendarEndInput").value,
@@ -3303,7 +3346,7 @@
     };
     if (!payload.owner) {
       renderCalendarMessage("請填寫負責同仁。", "error");
-      $("calendarOwnerInput").focus();
+      $("calendarOwnerOtherInput").focus();
       return;
     }
     if (!confirmSubmission("請確認新增工作提醒", [
@@ -3322,7 +3365,7 @@
       renderCalendarMessage("已新增工作提醒。系統會重新讀取 Google Sheet。", "success");
       $("calendarForm").reset();
       $("calendarDateInput").value = payload.date || currentDateValue();
-      $("calendarOwnerInput").value = payload.owner;
+      setCalendarOwners(splitNames(payload.owner));
       $("calendarMonthInput").value = payload.date ? payload.date.slice(0, 7) : currentMonthValue();
       state.selectedCalendarMonth = $("calendarMonthInput").value;
       await wait(900);
