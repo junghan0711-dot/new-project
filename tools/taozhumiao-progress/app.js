@@ -45,6 +45,10 @@
     榮漢哥: "Hank",
     邱委: "Hank",
   };
+  const departedPersonReplacements = {
+    侑娟: "芷安",
+  };
+  const extraPeople = ["芷安"];
   const calendarAdminNames = new Set(["Hank", "邱榮漢", "榮漢", "榮漢哥", "邱委"]);
 
   function init() {
@@ -99,20 +103,21 @@
     $("calendarPersonFilter").addEventListener("change", applyCalendarFilters);
     $("calendarTypeFilter").addEventListener("change", applyCalendarFilters);
     $("calendarSearchInput").addEventListener("input", applyCalendarFilters);
-    $("reporterInput").value = localStorage.getItem("taozhumiao.reporter") || "";
+    $("reporterInput").value = displayPersonName(localStorage.getItem("taozhumiao.reporter") || "");
     $("reporterInput").addEventListener("input", (event) => {
-      localStorage.setItem("taozhumiao.reporter", event.target.value.trim());
+      const reporterName = displayPersonName(event.target.value.trim());
+      localStorage.setItem("taozhumiao.reporter", reporterName);
       if (!$("caseReporterInput").value.trim()) {
-        $("caseReporterInput").value = event.target.value.trim();
+        $("caseReporterInput").value = reporterName;
       }
       if (!$("caseProgressReporterInput").value.trim()) {
-        $("caseProgressReporterInput").value = event.target.value.trim();
+        $("caseProgressReporterInput").value = reporterName;
       }
       syncMyCaseAssigneeFromReporter();
       syncMyWorkPersonFromReporter();
       const calendarOwnerInput = $("calendarOwnerInput");
       if (calendarOwnerInput && !calendarOwnerInput.value.trim()) {
-        setCalendarOwners([displayPersonName(event.target.value.trim())]);
+        setCalendarOwners([reporterName]);
       }
       if (state.selectedCalendarMonth) renderCalendar();
     });
@@ -231,12 +236,13 @@
       performance: item.performance || item["執行績效及內容"] || item["履約標的及績效"] || "",
       budget: item.budget || item["核定/預估經費"] || item["經費"] || "",
       progressRatio: item.progressRatio || item["執行進度比例"] || item["工作進度"] || "",
-      owner: item.owner || item["主責及協辦"] || "",
+      owner: normalizeStaffText(item.owner || item["主責及協辦"] || ""),
+      coOwner: normalizeStaffText(item.coOwner || item["協辦同仁"] || item["協辦"] || ""),
       period: item.period || item["預計執行時程"] || "",
       schedule: item.schedule || item["表定時間摘要"] || item["工作執行時程規劃"] || "",
       currentStatus: item.currentStatus || item["執行現況說明"] || "",
       expenseNote: item.expenseNote || item["經費項目"] || item["費用說明"] || "",
-      updatedBy: item.updatedBy || item["最後更新人"] || "",
+      updatedBy: displayPersonName(item.updatedBy || item["最後更新人"] || ""),
       updatedAt: item.updatedAt || item["最後更新時間"] || "",
     };
   }
@@ -248,14 +254,14 @@
       sourceSheet: task.sourceSheet || task["來源工作表"] || "",
       itemName: task.itemName || task["工項名稱"] || "",
       taskName: task.taskName || task["工作細項"] || "",
-      owner: task.owner || task["負責同仁"] || "",
+      owner: normalizeStaffText(task.owner || task["負責同仁"] || ""),
       dueDate: task.dueDate || task["預定完成日期"] || "",
       status: task.status || task["是否完成"] || "未確認",
       progress: task.progress || task["目前工作進度"] || "",
       expense: task.expense || task["費用"] || "",
       expenseDetail: task.expenseDetail || task["費用明細"] || "",
       note: task.note || task["備註/場地"] || task["備註"] || "",
-      updatedBy: task.updatedBy || task["最後更新人"] || "",
+      updatedBy: displayPersonName(task.updatedBy || task["最後更新人"] || ""),
       updatedAt: task.updatedAt || task["最後更新時間"] || "",
     };
   }
@@ -264,20 +270,20 @@
     return {
       caseId: record.caseId || record["案件ID"] || "",
       title: record.title || record["案件名稱"] || "",
-      assignee: record.assignee || record["指定同事"] || "",
+      assignee: normalizeStaffText(record.assignee || record["指定同事"] || ""),
       instruction: record.instruction || record["交辦內容"] || "",
       checkpoint: record.checkpoint || record["查核點"] || "",
       deadline: record.deadline || record["Deadline"] || record["期限"] || "",
       progress: record.progress || record["目前進度說明"] || record["進度說明"] || "",
       status: record.status || record["狀態"] || "待執行",
       priority: record.priority || record["優先序"] || "一般",
-      reporter: record.reporter || record["回報人"] || "",
+      reporter: displayPersonName(record.reporter || record["回報人"] || ""),
       reportedAt: record.reportedAt || record["回報時間"] || record["最後更新時間"] || "",
       note: record.note || record["備註"] || "",
       attachment: record.attachment || record["佐證資料連結"] || record["附件連結"] || "",
       completion: record.completion || record["完成/解除列管說明"] || record["完成說明"] || "",
       releasedAt: record.releasedAt || record["解除列管時間"] || "",
-      modifiedBy: record.modifiedBy || record["最後修改人"] || "",
+      modifiedBy: displayPersonName(record.modifiedBy || record["最後修改人"] || ""),
       modifiedAt: record.modifiedAt || record["最後修改時間"] || "",
     };
   }
@@ -295,16 +301,16 @@
       teacher: record.teacher || record["輔導老師"] || "",
       branchStaff: record.branchStaff || record["分署人員"] || "",
       unitStaff: record.unitStaff || record["單位人員"] || "",
-      relatedStaff: record.relatedStaff || record["相關人員"] || "",
-      owner: record.owner || record["負責同仁"] || "",
+      relatedStaff: normalizeStaffText(record.relatedStaff || record["相關人員"] || ""),
+      owner: normalizeStaffText(record.owner || record["負責同仁"] || ""),
       status: record.status || record["狀態"] || "預排",
       topic: record.topic || record["輔導主題"] || "",
       note: record.note || record["會議紀錄/備註"] || record["會議紀錄 / 備註"] || record["備註"] || "",
       attachment: record.attachment || record["佐證資料連結"] || "",
-      reporter: record.reporter || record["建立人"] || "",
+      reporter: displayPersonName(record.reporter || record["建立人"] || ""),
       createdAt: record.createdAt || record["建立時間"] || "",
       updatedAt: record.updatedAt || record["最後更新時間"] || "",
-      modifiedBy: record.modifiedBy || record["最後修改人"] || "",
+      modifiedBy: displayPersonName(record.modifiedBy || record["最後修改人"] || ""),
       modifiedAt: record.modifiedAt || record["最後修改時間"] || "",
     };
   }
@@ -313,7 +319,7 @@
     return {
       eventId: record.eventId || record["提醒ID"] || "",
       title: record.title || record["提醒標題"] || "",
-      owner: record.owner || record["負責同仁"] || "",
+      owner: normalizeStaffText(record.owner || record["負責同仁"] || ""),
       date: normalizeDateInput(record.date || record["日期"] || ""),
       startTime: record.startTime || record["開始時間"] || "",
       endTime: record.endTime || record["結束時間"] || "",
@@ -323,10 +329,10 @@
       related: record.related || record["關聯工項/案件"] || record["關聯工項 / 案件"] || "",
       note: record.note || record["提醒內容/進度說明"] || record["提醒內容 / 進度說明"] || "",
       attachment: record.attachment || record["佐證資料連結"] || "",
-      reporter: record.reporter || record["建立人"] || "",
+      reporter: displayPersonName(record.reporter || record["建立人"] || ""),
       createdAt: record.createdAt || record["建立時間"] || "",
       updatedAt: record.updatedAt || record["最後更新時間"] || "",
-      modifiedBy: record.modifiedBy || record["最後修改人"] || "",
+      modifiedBy: displayPersonName(record.modifiedBy || record["最後修改人"] || ""),
       modifiedAt: record.modifiedAt || record["最後修改時間"] || "",
       source: record.source || "manual",
     };
@@ -336,7 +342,7 @@
     return {
       unit: record.unit || record["單位"] || "",
       title: record.title || record["職稱"] || "",
-      name: record.name || record["姓名"] || "",
+      name: displayPersonName(record.name || record["姓名"] || ""),
       officePhone: record.officePhone || record["辦公室電話"] || "",
       mobile: record.mobile || record["手機"] || "",
       email: record.email || record["電子郵件"] || "",
@@ -556,6 +562,7 @@
     return String(value || "")
       .split(/[\n、,，/]+/)
       .map(cleanPersonName)
+      .map(displayPersonName)
       .filter(isPersonNameCandidate);
   }
 
@@ -565,14 +572,19 @@
       addPersonName(names, contact.name);
     });
     addItemOwnerNames(names);
+    extraPeople.forEach((name) => addPersonName(names, name));
     return names;
   }
 
   function assignmentStaffNames() {
     const contactNames = contactStaffNames();
-    if (contactNames.size) return contactNames;
+    if (contactNames.size) {
+      extraPeople.forEach((name) => addPersonName(contactNames, name));
+      return contactNames;
+    }
     const names = new Set();
     addItemOwnerNames(names);
+    extraPeople.forEach((name) => addPersonName(names, name));
     return names;
   }
 
@@ -627,7 +639,12 @@
 
   function displayPersonName(value) {
     const name = String(value || "").trim();
-    return personAliases[name] || name;
+    const cleanName = cleanPersonName(name);
+    return departedPersonReplacements[cleanName] || personAliases[name] || personAliases[cleanName] || name;
+  }
+
+  function normalizeStaffText(value) {
+    return String(value || "").replace(/侑娟/g, departedPersonReplacements.侑娟);
   }
 
   function buildOverviewSheets(originalSheets) {
@@ -859,6 +876,10 @@
     return [...liveSheets, ...originalSheets.map((sheet) => ({
       ...sheet,
       name: `原始-${sheet.name}`,
+      rows: (sheet.rows || []).map((row) => ({
+        ...row,
+        values: (row.values || []).map(normalizeStaffText),
+      })),
     }))];
   }
 
@@ -2651,7 +2672,7 @@
   }
 
   async function quickReportItem(button, item, mode) {
-    const reporter = $("reporterInput").value.trim() || $("myWorkPersonInput").value;
+    const reporter = displayPersonName($("reporterInput").value.trim() || $("myWorkPersonInput").value);
     if (!reporter) {
       window.alert("請先在上方填寫填報人，或在我的工作選擇姓名。");
       $("reporterInput").focus();
@@ -3149,7 +3170,7 @@
 
   async function submitProgress(event) {
     event.preventDefault();
-    const reporter = $("reporterInput").value.trim();
+    const reporter = displayPersonName($("reporterInput").value.trim());
     const item = state.items.find((entry) => entry.itemId === state.selectedItemId);
     if (!reporter) {
       renderMessage("請先填寫填報人姓名。", "error");
@@ -3212,7 +3233,7 @@
       renderCaseMessage("目前尚未設定 Apps Script API URL，無法寫入案件列管。", "error");
       return;
     }
-    const reporter = $("caseReporterInput").value.trim() || $("reporterInput").value.trim();
+    const reporter = displayPersonName($("caseReporterInput").value.trim() || $("reporterInput").value.trim());
     if (!reporter) {
       renderCaseMessage("請填寫回報人。", "error");
       $("caseReporterInput").focus();
@@ -3223,7 +3244,7 @@
       action: isEditing ? "editCaseTracking" : "submitCaseTracking",
       caseId: state.editingCaseId,
       title: $("caseTitleInput").value.trim(),
-      assignee: $("caseAssigneeInput").value,
+      assignee: normalizeStaffText($("caseAssigneeInput").value),
       deadline: $("caseDeadlineInput").value,
       status: $("caseStatusInput").value,
       instruction: $("caseInstructionInput").value.trim(),
@@ -3270,7 +3291,7 @@
       return;
     }
     const caseId = $("caseProgressIdInput").value.trim();
-    const reporter = $("caseProgressReporterInput").value.trim() || $("reporterInput").value.trim();
+    const reporter = displayPersonName($("caseProgressReporterInput").value.trim() || $("reporterInput").value.trim());
     const status = $("caseProgressStatusInput").value;
     const completion = $("caseCompletionInput").value.trim();
     const record = state.cases.find((entry) => entry.caseId === caseId);
@@ -3335,7 +3356,7 @@
       renderConsultationMessage("目前尚未設定 Apps Script API URL，無法寫入諮詢輔導場次。", "error");
       return;
     }
-    const reporter = $("reporterInput").value.trim();
+    const reporter = displayPersonName($("reporterInput").value.trim());
     if (!reporter) {
       renderConsultationMessage("請先填寫上方填報人姓名。", "error");
       $("reporterInput").focus();
@@ -3355,8 +3376,8 @@
       teacher: $("consultationTeacherInput").value.trim(),
       branchStaff: $("consultationBranchStaffInput").value.trim(),
       unitStaff: $("consultationUnitStaffInput").value.trim(),
-      relatedStaff: $("consultationRelatedStaffInput").value.trim(),
-      owner: $("consultationOwnerInput").value.trim(),
+      relatedStaff: normalizeStaffText($("consultationRelatedStaffInput").value.trim()),
+      owner: normalizeStaffText($("consultationOwnerInput").value.trim()),
       status: $("consultationStatusInput").value,
       topic: $("consultationTopicInput").value.trim(),
       note: $("consultationNoteInput").value.trim(),
@@ -3399,7 +3420,7 @@
       renderCalendarMessage("目前尚未設定 Apps Script API URL，無法寫入工作行事曆。", "error");
       return;
     }
-    const reporter = $("reporterInput").value.trim();
+    const reporter = displayPersonName($("reporterInput").value.trim());
     if (!reporter) {
       renderCalendarMessage("請先填寫上方填報人姓名。", "error");
       $("reporterInput").focus();
@@ -3410,7 +3431,7 @@
       action: isEditing ? "editCalendarEvent" : "submitCalendarEvent",
       eventId: state.editingCalendarEventId,
       title: $("calendarTitleInput").value.trim(),
-      owner: getCalendarOwnerNames().join("、"),
+      owner: normalizeStaffText(getCalendarOwnerNames().join("、")),
       date: $("calendarDateInput").value,
       startTime: $("calendarStartInput").value,
       endTime: $("calendarEndInput").value,
