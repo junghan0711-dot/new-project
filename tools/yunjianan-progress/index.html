@@ -235,89 +235,6 @@
         </div>
 
         <div class="calendar-workspace">
-          <form id="calendarForm" class="calendar-form">
-            <div class="form-caption">
-              <h3>新增工作提醒</h3>
-              <p>同仁可把預計辦理時間、提醒事項與相關連結填在這裡，送出後會寫入 Google Sheet 的工作行事曆。</p>
-            </div>
-
-            <div class="form-grid calendar-form-grid">
-              <label>
-                <span>提醒標題</span>
-                <input id="calendarTitleInput" type="text" required placeholder="例：完成 7 月工作坊場地確認" />
-              </label>
-              <label>
-                <span>負責同仁</span>
-                <input id="calendarOwnerInput" list="calendarOwnerOptions" type="text" required placeholder="輸入或選擇同仁" />
-                <datalist id="calendarOwnerOptions"></datalist>
-              </label>
-              <label>
-                <span>日期</span>
-                <input id="calendarDateInput" type="date" required />
-              </label>
-              <label>
-                <span>提醒類型</span>
-                <select id="calendarTypeInput">
-                  <option value="工作提醒">工作提醒</option>
-                  <option value="工項追蹤">工項追蹤</option>
-                  <option value="案件 Deadline">案件 Deadline</option>
-                  <option value="會議/活動">會議/活動</option>
-                  <option value="交付文件">交付文件</option>
-                  <option value="主管查核">主管查核</option>
-                </select>
-              </label>
-              <label>
-                <span>開始時間</span>
-                <input id="calendarStartInput" type="time" />
-              </label>
-              <label>
-                <span>結束時間</span>
-                <input id="calendarEndInput" type="time" />
-              </label>
-              <label>
-                <span>狀態</span>
-                <select id="calendarStatusInput">
-                  <option value="待辦">待辦</option>
-                  <option value="進行中">進行中</option>
-                  <option value="待查核">待查核</option>
-                  <option value="已完成">已完成</option>
-                  <option value="延期">延期</option>
-                  <option value="取消">取消</option>
-                </select>
-              </label>
-              <label>
-                <span>提醒時間</span>
-                <select id="calendarReminderInput">
-                  <option value="當天">當天</option>
-                  <option value="提前1天">提前 1 天</option>
-                  <option value="提前3天">提前 3 天</option>
-                  <option value="提前7天">提前 7 天</option>
-                </select>
-              </label>
-            </div>
-
-            <label>
-              <span>關聯工項 / 案件</span>
-              <input id="calendarRelatedInput" list="calendarRelatedOptions" type="text" placeholder="可選工項、案件或自行輸入" />
-              <datalist id="calendarRelatedOptions"></datalist>
-            </label>
-
-            <label>
-              <span>提醒內容 / 進度說明</span>
-              <textarea id="calendarNoteInput" rows="4" placeholder="填寫當天要做什麼、目前進度、需要誰協助或主管要看的重點"></textarea>
-            </label>
-
-            <label>
-              <span>佐證資料連結</span>
-              <input id="calendarAttachmentInput" type="url" placeholder="貼上雲端資料夾、文件、表單、會議連結或照片連結" />
-            </label>
-
-            <div class="form-actions">
-              <p id="calendarMessage" role="status"></p>
-              <button id="calendarSubmitButton" class="button primary" type="submit">新增提醒</button>
-            </div>
-          </form>
-
           <div class="calendar-board">
             <div class="calendar-toolbar">
               <label>
@@ -359,6 +276,98 @@
                 <div id="calendarAgendaList" class="calendar-agenda-list"></div>
               </div>
             </div>
+          </div>
+        </div>
+
+        <div id="calendarModal" class="calendar-modal" hidden>
+          <div class="calendar-modal-backdrop" data-calendar-close></div>
+          <div class="calendar-dialog" role="dialog" aria-modal="true" aria-labelledby="calendarDialogTitle">
+            <form id="calendarForm" class="calendar-form">
+              <div class="calendar-dialog-header">
+                <div class="form-caption">
+                  <h3 id="calendarDialogTitle">新增工作提醒</h3>
+                  <p id="calendarDialogDateText">選擇日期後填寫提醒內容。</p>
+                </div>
+                <button class="button compact" type="button" data-calendar-close aria-label="關閉新增提醒表單">關閉</button>
+              </div>
+
+              <div class="form-grid calendar-form-grid">
+                <label>
+                  <span>提醒標題</span>
+                  <input id="calendarTitleInput" type="text" required placeholder="例：完成 7 月工作坊場地確認" />
+                </label>
+                <label>
+                  <span>負責同仁</span>
+                  <input id="calendarOwnerInput" list="calendarOwnerOptions" type="text" required placeholder="輸入或選擇同仁" />
+                  <datalist id="calendarOwnerOptions"></datalist>
+                </label>
+                <label>
+                  <span>日期</span>
+                  <input id="calendarDateInput" type="date" required />
+                </label>
+                <label>
+                  <span>提醒類型</span>
+                  <select id="calendarTypeInput">
+                    <option value="工作提醒">工作提醒</option>
+                    <option value="工項追蹤">工項追蹤</option>
+                    <option value="案件 Deadline">案件 Deadline</option>
+                    <option value="會議/活動">會議/活動</option>
+                    <option value="交付文件">交付文件</option>
+                    <option value="主管查核">主管查核</option>
+                  </select>
+                </label>
+                <label>
+                  <span>開始時間</span>
+                  <input id="calendarStartInput" type="time" />
+                </label>
+                <label>
+                  <span>結束時間</span>
+                  <input id="calendarEndInput" type="time" />
+                </label>
+                <label>
+                  <span>狀態</span>
+                  <select id="calendarStatusInput">
+                    <option value="待辦">待辦</option>
+                    <option value="進行中">進行中</option>
+                    <option value="待查核">待查核</option>
+                    <option value="已完成">已完成</option>
+                    <option value="延期">延期</option>
+                    <option value="取消">取消</option>
+                  </select>
+                </label>
+                <label>
+                  <span>提醒時間</span>
+                  <select id="calendarReminderInput">
+                    <option value="當天">當天</option>
+                    <option value="提前1天">提前 1 天</option>
+                    <option value="提前3天">提前 3 天</option>
+                    <option value="提前7天">提前 7 天</option>
+                  </select>
+                </label>
+              </div>
+
+              <label>
+                <span>關聯工項 / 案件</span>
+                <input id="calendarRelatedInput" list="calendarRelatedOptions" type="text" placeholder="可選工項、案件或自行輸入" />
+                <datalist id="calendarRelatedOptions"></datalist>
+              </label>
+
+              <label>
+                <span>提醒內容 / 進度說明</span>
+                <textarea id="calendarNoteInput" rows="4" placeholder="填寫當天要做什麼、目前進度、需要誰協助或主管要看的重點"></textarea>
+              </label>
+
+              <label>
+                <span>佐證資料連結</span>
+                <input id="calendarAttachmentInput" type="url" placeholder="貼上雲端資料夾、文件、表單、會議連結或照片連結" />
+              </label>
+
+              <div class="form-actions calendar-form-actions">
+                <p id="calendarMessage" role="status"></p>
+                <button class="button" type="button" data-calendar-close>取消</button>
+                <button id="calendarSubmitButton" class="button primary" type="submit">新增提醒</button>
+              </div>
+            </form>
           </div>
         </div>
       </section>

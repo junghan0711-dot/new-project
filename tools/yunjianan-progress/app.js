@@ -80,6 +80,13 @@
     $("consultationStatusFilter").addEventListener("change", applyConsultationFilters);
     $("consultationSearchInput").addEventListener("input", applyConsultationFilters);
     $("calendarForm").addEventListener("submit", submitCalendarEvent);
+    $("calendarDateInput").addEventListener("change", () => updateCalendarDialogDateText($("calendarDateInput").value));
+    document.querySelectorAll("[data-calendar-close]").forEach((element) => {
+      element.addEventListener("click", closeCalendarModal);
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !$("calendarModal").hidden) closeCalendarModal();
+    });
     $("calendarMonthInput").addEventListener("change", () => {
       state.selectedCalendarMonth = $("calendarMonthInput").value || currentMonthValue();
       applyCalendarFilters();
@@ -1981,6 +1988,40 @@
     renderCalendarAgenda(events);
   }
 
+  function openCalendarModal(date) {
+    const selectedDate = date || currentDateValue();
+    const reporter = $("reporterInput").value.trim();
+    $("calendarForm").reset();
+    $("calendarDateInput").value = selectedDate;
+    $("calendarOwnerInput").value = reporter ? displayPersonName(reporter) : "";
+    $("calendarTypeInput").value = "工作提醒";
+    $("calendarStatusInput").value = "待辦";
+    $("calendarReminderInput").value = "當天";
+    renderCalendarMessage("", "");
+    updateCalendarDialogDateText(selectedDate);
+    $("calendarModal").hidden = false;
+    document.body.classList.add("calendar-modal-open");
+    requestAnimationFrame(() => $("calendarTitleInput").focus());
+  }
+
+  function closeCalendarModal() {
+    $("calendarModal").hidden = true;
+    document.body.classList.remove("calendar-modal-open");
+    $("calendarSubmitButton").disabled = false;
+  }
+
+  function updateCalendarDialogDateText(date) {
+    const text = date ? `新增 ${formatCalendarDateLabel(date)} 的工作提醒。` : "選擇日期後填寫提醒內容。";
+    $("calendarDialogDateText").textContent = text;
+  }
+
+  function formatCalendarDateLabel(date) {
+    const parsed = parseDeadline(date);
+    if (!parsed) return date;
+    const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
+    return `${parsed.getFullYear()}/${String(parsed.getMonth() + 1).padStart(2, "0")}/${String(parsed.getDate()).padStart(2, "0")}（${weekdays[parsed.getDay()]}）`;
+  }
+
   function renderCalendarMetrics(events) {
     const metrics = calendarMetrics(events);
     const container = $("calendarMetrics");
@@ -2039,9 +2080,14 @@
       const dayEvents = events.filter((event) => event.date === date).slice(0, 4);
       const cell = document.createElement("article");
       cell.className = "calendar-day";
+      cell.addEventListener("click", () => openCalendarModal(date));
       if (date === currentDateValue()) cell.classList.add("today");
       const number = document.createElement("strong");
-      number.textContent = String(day);
+      const numberButton = document.createElement("button");
+      numberButton.type = "button";
+      numberButton.className = "calendar-day-button";
+      numberButton.textContent = String(day);
+      number.appendChild(numberButton);
       cell.appendChild(number);
       dayEvents.forEach((event) => {
         const item = document.createElement("button");
@@ -2052,7 +2098,10 @@
           event.title || "未命名提醒",
         ].filter(Boolean).join(" ");
         item.title = calendarEventTooltip(event);
-        item.addEventListener("click", () => focusCalendarAgendaEvent(event));
+        item.addEventListener("click", (clickEvent) => {
+          clickEvent.stopPropagation();
+          focusCalendarAgendaEvent(event);
+        });
         cell.appendChild(item);
       });
       const overflow = events.filter((event) => event.date === date).length - dayEvents.length;
@@ -3278,6 +3327,7 @@
       state.selectedCalendarMonth = $("calendarMonthInput").value;
       await wait(900);
       await loadData();
+      closeCalendarModal();
     } catch (error) {
       renderCalendarMessage(`送出失敗：${error.message}`, "error");
     } finally {
