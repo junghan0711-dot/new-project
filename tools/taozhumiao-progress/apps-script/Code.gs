@@ -6,9 +6,12 @@ const SHEETS = {
   cases: "案件追蹤列管",
   caseUpdates: "案件進度紀錄",
   consultations: "諮詢輔導場次",
+  calendarEvents: "工作行事曆",
+  contacts: "同仁通訊錄",
   modificationHistory: "修改歷程",
 };
 const ALLOWED_REPORTERS = [];
+const CALENDAR_ADMIN_REPORTERS = ["Hank", "邱榮漢", "榮漢", "榮漢哥", "邱委"];
 const UPDATE_HEADERS = [
   "更新ID",
   "任務ID",
@@ -91,6 +94,25 @@ const CONSULTATION_HEADERS = [
   "最後修改人",
   "最後修改時間",
 ];
+const CALENDAR_HEADERS = [
+  "提醒ID",
+  "提醒標題",
+  "負責同仁",
+  "日期",
+  "開始時間",
+  "結束時間",
+  "提醒類型",
+  "狀態",
+  "提醒時間",
+  "關聯工項/案件",
+  "提醒內容/進度說明",
+  "佐證資料連結",
+  "建立人",
+  "建立時間",
+  "最後更新時間",
+  "最後修改人",
+  "最後修改時間",
+];
 const MODIFICATION_HISTORY_HEADERS = [
   "修改ID",
   "資料表",
@@ -102,6 +124,19 @@ const MODIFICATION_HISTORY_HEADERS = [
   "修改時間",
   "修改來源",
 ];
+const CONTACT_HEADERS = [
+  "單位",
+  "職稱",
+  "姓名",
+  "辦公室電話",
+  "手機",
+  "電子郵件",
+  "Line ID",
+  "LINE User ID",
+  "備註",
+];
+const LINE_WEBHOOK_PROPERTY = "LINE_WEBHOOK_URL";
+const LINE_CHANNEL_TOKEN_PROPERTY = "LINE_CHANNEL_ACCESS_TOKEN";
 
 function doGet(e) {
   const params = e && e.parameter ? e.parameter : {};
@@ -119,6 +154,12 @@ function doGet(e) {
     if (action === "prepareConsultations") {
       return jsonp_(params.callback, prepareConsultations_());
     }
+    if (action === "prepareCalendar") {
+      return jsonp_(params.callback, prepareCalendar_());
+    }
+    if (action === "prepareContacts") {
+      return jsonp_(params.callback, prepareContacts_());
+    }
     return jsonp_(params.callback, { ok: false, error: "Unknown action" });
   } catch (error) {
     return jsonp_(params.callback, { ok: false, error: error.message });
@@ -135,6 +176,7 @@ function listData_() {
     cases: listRecords_(SHEETS.cases),
     caseUpdates: listRecords_(SHEETS.caseUpdates),
     consultations: listRecords_(SHEETS.consultations),
+    calendarEvents: listRecords_(SHEETS.calendarEvents),
   };
 }
 
@@ -147,16 +189,30 @@ function authorize_() {
   };
 }
 
-function authorize() {
-  return authorize_();
-}
-
 function prepareConsultations_() {
   const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
   ensureSheet_(spreadsheet, SHEETS.consultations, CONSULTATION_HEADERS);
   return {
     ok: true,
     sheetName: SHEETS.consultations,
+  };
+}
+
+function prepareCalendar_() {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  ensureSheet_(spreadsheet, SHEETS.calendarEvents, CALENDAR_HEADERS);
+  return {
+    ok: true,
+    sheetName: SHEETS.calendarEvents,
+  };
+}
+
+function prepareContacts_() {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  ensureSheet_(spreadsheet, SHEETS.contacts, CONTACT_HEADERS);
+  return {
+    ok: true,
+    sheetName: SHEETS.contacts,
   };
 }
 
@@ -177,8 +233,7 @@ function listItems_() {
         performance: record["執行績效及內容"] || record["履約標的及績效"],
         budget: record["核定/預估經費"] || record["經費"],
         progressRatio: record["執行進度比例"] || record["工作進度"],
-        owner: record["主責及協辦"] || record["主責同仁"],
-        coOwner: record["協辦同仁"],
+        owner: record["主責及協辦"],
         period: record["預計執行時程"],
         schedule: record["表定時間摘要"] || record["工作執行時程規劃"],
         currentStatus: record["執行現況說明"],
@@ -199,6 +254,24 @@ function listRecords_(sheetName) {
   return values.slice(1)
     .filter((row) => row.some((cell) => cell !== ""))
     .map((row) => rowToObject_(headers, row));
+}
+
+function listContacts_() {
+  return listRecords_(SHEETS.contacts).map(contactRecord_);
+}
+
+function contactRecord_(record) {
+  return {
+    unit: record["單位"] || "",
+    title: record["職稱"] || "",
+    name: record["姓名"] || "",
+    officePhone: record["辦公室電話"] || "",
+    mobile: record["手機"] || "",
+    email: record["電子郵件"] || "",
+    lineId: record["Line ID"] || record["LINE ID"] || record["備註(Line ID)"] || "",
+    lineUserId: record["LINE User ID"] || record["Line User ID"] || "",
+    note: record["備註"] || "",
+  };
 }
 
 function doPost(e) {
@@ -246,6 +319,21 @@ function doPost(e) {
       const result = editConsultationSession_(params);
       return json_({ ok: true, result });
     }
+    if (params.action === "submitCalendarEvent") {
+      checkReporter_(params.reporter);
+      const result = submitCalendarEvent_(params);
+      return json_({ ok: true, result });
+    }
+    if (params.action === "editCalendarEvent") {
+      checkReporter_(params.reporter);
+      const result = editCalendarEvent_(params);
+      return json_({ ok: true, result });
+    }
+    if (params.action === "deleteCalendarEvent") {
+      checkReporter_(params.reporter);
+      const result = deleteCalendarEvent_(params);
+      return json_({ ok: true, result });
+    }
     if (params.action !== "submitProgress") {
       return json_({ ok: false, error: "Unknown action" });
     }
@@ -257,6 +345,83 @@ function doPost(e) {
   } finally {
     lock.releaseLock();
   }
+}
+
+function submitCalendarEvent_(params) {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ensureSheet_(spreadsheet, SHEETS.calendarEvents, CALENDAR_HEADERS);
+  const timestamp = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
+  const eventId = nextCalendarEventId_(sheet, params.date || timestamp.slice(0, 10));
+
+  sheet.appendRow([
+    eventId,
+    params.title || "",
+    params.owner || "",
+    params.date || "",
+    params.startTime || "",
+    params.endTime || "",
+    params.type || "工作提醒",
+    params.status || "待辦",
+    params.reminder || "當天",
+    params.related || "",
+    params.note || "",
+    params.attachment || "",
+    params.reporter || "",
+    timestamp,
+    timestamp,
+    "",
+    "",
+  ]);
+
+  return { eventId, updatedAt: timestamp };
+}
+
+function editCalendarEvent_(params) {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ensureSheet_(spreadsheet, SHEETS.calendarEvents, CALENDAR_HEADERS);
+  const eventId = params.eventId || "";
+  const row = findCalendarEventRow_(sheet, eventId);
+  if (!row) throw new Error("找不到提醒ID：" + eventId);
+
+  const timestamp = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  assertCanModifyCalendarEvent_(sheet, headers, row, params.reporter);
+  const history = buildModificationContext_(spreadsheet, SHEETS.calendarEvents, eventId, params.reporter, timestamp, "editCalendarEvent");
+
+  setByHeaderWithHistory_(sheet, headers, row, "提醒標題", params.title || "", history);
+  setByHeaderWithHistory_(sheet, headers, row, "負責同仁", params.owner || "", history);
+  setByHeaderWithHistory_(sheet, headers, row, "日期", params.date || "", history);
+  setByHeaderWithHistory_(sheet, headers, row, "開始時間", params.startTime || "", history);
+  setByHeaderWithHistory_(sheet, headers, row, "結束時間", params.endTime || "", history);
+  setByHeaderWithHistory_(sheet, headers, row, "提醒類型", params.type || "工作提醒", history);
+  setByHeaderWithHistory_(sheet, headers, row, "狀態", params.status || "待辦", history);
+  setByHeaderWithHistory_(sheet, headers, row, "提醒時間", params.reminder || "當天", history);
+  setByHeaderWithHistory_(sheet, headers, row, "關聯工項/案件", params.related || "", history);
+  setByHeaderWithHistory_(sheet, headers, row, "提醒內容/進度說明", params.note || "", history);
+  setByHeaderWithHistory_(sheet, headers, row, "佐證資料連結", params.attachment || "", history);
+  setByHeader_(sheet, headers, row, "最後更新時間", timestamp);
+  setByHeader_(sheet, headers, row, "最後修改人", params.reporter || "");
+  setByHeader_(sheet, headers, row, "最後修改時間", timestamp);
+
+  return { eventId, updatedAt: timestamp };
+}
+
+function deleteCalendarEvent_(params) {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ensureSheet_(spreadsheet, SHEETS.calendarEvents, CALENDAR_HEADERS);
+  const eventId = params.eventId || "";
+  const row = findCalendarEventRow_(sheet, eventId);
+  if (!row) throw new Error("找不到提醒ID：" + eventId);
+
+  const timestamp = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  assertCanModifyCalendarEvent_(sheet, headers, row, params.reporter);
+  const title = getByHeader_(sheet, headers, row, "提醒標題");
+  const history = buildModificationContext_(spreadsheet, SHEETS.calendarEvents, eventId, params.reporter, timestamp, "deleteCalendarEvent");
+  appendModificationHistory_(history, "刪除提醒", title || eventId, "");
+  sheet.deleteRow(row);
+
+  return { eventId, deletedAt: timestamp };
 }
 
 function submitConsultationSession_(params) {
@@ -363,7 +528,9 @@ function submitCaseTracking_(params) {
     note: params.note,
   }, timestamp);
 
-  return { caseId, updatedAt: timestamp };
+  const notification = notifyCaseAssignees_(params, caseId, timestamp);
+
+  return { caseId, updatedAt: timestamp, notification };
 }
 
 function editCaseTracking_(params) {
@@ -397,6 +564,117 @@ function editCaseTracking_(params) {
   setByHeader_(caseSheet, headers, caseRow, "最後修改時間", timestamp);
 
   return { caseId: params.caseId, modifiedAt: timestamp };
+}
+
+function notifyCaseAssignees_(params, caseId, timestamp) {
+  const contacts = listContacts_();
+  const assignees = splitNames_(params.assignee);
+  const matchedContacts = contacts.filter((contact) => assignees.indexOf(contact.name) >= 0);
+  const summary = {
+    emailSent: 0,
+    emailRecipients: [],
+    lineSent: 0,
+    lineSkipped: 0,
+    warnings: [],
+  };
+
+  if (!matchedContacts.length) {
+    summary.warnings.push("找不到指定同事的通訊錄資料");
+    return summary;
+  }
+
+  const subject = "桃竹苗多元計畫交辦通知：" + caseId + " " + (params.title || "");
+  const body = buildCaseNotificationText_(params, caseId, timestamp);
+  matchedContacts.forEach((contact) => {
+    const recipients = splitEmails_(contact.email);
+    if (recipients.length) {
+      try {
+        MailApp.sendEmail({
+          to: recipients.join(","),
+          subject: subject,
+          body: body,
+        });
+        summary.emailSent += 1;
+        summary.emailRecipients = summary.emailRecipients.concat(recipients);
+      } catch (error) {
+        summary.warnings.push(contact.name + " Email 發送失敗：" + error.message);
+      }
+    } else {
+      summary.warnings.push(contact.name + " 未填電子郵件");
+    }
+
+    const lineResult = sendLineNotification_(contact, body);
+    if (lineResult.sent) {
+      summary.lineSent += 1;
+    } else {
+      summary.lineSkipped += 1;
+      if (lineResult.warning) summary.warnings.push(contact.name + " LINE 未發送：" + lineResult.warning);
+    }
+  });
+
+  return summary;
+}
+
+function buildCaseNotificationText_(params, caseId, timestamp) {
+  return [
+    "你有一筆新的桃竹苗多元計畫追蹤案件。",
+    "",
+    "案件編號：" + caseId,
+    "案件名稱：" + (params.title || "未填"),
+    "指定同事：" + (params.assignee || "未填"),
+    "Deadline：" + (params.deadline || "未填"),
+    "狀態：" + (params.status || "待執行"),
+    "優先序：" + (params.priority || "一般"),
+    "交辦人/回報人：" + (params.reporter || "未填"),
+    "建立時間：" + timestamp,
+    "",
+    "交辦內容：",
+    params.instruction || "未填",
+    "",
+    "查核點：",
+    params.checkpoint || "未填",
+    "",
+    "目前進度：",
+    params.progress || "未填",
+    params.attachment ? "\n佐證資料：" + params.attachment : "",
+    params.note ? "\n備註：" + params.note : "",
+    "",
+    "請至桃竹苗專案網頁的「我的工作」或「案件追蹤列管」查看並回報進度。",
+  ].filter((line) => line !== "").join("\n");
+}
+
+function sendLineNotification_(contact, message) {
+  const properties = PropertiesService.getScriptProperties();
+  const webhookUrl = properties.getProperty(LINE_WEBHOOK_PROPERTY);
+  const channelToken = properties.getProperty(LINE_CHANNEL_TOKEN_PROPERTY);
+  if (channelToken && contact.lineUserId) {
+    UrlFetchApp.fetch("https://api.line.me/v2/bot/message/push", {
+      method: "post",
+      contentType: "application/json",
+      headers: {
+        Authorization: "Bearer " + channelToken,
+      },
+      payload: JSON.stringify({
+        to: contact.lineUserId,
+        messages: [{ type: "text", text: message }],
+      }),
+      muteHttpExceptions: true,
+    });
+    return { sent: true };
+  }
+  if (webhookUrl) {
+    UrlFetchApp.fetch(webhookUrl, {
+      method: "post",
+      contentType: "application/json",
+      payload: JSON.stringify({
+        text: contact.lineId ? "@" + contact.lineId + "\n" + message : message,
+        contact: contact.name,
+      }),
+      muteHttpExceptions: true,
+    });
+    return { sent: true };
+  }
+  return { sent: false, warning: "尚未設定 LINE webhook 或 LINE Messaging API userId/token" };
 }
 
 function submitCaseProgress_(params) {
@@ -754,6 +1032,33 @@ function findSessionRow_(sheet, sessionId) {
   return 0;
 }
 
+function findCalendarEventRow_(sheet, eventId) {
+  const values = sheet.getRange(1, 1, sheet.getLastRow(), 1).getDisplayValues();
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] === eventId) return i + 1;
+  }
+  return 0;
+}
+
+function assertCanModifyCalendarEvent_(sheet, headers, row, reporter) {
+  const actor = normalizeCalendarActor_(reporter);
+  if (!actor) throw new Error("請先填寫填報人姓名");
+  if (CALENDAR_ADMIN_REPORTERS.map(normalizeCalendarActor_).indexOf(actor) >= 0) return;
+
+  const creator = normalizeCalendarActor_(getByHeader_(sheet, headers, row, "建立人"));
+  const owners = splitNames_(getByHeader_(sheet, headers, row, "負責同仁")).map(normalizeCalendarActor_);
+  if (actor === creator || owners.indexOf(actor) >= 0) return;
+
+  throw new Error("只有提醒建立人、負責同仁或管理者可以修改/刪除這筆工作提醒");
+}
+
+function normalizeCalendarActor_(value) {
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, "")
+    .replace(/[（(].*?[）)]/g, "");
+}
+
 function nextCaseId_(sheet) {
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return "CASE-0001";
@@ -785,11 +1090,43 @@ function nextConsultationId_(sheet, month) {
   return prefix + String(maxSerial + 1).padStart(3, "0");
 }
 
+function nextCalendarEventId_(sheet, dateText) {
+  const normalizedDate = String(dateText || "")
+    .replace(/[^0-9]/g, "")
+    .slice(0, 8) || Utilities.formatDate(new Date(), "Asia/Taipei", "yyyyMMdd");
+  const prefix = "CAL-" + normalizedDate + "-";
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return prefix + "001";
+  const values = sheet.getRange(2, 1, lastRow - 1, 1).getDisplayValues();
+  let maxSerial = 0;
+  values.forEach((row) => {
+    const value = String(row[0] || "");
+    if (!value.startsWith(prefix)) return;
+    const serial = Number(value.slice(prefix.length));
+    if (Number.isFinite(serial)) maxSerial = Math.max(maxSerial, serial);
+  });
+  return prefix + String(maxSerial + 1).padStart(3, "0");
+}
+
 function rowToObject_(headers, row) {
   return headers.reduce((record, header, index) => {
     record[header] = row[index] || "";
     return record;
   }, {});
+}
+
+function splitNames_(value) {
+  return String(value || "")
+    .split(/[\n、,，/]+/)
+    .map((name) => name.trim().replace(/\(.+?\)/g, ""))
+    .filter(Boolean);
+}
+
+function splitEmails_(value) {
+  return String(value || "")
+    .split(/[\s\n,，;；]+/)
+    .map((email) => email.trim())
+    .filter((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
 }
 
 function setByHeader_(sheet, headers, row, header, value) {

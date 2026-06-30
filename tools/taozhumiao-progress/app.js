@@ -9,12 +9,15 @@
     cases: [],
     caseUpdates: [],
     consultations: [],
+    calendarEvents: [],
+    contacts: [],
     localCaseUpdates: [],
     sheets: [],
     originalSheetCount: 0,
     filteredItems: [],
     filteredCases: [],
     filteredConsultations: [],
+    filteredCalendarEvents: [],
     itemStatusDrafts: {},
     editingItemUpdateId: "",
     editingItemUpdateOriginalDate: "",
@@ -24,15 +27,16 @@
     editingCaseUpdateOriginalDate: "",
     editingConsultationSessionId: "",
     editingConsultationOriginalCreatedAt: "",
+    editingCalendarEventId: "",
+    editingCalendarOriginalDate: "",
     selectedItemId: "",
     selectedSheetName: "",
+    selectedCalendarMonth: "",
     loading: false,
   };
 
   const $ = (id) => document.getElementById(id);
-  const excludedPersonLabels = new Set(["主責", "協辦", "主責及協辦", "負責同仁", "各項主責同仁"]);
-  const inactivePeople = new Set(["嘉祺", "嘉褀"]);
-  const extraPeople = ["芷安", "昱碩"];
+  const excludedPersonLabels = new Set(["主責", "協辦", "主責及協辦", "負責同仁", "各項主責同仁", "全體同仁", "未指定", "-", "無", "行政", "財務", "活動聯繫"]);
   const personAliases = {
     hank: "Hank",
     Hank: "Hank",
@@ -41,9 +45,10 @@
     榮漢哥: "Hank",
     邱委: "Hank",
   };
+  const calendarAdminNames = new Set(["Hank", "邱榮漢", "榮漢", "榮漢哥", "邱委"]);
 
   function init() {
-    $("sheetLink").href = config.sheetUrl || embedded.sourceUrl || "#";
+    $("sheetLink").href = embedded.sourceUrl || config.sheetUrl || "#";
     $("refreshButton").addEventListener("click", loadData);
     $("personFilter").addEventListener("change", applyFilters);
     $("statusFilter").addEventListener("change", applyFilters);
@@ -77,6 +82,23 @@
     $("consultationOwnerFilter").addEventListener("change", applyConsultationFilters);
     $("consultationStatusFilter").addEventListener("change", applyConsultationFilters);
     $("consultationSearchInput").addEventListener("input", applyConsultationFilters);
+    $("calendarForm").addEventListener("submit", submitCalendarEvent);
+    $("calendarDeleteButton").addEventListener("click", deleteCalendarEvent);
+    $("calendarOwnerOtherInput").addEventListener("input", syncCalendarOwnerInput);
+    $("calendarDateInput").addEventListener("change", () => updateCalendarDialogDateText($("calendarDateInput").value));
+    document.querySelectorAll("[data-calendar-close]").forEach((element) => {
+      element.addEventListener("click", closeCalendarModal);
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !$("calendarModal").hidden) closeCalendarModal();
+    });
+    $("calendarMonthInput").addEventListener("change", () => {
+      state.selectedCalendarMonth = $("calendarMonthInput").value || currentMonthValue();
+      applyCalendarFilters();
+    });
+    $("calendarPersonFilter").addEventListener("change", applyCalendarFilters);
+    $("calendarTypeFilter").addEventListener("change", applyCalendarFilters);
+    $("calendarSearchInput").addEventListener("input", applyCalendarFilters);
     $("reporterInput").value = localStorage.getItem("taozhumiao.reporter") || "";
     $("reporterInput").addEventListener("input", (event) => {
       localStorage.setItem("taozhumiao.reporter", event.target.value.trim());
@@ -88,11 +110,19 @@
       }
       syncMyCaseAssigneeFromReporter();
       syncMyWorkPersonFromReporter();
+      const calendarOwnerInput = $("calendarOwnerInput");
+      if (calendarOwnerInput && !calendarOwnerInput.value.trim()) {
+        setCalendarOwners([displayPersonName(event.target.value.trim())]);
+      }
+      if (state.selectedCalendarMonth) renderCalendar();
     });
     $("caseReporterInput").value = $("reporterInput").value;
     $("caseProgressReporterInput").value = $("reporterInput").value;
     $("consultationMonthInput").value = currentMonthValue();
     $("consultationDateInput").value = currentDateValue();
+    $("calendarMonthInput").value = currentMonthValue();
+    $("calendarDateInput").value = currentDateValue();
+    state.selectedCalendarMonth = currentMonthValue();
     document.querySelectorAll(".tab-button").forEach((button) => {
       button.addEventListener("click", () => switchView(button.dataset.view));
     });
@@ -107,7 +137,7 @@
 
   function jsonp(url) {
     return new Promise((resolve, reject) => {
-      const callbackName = `yunjianan_${Date.now()}_${Math.round(Math.random() * 100000)}`;
+      const callbackName = `taozhumiao_${Date.now()}_${Math.round(Math.random() * 100000)}`;
       const script = document.createElement("script");
       const separator = url.includes("?") ? "&" : "?";
       window[callbackName] = (payload) => {
@@ -141,6 +171,8 @@
           cases: payload.cases || embedded.cases || [],
           caseUpdates: payload.caseUpdates || embedded.caseUpdates || [],
           consultations: payload.consultations || embedded.consultations || [],
+          calendarEvents: payload.calendarEvents || embedded.calendarEvents || [],
+          contacts: payload.contacts || embedded.contacts || [],
           sheets: payload.sheets || embedded.sheets || [],
         });
         $("dataMode").textContent = "已連線";
@@ -167,6 +199,8 @@
     state.cases = (payload.cases || []).map(normalizeCase);
     state.caseUpdates = mergeCaseUpdates(payload.caseUpdates || [], state.localCaseUpdates);
     state.consultations = (payload.consultations || []).map(normalizeConsultation);
+    state.calendarEvents = (payload.calendarEvents || []).map(normalizeCalendarEvent);
+    state.contacts = (payload.contacts || []).map(normalizeContact);
     state.itemStatusDrafts = {};
     const originalSheets = payload.sheets && payload.sheets.length ? payload.sheets : [];
     state.originalSheetCount = originalSheets.length;
@@ -198,7 +232,6 @@
       budget: item.budget || item["核定/預估經費"] || item["經費"] || "",
       progressRatio: item.progressRatio || item["執行進度比例"] || item["工作進度"] || "",
       owner: item.owner || item["主責及協辦"] || "",
-      coOwner: item.coOwner || item["協辦同仁"] || "",
       period: item.period || item["預計執行時程"] || "",
       schedule: item.schedule || item["表定時間摘要"] || item["工作執行時程規劃"] || "",
       currentStatus: item.currentStatus || item["執行現況說明"] || "",
@@ -276,6 +309,43 @@
     };
   }
 
+  function normalizeCalendarEvent(record) {
+    return {
+      eventId: record.eventId || record["提醒ID"] || "",
+      title: record.title || record["提醒標題"] || "",
+      owner: record.owner || record["負責同仁"] || "",
+      date: normalizeDateInput(record.date || record["日期"] || ""),
+      startTime: record.startTime || record["開始時間"] || "",
+      endTime: record.endTime || record["結束時間"] || "",
+      type: record.type || record["提醒類型"] || "工作提醒",
+      status: record.status || record["狀態"] || "待辦",
+      reminder: record.reminder || record["提醒時間"] || "當天",
+      related: record.related || record["關聯工項/案件"] || record["關聯工項 / 案件"] || "",
+      note: record.note || record["提醒內容/進度說明"] || record["提醒內容 / 進度說明"] || "",
+      attachment: record.attachment || record["佐證資料連結"] || "",
+      reporter: record.reporter || record["建立人"] || "",
+      createdAt: record.createdAt || record["建立時間"] || "",
+      updatedAt: record.updatedAt || record["最後更新時間"] || "",
+      modifiedBy: record.modifiedBy || record["最後修改人"] || "",
+      modifiedAt: record.modifiedAt || record["最後修改時間"] || "",
+      source: record.source || "manual",
+    };
+  }
+
+  function normalizeContact(record) {
+    return {
+      unit: record.unit || record["單位"] || "",
+      title: record.title || record["職稱"] || "",
+      name: record.name || record["姓名"] || "",
+      officePhone: record.officePhone || record["辦公室電話"] || "",
+      mobile: record.mobile || record["手機"] || "",
+      email: record.email || record["電子郵件"] || "",
+      lineId: record.lineId || record["Line ID"] || record["LINE ID"] || record["備註(Line ID)"] || "",
+      lineUserId: record.lineUserId || record["LINE User ID"] || record["Line User ID"] || "",
+      note: record.note || record["備註"] || "",
+    };
+  }
+
   function renderAll() {
     populatePeople();
     applyFilters();
@@ -296,9 +366,11 @@
     renderReleasedCases();
     populateConsultationOwners();
     applyConsultationFilters();
+    populateCalendarControls();
+    applyCalendarFilters();
     const meta = [
       `資料更新時間：${latestDataTime()}`,
-      `即時彙整 6 張 / 原始快照 ${state.originalSheetCount} 張`,
+      `即時彙整 7 張 / 原始快照 ${state.originalSheetCount} 張`,
       `${state.items.length} 筆工項 / ${state.tasks.length} 筆明細`,
     ];
     $("sourceMeta").textContent = meta.join(" / ");
@@ -312,6 +384,7 @@
       ...state.cases.map((record) => record.reportedAt),
       ...state.caseUpdates.map((record) => record.reportedAt || record["回報日期"]),
       ...state.consultations.map((record) => record.updatedAt || record.createdAt || record.date),
+      ...state.calendarEvents.map((record) => record.updatedAt || record.createdAt || record.date),
     ].filter(Boolean);
     if (!times.length) return embedded.generatedAt || "未記錄";
     return times.reduce((latest, value) => (dateValue(value) >= dateValue(latest) ? value : latest), times[0]);
@@ -330,9 +403,7 @@
     const select = $("personFilter");
     const currentValue = select.value;
     const names = new Set();
-    extraPeople.forEach((name) => names.add(name));
-    state.items.forEach((item) => splitNames(itemPeopleText(item)).forEach((name) => names.add(name)));
-    state.tasks.forEach((task) => splitNames(task.owner).forEach((name) => names.add(name)));
+    state.items.forEach((item) => splitNames(item.owner).forEach((name) => names.add(name)));
     select.innerHTML = '<option value="">全部</option>';
     const sortedNames = [...names].sort((a, b) => a.localeCompare(b, "zh-Hant"));
     sortedNames.forEach((name) => {
@@ -350,14 +421,10 @@
     const assigneeFilter = $("caseAssigneeFilter");
     const currentInput = assigneeInput.value;
     const currentFilter = assigneeFilter.value;
-    const names = new Set();
-    extraPeople.forEach((name) => names.add(name));
-    state.items.forEach((item) => splitNames(itemPeopleText(item)).forEach((name) => names.add(name)));
-    state.tasks.forEach((task) => splitNames(task.owner).forEach((name) => names.add(name)));
-    state.cases.forEach((record) => {
-      splitNames(record.assignee).forEach((name) => names.add(name));
-    });
-    const sortedNames = [...names].sort((a, b) => a.localeCompare(b, "zh-Hant"));
+    const names = assignmentStaffNames();
+    const filterNames = assignmentStaffNames();
+    const sortedNames = sortPersonNames(names);
+    const sortedFilterNames = sortPersonNames(filterNames);
 
     assigneeOptions.innerHTML = "";
     assigneeFilter.innerHTML = '<option value="">全部</option>';
@@ -365,22 +432,25 @@
       const option = document.createElement("option");
       option.value = name;
       option.textContent = name;
-      assigneeOptions.appendChild(option.cloneNode(true));
+      assigneeOptions.appendChild(option);
+    });
+    sortedFilterNames.forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
       assigneeFilter.appendChild(option);
     });
     assigneeInput.value = currentInput;
-    assigneeFilter.value = sortedNames.includes(currentFilter) ? currentFilter : "";
+    assigneeFilter.value = sortedFilterNames.includes(currentFilter) ? currentFilter : "";
   }
 
   function populateMyCaseAssignees() {
     const select = $("myCaseAssigneeInput");
     const currentValue = select.value;
-    const names = new Set();
-    state.items.forEach((item) => splitNames(item.owner).forEach((name) => names.add(name)));
-    state.cases.forEach((record) => splitNames(record.assignee).forEach((name) => names.add(name)));
+    const names = assignmentStaffNames();
     const reporter = $("reporterInput").value.trim();
-    if (reporter) names.add(displayPersonName(reporter));
-    const sortedNames = [...names].sort((a, b) => a.localeCompare(b, "zh-Hant"));
+    if (reporter) addPersonName(names, reporter);
+    const sortedNames = sortPersonNames(names);
     select.innerHTML = '<option value="">請選擇同仁</option>';
     sortedNames.forEach((name) => {
       const option = document.createElement("option");
@@ -412,13 +482,7 @@
     const select = $("myWorkPersonInput");
     const currentValue = select.value;
     const names = new Set();
-    extraPeople.forEach((name) => names.add(name));
     state.items.forEach((item) => splitNames(workItemPeopleText(item)).forEach((name) => names.add(name)));
-    state.tasks.forEach((task) => splitNames(task.owner).forEach((name) => names.add(name)));
-    state.cases.forEach((record) => splitNames(record.assignee).forEach((name) => names.add(name)));
-    state.consultations.forEach((record) => splitNames(record.owner).forEach((name) => names.add(name)));
-    const reporter = $("reporterInput").value.trim();
-    if (reporter) names.add(displayPersonName(reporter));
     const sortedNames = [...names].sort((a, b) => a.localeCompare(b, "zh-Hant"));
     select.innerHTML = '<option value="">請選擇同仁</option>';
     sortedNames.forEach((name) => {
@@ -438,10 +502,8 @@
       return;
     }
     if (![...select.options].some((option) => option.value === reporter)) {
-      const option = document.createElement("option");
-      option.value = reporter;
-      option.textContent = reporter;
-      select.appendChild(option);
+      if (shouldRender) renderMyWork();
+      return;
     }
     select.value = reporter;
     if (shouldRender) renderMyWork();
@@ -471,9 +533,8 @@
     const ownerFilter = $("consultationOwnerFilter");
     const currentInput = ownerInput.value;
     const currentFilter = ownerFilter.value;
-    const names = new Set();
-    extraPeople.forEach((name) => names.add(name));
-    state.items.forEach((item) => splitNames(itemPeopleText(item)).forEach((name) => names.add(name)));
+    const names = allStaffNames();
+    state.items.forEach((item) => splitNames(item.owner).forEach((name) => names.add(name)));
     state.tasks.forEach((task) => splitNames(task.owner).forEach((name) => names.add(name)));
     state.consultations.forEach((record) => splitNames(record.owner).forEach((name) => names.add(name)));
     const sortedNames = [...names].sort((a, b) => a.localeCompare(b, "zh-Hant"));
@@ -494,12 +555,59 @@
   function splitNames(value) {
     return String(value || "")
       .split(/[\n、,，/]+/)
-      .map((name) => name.trim().replace(/\(.+?\)/g, ""))
-      .filter((name) => name && !excludedPersonLabels.has(name) && !inactivePeople.has(name));
+      .map(cleanPersonName)
+      .filter(isPersonNameCandidate);
   }
 
-  function itemPeopleText(item) {
-    return [item.owner, item.coOwner].filter(Boolean).join("、");
+  function allStaffNames() {
+    const names = new Set();
+    state.contacts.forEach((contact) => {
+      addPersonName(names, contact.name);
+    });
+    addItemOwnerNames(names);
+    return names;
+  }
+
+  function assignmentStaffNames() {
+    const contactNames = contactStaffNames();
+    if (contactNames.size) return contactNames;
+    const names = new Set();
+    addItemOwnerNames(names);
+    return names;
+  }
+
+  function contactStaffNames() {
+    const names = new Set();
+    state.contacts.forEach((contact) => addPersonName(names, contact.name));
+    return names;
+  }
+
+  function addItemOwnerNames(names) {
+    state.items.forEach((item) => splitNames(item.owner).forEach((name) => addPersonName(names, name)));
+  }
+
+  function addPersonName(names, value) {
+    const name = cleanPersonName(value);
+    if (isPersonNameCandidate(name)) names.add(displayPersonName(name));
+  }
+
+  function sortPersonNames(names) {
+    return [...names].filter(isPersonNameCandidate).sort((a, b) => a.localeCompare(b, "zh-Hant"));
+  }
+
+  function cleanPersonName(value) {
+    return String(value || "")
+      .trim()
+      .replace(/[（(].*?[）)]/g, "")
+      .replace(/\s+/g, "");
+  }
+
+  function isPersonNameCandidate(name) {
+    const text = String(name || "").trim();
+    if (!text || excludedPersonLabels.has(text)) return false;
+    if (text.length > 12) return false;
+    if (/[0-9@:/：；;]|https?/i.test(text)) return false;
+    return true;
   }
 
   function findItemForTask(task) {
@@ -530,6 +638,7 @@
         "主責及協辦",
         "預計執行時程",
         "執行進度比例",
+        "目前狀態",
         "核定/預估經費",
         "執行現況說明",
         "表定時間摘要",
@@ -539,9 +648,10 @@
       ], state.items.map((item) => [
         item.itemId,
         item.itemName,
-        displayNames(itemPeopleText(item)) || itemPeopleText(item),
+        displayNames(item.owner) || item.owner,
         item.period,
         item.progressRatio,
+        itemStatus(item),
         item.budget,
         item.currentStatus,
         item.schedule,
@@ -708,6 +818,43 @@
         displayPersonName(record.modifiedBy),
         record.modifiedAt,
       ])),
+      buildSheet("即時-工作行事曆", [
+        "提醒ID",
+        "提醒標題",
+        "負責同仁",
+        "日期",
+        "開始時間",
+        "結束時間",
+        "提醒類型",
+        "狀態",
+        "提醒時間",
+        "關聯工項/案件",
+        "提醒內容/進度說明",
+        "佐證資料連結",
+        "建立人",
+        "建立時間",
+        "最後更新時間",
+        "最後修改人",
+        "最後修改時間",
+      ], state.calendarEvents.map((record) => [
+        record.eventId,
+        record.title,
+        record.owner,
+        record.date,
+        record.startTime,
+        record.endTime,
+        record.type,
+        record.status,
+        record.reminder,
+        record.related,
+        record.note,
+        record.attachment,
+        displayPersonName(record.reporter),
+        record.createdAt,
+        record.updatedAt,
+        displayPersonName(record.modifiedBy),
+        record.modifiedAt,
+      ])),
     ];
     return [...liveSheets, ...originalSheets.map((sheet) => ({
       ...sheet,
@@ -735,13 +882,12 @@
     const status = $("statusFilter").value;
     const query = $("searchInput").value.trim().toLowerCase();
     state.filteredItems = state.items.filter((item) => {
-      const matchesPerson = !person || splitNames(itemPeopleText(item)).includes(person);
+      const matchesPerson = !person || splitNames(item.owner).includes(person);
       const matchesStatus = matchesItemStatus(item, status);
       const haystack = [
         item.itemName,
         item.performance,
         item.owner,
-        item.coOwner,
         item.period,
         item.schedule,
         item.currentStatus,
@@ -780,7 +926,7 @@
       node.querySelector(".task-title").textContent = item.itemName || "未命名工項";
       node.querySelector(".task-item").textContent = "總工項追蹤 / 工作項目";
       node.querySelector(".task-meta").textContent = [
-        itemPeopleText(item) ? `主責及協辦：${displayNames(itemPeopleText(item)) || itemPeopleText(item).replace(/\n/g, "、")}` : "",
+        item.owner ? `主責及協辦：${displayNames(item.owner) || item.owner.replace(/\n/g, "、")}` : "",
         item.period ? `時程：${item.period}` : "",
       ].filter(Boolean).join("  ");
       setStatusPill(node.querySelector(".task-status"), itemStatus(item));
@@ -842,7 +988,7 @@
     $("progressForm").classList.remove("hidden");
     $("selectedItem").textContent = "總工項追蹤 / 工作項目";
     $("selectedTask").textContent = item.itemName || "未命名工項";
-    $("selectedOwner").textContent = displayNames(itemPeopleText(item)) || itemPeopleText(item) || "未填";
+    $("selectedOwner").textContent = displayNames(item.owner) || item.owner || "未填";
     $("selectedDue").textContent = item.period || "未填";
     $("selectedFee").textContent = formatMoney(item.budget);
     $("selectedProgressText").textContent = item.currentStatus || "未填";
@@ -1100,10 +1246,13 @@
     const tbody = document.createElement("tbody");
     visibleRows.forEach((row) => {
       const tr = document.createElement("tr");
+      const rowStatus = sourceRowStatus(sheet, row);
+      if (rowStatus.className) tr.classList.add(rowStatus.className);
       tr.appendChild(rowHeaderCell(row.rowNumber));
       for (let col = 0; col < maxColumn; col += 1) {
         const td = document.createElement("td");
         td.textContent = row.values[col] == null ? "" : row.values[col];
+        if (rowStatus.statusColumn === col) td.classList.add("source-status-cell");
         tr.appendChild(td);
       }
       tbody.appendChild(tr);
@@ -1114,6 +1263,52 @@
       caption.textContent = `目前顯示前 ${visibleRows.length} 筆，請用搜尋縮小範圍。`;
       table.appendChild(caption);
     }
+  }
+
+  function sourceRowStatus(sheet, row) {
+    if (!row || row.rowNumber === 1) return { className: "", statusColumn: -1 };
+    const headers = sourceSheetHeaders(sheet);
+    const values = row.values || [];
+    let status = "";
+    let statusColumn = -1;
+
+    if (sheet.name === "即時-工項主檔") {
+      const itemId = values[headers.indexOf("工項ID")] || values[0] || "";
+      const item = state.items.find((entry) => entry.itemId === itemId);
+      status = item ? itemStatus(item) : "";
+      statusColumn = headers.indexOf("目前狀態");
+    } else {
+      statusColumn = ["目前狀態", "完成狀態", "是否完成", "狀態", "工作進度", "執行進度比例"]
+        .map((header) => headers.indexOf(header))
+        .find((index) => index >= 0);
+      status = statusColumn >= 0 ? String(values[statusColumn] || "").trim() : "";
+    }
+
+    if (isSourceDoneStatus(status)) return { className: "source-row-done", statusColumn };
+    if (isSourceOpenStatus(status)) return { className: "source-row-open", statusColumn };
+    return { className: "", statusColumn };
+  }
+
+  function sourceSheetHeaders(sheet) {
+    const headerRow = (sheet.rows || []).find((row) => row.rowNumber === 1) || (sheet.rows || [])[0] || {};
+    return headerRow.values || [];
+  }
+
+  function isSourceDoneStatus(status) {
+    const text = String(status || "").trim();
+    const numeric = Number(text.replace("%", ""));
+    if (text === "已完成" || text === "完成") return true;
+    return Number.isFinite(numeric) && (text.includes("%") ? numeric >= 100 : numeric >= 1);
+  }
+
+  function isSourceOpenStatus(status) {
+    const text = String(status || "").trim();
+    if (!text) return false;
+    if (isSourceDoneStatus(text)) return false;
+    return ["未確認", "進行中", "未完成", "待執行", "待查核", "預排", "已確認", "延期", "待辦"].includes(text)
+      || /[1-9][0-9]?%/.test(text)
+      || text === "0%"
+      || text === "0";
   }
 
   function headerCell(text) {
@@ -1235,7 +1430,7 @@
     let recentUpdateCount = 0;
 
     state.items.forEach((item) => {
-      const owners = splitNames(itemPeopleText(item));
+      const owners = splitNames(item.owner);
       const latest = latestItemUpdate(item.itemId);
       const recent = latest && isRecentRecord(latest.date, 7);
       const status = itemStatus(item);
@@ -1266,7 +1461,7 @@
       if (needsFollowUp) {
         needs.push({
           itemName: item.itemName,
-          owner: itemPeopleText(item),
+          owner: item.owner,
           status,
           latestDate: latest ? latest.date : "",
           latestReporter: latest ? latest.reporter : "",
@@ -1331,6 +1526,7 @@
       ["3 日內到期", metrics.soon],
       ["待查核", metrics.awaitingReview],
       ["急件", metrics.urgent],
+      ["待回報工項", metrics.itemNeedsFollowUp],
       ["近 7 日更新", metrics.recentUpdates],
       ["經費支出", formatMoney(metrics.expenseTotal)],
     ].forEach(([label, value]) => {
@@ -1364,12 +1560,15 @@
 
   function managementMetrics() {
     const openCases = state.cases.filter((record) => record.status !== "已完成");
+    const supervisor = supervisorSummary();
     return {
       overdue: openCases.filter((record) => caseUrgency(record).level === "overdue").length,
       today: openCases.filter((record) => caseUrgency(record).level === "today").length,
       soon: openCases.filter((record) => caseUrgency(record).level === "soon").length,
       awaitingReview: openCases.filter((record) => record.status === "待查核").length,
       urgent: openCases.filter((record) => record.priority === "急件").length,
+      itemNeedsFollowUp: supervisor.needs.length,
+      itemNeeds: supervisor.needs,
       recentUpdates: state.updates.filter((record) => isRecentRecord(record.date || record["更新日期"] || record.updatedAt || record["最後更新時間"], 7)).length,
       expenseTotal: state.expenses.reduce((sum, record) => sum + (Number(String(record.amount || record["金額"] || 0).replace(/,/g, "")) || 0), 0),
     };
@@ -1417,13 +1616,17 @@
   function buildManagementReport(metrics, issues) {
     const openCases = state.cases.filter((record) => record.status !== "已完成");
     const topCases = [...openCases].sort(compareCases).slice(0, 5);
+    const topItemNeeds = (metrics.itemNeeds || []).slice(0, 5);
     return [
       `${config.projectName || "115 桃竹苗多元計畫"}進度摘要`,
       `資料時間：${latestDataTime()}`,
       "",
       `工項：${state.items.length} 筆，已完成 ${state.items.filter((item) => itemStatus(item) === "已完成").length} 筆，待追蹤 ${Math.max(state.items.length - state.items.filter((item) => itemStatus(item) === "已完成").length, 0)} 筆。`,
-      `案件：逾期 ${metrics.overdue} 筆，今日到期 ${metrics.today} 筆，3 日內到期 ${metrics.soon} 筆，待查核 ${metrics.awaitingReview} 筆，急件 ${metrics.urgent} 筆。`,
+      `案件：逾期 ${metrics.overdue} 筆，今日到期 ${metrics.today} 筆，3 日內到期 ${metrics.soon} 筆，待查核 ${metrics.awaitingReview} 筆，急件 ${metrics.urgent} 筆；待回報工項 ${metrics.itemNeedsFollowUp} 筆。`,
       `近 7 日進度更新 ${metrics.recentUpdates} 筆，經費支出累計 ${formatMoney(metrics.expenseTotal)} 元。`,
+      "",
+      "本週待回報工項：",
+      ...(topItemNeeds.length ? topItemNeeds.map((item, index) => `${index + 1}. ${item.itemName || "未命名工項"} / ${displayNames(item.owner) || "未填主責"} / ${item.reason}`) : ["1. 目前沒有超過 7 天未更新或尚無更新紀錄的工項。"]),
       "",
       "優先追蹤：",
       ...(topCases.length ? topCases.map((record, index) => `${index + 1}. ${record.title || "未命名案件"} / ${record.assignee || "未指定"} / ${record.status || "未填狀態"} / ${record.deadline || "未填 Deadline"}`) : ["1. 目前沒有未完成案件。"]),
@@ -1611,6 +1814,547 @@
     else element.classList.add("open");
   }
 
+  function populateCalendarControls() {
+    const ownerInput = $("calendarOwnerInput");
+    const ownerChoices = $("calendarOwnerChoices");
+    const ownerOtherInput = $("calendarOwnerOtherInput");
+    const personFilter = $("calendarPersonFilter");
+    const relatedOptions = $("calendarRelatedOptions");
+    const currentOwners = getCalendarOwnerNames();
+    const currentPerson = personFilter.value;
+    const names = allStaffNames();
+    state.calendarEvents.forEach((record) => splitNames(record.owner).forEach((name) => addPersonName(names, name)));
+    state.cases.forEach((record) => splitNames(record.assignee).forEach((name) => addPersonName(names, name)));
+    state.consultations.forEach((record) => splitNames(record.owner).forEach((name) => addPersonName(names, name)));
+    const sortedNames = sortPersonNames(names);
+
+    ownerChoices.innerHTML = "";
+    personFilter.innerHTML = '<option value="">全部</option>';
+    const selectedNames = new Set(currentOwners);
+    sortedNames.forEach((name) => {
+      const choice = document.createElement("label");
+      choice.className = "calendar-owner-choice";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = name;
+      checkbox.checked = selectedNames.has(name);
+      checkbox.addEventListener("change", syncCalendarOwnerInput);
+      const text = document.createElement("span");
+      text.textContent = name;
+      choice.appendChild(checkbox);
+      choice.appendChild(text);
+      ownerChoices.appendChild(choice);
+
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      personFilter.appendChild(option);
+    });
+    ownerOtherInput.value = currentOwners.filter((name) => !sortedNames.includes(name)).join("、");
+    syncCalendarOwnerInput();
+    personFilter.value = sortedNames.includes(currentPerson) ? currentPerson : "";
+
+    relatedOptions.innerHTML = "";
+    [
+      ...state.items.map((item) => `${item.itemId || "工項"} / ${item.itemName || "未命名工項"}`),
+      ...state.cases.map((record) => `${record.caseId || "案件"} / ${record.title || "未命名案件"}`),
+      ...state.consultations.map((record) => `${record.sessionId || "諮詢"} / ${record.unitName || "未填單位"}`),
+    ].filter(Boolean).slice(0, 240).forEach((value) => {
+      const option = document.createElement("option");
+      option.value = value;
+      relatedOptions.appendChild(option);
+    });
+
+    const reporter = displayPersonName($("reporterInput").value.trim());
+    if (reporter && !ownerInput.value) setCalendarOwners([reporter]);
+  }
+
+  function getCalendarOwnerNames() {
+    const checkedNames = [...document.querySelectorAll("#calendarOwnerChoices input:checked")]
+      .map((input) => input.value);
+    const otherNames = splitNames($("calendarOwnerOtherInput").value);
+    const explicitNames = [...new Set([...checkedNames, ...otherNames])].filter(Boolean);
+    if (explicitNames.length || document.querySelectorAll("#calendarOwnerChoices input").length) return explicitNames;
+    const hiddenNames = splitNames($("calendarOwnerInput").value);
+    return [...new Set(hiddenNames)].filter(Boolean);
+  }
+
+  function syncCalendarOwnerInput() {
+    const checkedNames = [...document.querySelectorAll("#calendarOwnerChoices input:checked")]
+      .map((input) => input.value);
+    const otherNames = splitNames($("calendarOwnerOtherInput").value);
+    $("calendarOwnerInput").value = [...new Set([...checkedNames, ...otherNames])].filter(Boolean).join("、");
+  }
+
+  function setCalendarOwners(names) {
+    const normalizedNames = [...new Set((names || []).map(displayPersonName).map(cleanPersonName).filter(isPersonNameCandidate))];
+    document.querySelectorAll("#calendarOwnerChoices input").forEach((input) => {
+      input.checked = normalizedNames.includes(input.value);
+    });
+    const knownNames = [...document.querySelectorAll("#calendarOwnerChoices input")].map((input) => input.value);
+    $("calendarOwnerOtherInput").value = normalizedNames.filter((name) => !knownNames.includes(name)).join("、");
+    syncCalendarOwnerInput();
+  }
+
+  function applyCalendarFilters() {
+    const month = $("calendarMonthInput").value || currentMonthValue();
+    const person = $("calendarPersonFilter").value;
+    const type = $("calendarTypeFilter").value;
+    const query = $("calendarSearchInput").value.trim().toLowerCase();
+    state.selectedCalendarMonth = month;
+    state.filteredCalendarEvents = buildCalendarEvents().filter((event) => {
+      const matchesMonth = !month || String(event.date || "").startsWith(month);
+      const matchesPerson = !person || workPersonMatches(event.owner, person);
+      const matchesType = !type || event.type === type;
+      const haystack = [
+        event.title,
+        event.owner,
+        event.date,
+        event.type,
+        event.status,
+        event.related,
+        event.note,
+        event.sourceLabel,
+      ].join(" ").toLowerCase();
+      return matchesMonth && matchesPerson && matchesType && (!query || haystack.includes(query));
+    });
+    renderCalendar();
+  }
+
+  function buildCalendarEvents() {
+    const events = state.calendarEvents.map((record) => ({
+      ...record,
+      sourceLabel: "同仁自填",
+      sourceRank: 4,
+    }));
+
+    state.updates.forEach((record) => {
+      const nextDate = normalizeDateInput(record.nextDate || record["下次追蹤日期"] || "");
+      if (!nextDate) return;
+      const itemId = record.itemId || record["工項ID"] || "";
+      const item = state.items.find((entry) => entry.itemId === itemId);
+      events.push({
+        eventId: record.updateId || record["更新ID"] || `UPD-${itemId}-${nextDate}`,
+        title: item ? item.itemName : itemId || "工項追蹤",
+        owner: item ? item.owner : displayPersonName(record.reporter || record["更新人"] || ""),
+        date: nextDate,
+        startTime: "",
+        endTime: "",
+        type: "工項追蹤",
+        status: record.status || record["完成狀態"] || "待辦",
+        reminder: "當天",
+        related: item ? `${item.itemId} / ${item.itemName}` : itemId,
+        note: record.progress || record["進度內容"] || "",
+        attachment: record.voucher || record["佐證資料連結"] || record["憑證連結"] || "",
+        reporter: record.reporter || record["更新人"] || "",
+        createdAt: record.date || record["更新日期"] || "",
+        updatedAt: record.modifiedAt || record["最後修改時間"] || "",
+        source: "item-update",
+        sourceLabel: "工項下次追蹤",
+        sourceRank: 3,
+      });
+    });
+
+    state.tasks.forEach((task) => {
+      const dueDate = normalizeDateInput(task.dueDate || "");
+      if (!dueDate || task.status === "已完成") return;
+      events.push({
+        eventId: task.taskId || `TASK-${task.itemId}-${dueDate}`,
+        title: task.taskName || task.itemName || "任務完成日",
+        owner: task.owner || itemOwnerForTask(task),
+        date: dueDate,
+        startTime: "",
+        endTime: "",
+        type: "工項追蹤",
+        status: task.status || "待辦",
+        reminder: "當天",
+        related: [task.itemId, task.itemName].filter(Boolean).join(" / "),
+        note: task.progress || task.note || "",
+        attachment: "",
+        reporter: task.updatedBy || "",
+        createdAt: "",
+        updatedAt: task.updatedAt || "",
+        source: "task",
+        sourceLabel: "任務預定完成日",
+        sourceRank: 2,
+      });
+    });
+
+    state.cases.forEach((record) => {
+      const deadline = normalizeDateTimeInput(record.deadline);
+      const date = normalizeDateInput(deadline);
+      if (!date || record.status === "已完成") return;
+      events.push({
+        eventId: record.caseId,
+        title: record.title || "案件 Deadline",
+        owner: record.assignee,
+        date,
+        startTime: deadline.includes("T") ? deadline.slice(11, 16) : "",
+        endTime: "",
+        type: "案件 Deadline",
+        status: record.status || "待辦",
+        reminder: "當天",
+        related: record.caseId,
+        note: [record.checkpoint, record.progress || record.instruction].filter(Boolean).join("\n\n"),
+        attachment: record.attachment,
+        reporter: record.reporter,
+        createdAt: record.reportedAt,
+        updatedAt: record.modifiedAt,
+        source: "case",
+        sourceLabel: "案件 Deadline",
+        sourceRank: 5,
+      });
+    });
+
+    state.consultations.forEach((record) => {
+      const date = normalizeDateInput(record.date);
+      if (!date || record.status === "取消") return;
+      events.push({
+        eventId: record.sessionId,
+        title: record.unitName || "諮詢輔導場次",
+        owner: record.owner,
+        date,
+        startTime: record.startTime,
+        endTime: record.endTime,
+        type: "諮詢輔導",
+        status: record.status || "預排",
+        reminder: "當天",
+        related: record.sessionId,
+        note: [record.topic, record.location, record.note].filter(Boolean).join("\n"),
+        attachment: record.attachment,
+        reporter: record.reporter,
+        createdAt: record.createdAt,
+        updatedAt: record.updatedAt,
+        source: "consultation",
+        sourceLabel: "諮詢輔導",
+        sourceRank: 2,
+      });
+    });
+
+    return events.filter((event) => event.date).sort(compareCalendarEvents);
+  }
+
+  function renderCalendar() {
+    const events = state.filteredCalendarEvents;
+    $("calendarEventCount").textContent = `${events.length} 筆`;
+    renderCalendarMetrics(events);
+    renderCalendarGrid(events);
+    renderCalendarAgenda(events);
+  }
+
+  function openCalendarModal(date) {
+    const selectedDate = date || currentDateValue();
+    const reporter = $("reporterInput").value.trim();
+    state.editingCalendarEventId = "";
+    state.editingCalendarOriginalDate = "";
+    $("calendarForm").reset();
+    $("calendarDateInput").value = selectedDate;
+    setCalendarOwners(reporter ? [displayPersonName(reporter)] : []);
+    $("calendarTypeInput").value = "工作提醒";
+    $("calendarStatusInput").value = "待辦";
+    $("calendarReminderInput").value = "當天";
+    $("calendarDialogTitle").textContent = "新增工作提醒";
+    $("calendarSubmitButton").textContent = "新增提醒";
+    $("calendarDeleteButton").hidden = true;
+    renderCalendarMessage("", "");
+    updateCalendarDialogDateText(selectedDate);
+    $("calendarModal").hidden = false;
+    document.body.classList.add("calendar-modal-open");
+    requestAnimationFrame(() => $("calendarTitleInput").focus());
+  }
+
+  function openCalendarEditModal(calendarEvent) {
+    if (!canManageCalendarEvent(calendarEvent)) return;
+    state.editingCalendarEventId = calendarEvent.eventId || "";
+    state.editingCalendarOriginalDate = calendarEvent.date || "";
+    $("calendarForm").reset();
+    $("calendarTitleInput").value = calendarEvent.title || "";
+    setCalendarOwners(splitNames(calendarEvent.owner));
+    $("calendarDateInput").value = calendarEvent.date || currentDateValue();
+    $("calendarTypeInput").value = calendarEvent.type || "工作提醒";
+    $("calendarStartInput").value = calendarEvent.startTime || "";
+    $("calendarEndInput").value = calendarEvent.endTime || "";
+    $("calendarStatusInput").value = calendarEvent.status || "待辦";
+    $("calendarReminderInput").value = calendarEvent.reminder || "當天";
+    $("calendarRelatedInput").value = calendarEvent.related || "";
+    $("calendarNoteInput").value = calendarEvent.note || "";
+    $("calendarAttachmentInput").value = calendarEvent.attachment || "";
+    $("calendarDialogTitle").textContent = "編輯工作提醒";
+    $("calendarSubmitButton").textContent = "儲存修改";
+    $("calendarDeleteButton").hidden = false;
+    renderCalendarMessage("", "");
+    updateCalendarDialogDateText($("calendarDateInput").value);
+    $("calendarModal").hidden = false;
+    document.body.classList.add("calendar-modal-open");
+    requestAnimationFrame(() => $("calendarTitleInput").focus());
+  }
+
+  function closeCalendarModal() {
+    $("calendarModal").hidden = true;
+    document.body.classList.remove("calendar-modal-open");
+    $("calendarSubmitButton").disabled = false;
+    $("calendarDeleteButton").disabled = false;
+  }
+
+  function canManageCalendarEvent(calendarEvent) {
+    if (!calendarEvent || calendarEvent.source !== "manual" || !calendarEvent.eventId) return false;
+    const actor = calendarActorName($("reporterInput").value.trim());
+    if (!actor) return false;
+    if ([...calendarAdminNames].map(calendarActorName).includes(actor)) return true;
+    const creator = calendarActorName(calendarEvent.reporter);
+    const owners = splitNames(calendarEvent.owner).map(calendarActorName);
+    return actor === creator || owners.includes(actor);
+  }
+
+  function calendarActorName(value) {
+    return cleanPersonName(displayPersonName(value));
+  }
+
+  function updateCalendarDialogDateText(date) {
+    const action = state.editingCalendarEventId ? "編輯" : "新增";
+    const text = date ? `${action} ${formatCalendarDateLabel(date)} 的工作提醒。` : "選擇日期後填寫提醒內容。";
+    $("calendarDialogDateText").textContent = text;
+  }
+
+  function formatCalendarDateLabel(date) {
+    const parsed = parseDeadline(date);
+    if (!parsed) return date;
+    const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
+    return `${parsed.getFullYear()}/${String(parsed.getMonth() + 1).padStart(2, "0")}/${String(parsed.getDate()).padStart(2, "0")}（${weekdays[parsed.getDay()]}）`;
+  }
+
+  function renderCalendarMetrics(events) {
+    const metrics = calendarMetrics(events);
+    const container = $("calendarMetrics");
+    container.innerHTML = "";
+    [
+      ["本月提醒", events.length],
+      ["已逾期", metrics.overdue],
+      ["今天", metrics.today],
+      ["7 日內", metrics.next7],
+    ].forEach(([label, value]) => {
+      const item = document.createElement("div");
+      item.className = "mini-metric";
+      item.innerHTML = "<span></span><strong></strong>";
+      item.querySelector("span").textContent = label;
+      item.querySelector("strong").textContent = String(value);
+      container.appendChild(item);
+    });
+  }
+
+  function calendarMetrics(events) {
+    const today = startOfDay(new Date());
+    const next7 = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+    return {
+      overdue: events.filter((event) => calendarEventUrgency(event).level === "overdue").length,
+      today: events.filter((event) => isSameLocalDate(parseDeadline(event.date), today)).length,
+      next7: events.filter((event) => {
+        const date = parseDeadline(event.date);
+        return date && date >= today && date <= next7;
+      }).length,
+    };
+  }
+
+  function renderCalendarGrid(events) {
+    const grid = $("calendarGrid");
+    grid.innerHTML = "";
+    ["日", "一", "二", "三", "四", "五", "六"].forEach((label) => {
+      const head = document.createElement("div");
+      head.className = "calendar-weekday";
+      head.textContent = label;
+      grid.appendChild(head);
+    });
+
+    const month = state.selectedCalendarMonth || currentMonthValue();
+    const [year, monthNumber] = month.split("-").map(Number);
+    const firstDay = new Date(year, monthNumber - 1, 1);
+    const daysInMonth = new Date(year, monthNumber, 0).getDate();
+    const offset = firstDay.getDay();
+    for (let i = 0; i < offset; i += 1) {
+      const blank = document.createElement("div");
+      blank.className = "calendar-day blank";
+      grid.appendChild(blank);
+    }
+
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      const date = `${month}-${String(day).padStart(2, "0")}`;
+      const dayEvents = events.filter((event) => event.date === date).slice(0, 4);
+      const cell = document.createElement("article");
+      cell.className = "calendar-day";
+      cell.addEventListener("click", () => openCalendarModal(date));
+      if (date === currentDateValue()) cell.classList.add("today");
+      const number = document.createElement("strong");
+      const numberButton = document.createElement("button");
+      numberButton.type = "button";
+      numberButton.className = "calendar-day-button";
+      numberButton.textContent = String(day);
+      number.appendChild(numberButton);
+      cell.appendChild(number);
+      dayEvents.forEach((event) => {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = `calendar-chip ${calendarEventUrgency(event).level || "normal"}`;
+        item.textContent = [
+          event.startTime || "",
+          event.title || "未命名提醒",
+        ].filter(Boolean).join(" ");
+        item.title = calendarEventTooltip(event);
+        item.addEventListener("click", (clickEvent) => {
+          clickEvent.stopPropagation();
+          focusCalendarAgendaEvent(event);
+        });
+        cell.appendChild(item);
+      });
+      const overflow = events.filter((event) => event.date === date).length - dayEvents.length;
+      if (overflow > 0) {
+        const more = document.createElement("span");
+        more.className = "calendar-more";
+        more.textContent = `另 ${overflow} 筆`;
+        cell.appendChild(more);
+      }
+      grid.appendChild(cell);
+    }
+  }
+
+  function renderCalendarAgenda(events) {
+    const list = $("calendarAgendaList");
+    list.innerHTML = "";
+    const agendaEvents = [...events].sort(compareCalendarEvents);
+    if (!agendaEvents.length) {
+      const empty = document.createElement("p");
+      empty.className = "task-meta";
+      empty.textContent = "這個月份目前沒有符合條件的提醒。";
+      list.appendChild(empty);
+      return;
+    }
+    agendaEvents.slice(0, 120).forEach((event) => {
+      list.appendChild(calendarAgendaCard(event));
+    });
+  }
+
+  function calendarAgendaCard(event) {
+    const urgency = calendarEventUrgency(event);
+    const card = document.createElement("article");
+    card.className = `calendar-agenda-card ${urgency.level || ""}`.trim();
+    card.dataset.eventKey = calendarEventKey(event);
+
+    const header = document.createElement("div");
+    header.className = "calendar-agenda-header";
+    const title = document.createElement("div");
+    title.className = "calendar-agenda-title";
+    const strong = document.createElement("strong");
+    strong.textContent = event.title || "未命名提醒";
+    const span = document.createElement("span");
+    span.textContent = [
+      event.date,
+      [event.startTime, event.endTime].filter(Boolean).join("-"),
+      event.owner ? `負責：${displayNames(event.owner) || event.owner}` : "",
+      event.type,
+      event.status,
+      event.sourceLabel,
+    ].filter(Boolean).join(" / ");
+    title.appendChild(strong);
+    title.appendChild(span);
+    const pill = document.createElement("span");
+    pill.className = `deadline-pill ${urgency.level || "normal"}`;
+    pill.textContent = urgency.label || event.reminder || "提醒";
+    header.appendChild(title);
+    header.appendChild(pill);
+
+    const body = document.createElement("p");
+    body.textContent = event.note || event.related || "未填提醒內容";
+    const meta = document.createElement("div");
+    meta.className = "calendar-agenda-meta";
+    if (isUrl(event.attachment)) {
+      const link = document.createElement("a");
+      link.href = event.attachment;
+      link.target = "_blank";
+      link.rel = "noreferrer";
+      link.textContent = "開啟佐證資料";
+      meta.appendChild(link);
+    }
+    const text = document.createElement("span");
+    text.textContent = [
+      event.related ? `關聯：${event.related}` : "",
+      event.reporter ? `建立/回報：${displayPersonName(event.reporter)}` : "",
+      event.createdAt ? `建立時間：${event.createdAt}` : "",
+      event.modifiedAt ? `最後修改：${event.modifiedAt}` : "",
+    ].filter(Boolean).join(" / ");
+    meta.appendChild(text);
+
+    card.appendChild(header);
+    card.appendChild(body);
+    card.appendChild(meta);
+    if (canManageCalendarEvent(event)) {
+      const actions = document.createElement("div");
+      actions.className = "calendar-agenda-actions";
+      const editButton = document.createElement("button");
+      editButton.type = "button";
+      editButton.className = "button compact";
+      editButton.textContent = "編輯";
+      editButton.addEventListener("click", () => openCalendarEditModal(event));
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.className = "button compact danger";
+      deleteButton.textContent = "刪除";
+      deleteButton.addEventListener("click", () => deleteCalendarEvent(event));
+      actions.appendChild(editButton);
+      actions.appendChild(deleteButton);
+      card.appendChild(actions);
+    }
+    return card;
+  }
+
+  function compareCalendarEvents(a, b) {
+    const dateDiff = deadlineTime(a.date) - deadlineTime(b.date);
+    if (dateDiff) return dateDiff;
+    const timeDiff = String(a.startTime || "").localeCompare(String(b.startTime || ""), "zh-Hant");
+    if (timeDiff) return timeDiff;
+    const urgencyDiff = calendarEventUrgency(b).rank - calendarEventUrgency(a).rank;
+    if (urgencyDiff) return urgencyDiff;
+    return (b.sourceRank || 0) - (a.sourceRank || 0);
+  }
+
+  function calendarEventUrgency(event) {
+    const date = parseDeadline(event.date);
+    if (!date || ["已完成", "取消"].includes(event.status)) return { label: event.status || "", level: "normal", rank: 0 };
+    const today = startOfDay(new Date());
+    const target = startOfDay(date);
+    const diffDays = Math.round((target.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+    if (diffDays < 0) return { label: "已逾期", level: "overdue", rank: 5 };
+    if (diffDays === 0) return { label: "今天", level: "today", rank: 4 };
+    if (diffDays <= 3) return { label: "3 日內", level: "soon", rank: 3 };
+    if (diffDays <= 7) return { label: "7 日內", level: "soon", rank: 2 };
+    return { label: event.reminder || "", level: "normal", rank: 1 };
+  }
+
+  function focusCalendarAgendaEvent(event) {
+    const key = calendarEventKey(event);
+    const target = document.querySelector(`[data-event-key="${CSS.escape(key)}"]`);
+    if (!target) return;
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    target.classList.add("focused");
+    setTimeout(() => target.classList.remove("focused"), 1400);
+  }
+
+  function calendarEventKey(event) {
+    return [event.source, event.eventId, event.date, event.title].join("|");
+  }
+
+  function calendarEventTooltip(event) {
+    return [
+      event.title,
+      event.owner ? `負責：${event.owner}` : "",
+      event.type,
+      event.status,
+      event.note,
+    ].filter(Boolean).join("\n");
+  }
+
+  function startOfDay(date) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  }
+
   function applyCaseFilters() {
     const assignee = $("caseAssigneeFilter").value;
     const status = $("caseStatusFilter").value;
@@ -1720,14 +2464,22 @@
     }
     items.slice(0, 18).forEach((item) => {
       const status = itemStatus(item);
-      const card = myWorkCard(status !== "已完成" ? "soon" : "");
+      const reminder = itemReminder(item);
+      const card = myWorkCard(reminder.cardLevel);
       card.appendChild(myWorkTitle(item.itemName || "未命名工項", [
         status ? `狀態：${status}` : "",
         item.period ? `時程：${item.period}` : "",
+        reminder.detail,
       ]));
+      card.appendChild(myWorkReminderPill(reminder));
       card.appendChild(myWorkText(item.currentStatus || item.schedule || "尚無進度說明"));
       const actions = myWorkActions();
       actions.appendChild(myWorkButton("回報工項", () => openItemFromMyWork(item)));
+      if (status !== "已完成") {
+        actions.appendChild(myWorkButton("無異動", (event) => quickReportItem(event.currentTarget, item, "unchanged")));
+        actions.appendChild(myWorkButton("進行中", (event) => quickReportItem(event.currentTarget, item, "ongoing")));
+        actions.appendChild(myWorkButton("卡關填寫", () => openBlockedItemFromMyWork(item)));
+      }
       card.appendChild(actions);
       list.appendChild(card);
     });
@@ -1830,9 +2582,53 @@
   }
 
   function compareMyWorkItems(a, b) {
+    const reminderDiff = itemReminderWeight(itemReminder(b)) - itemReminderWeight(itemReminder(a));
+    if (reminderDiff) return reminderDiff;
     const statusDiff = (itemStatus(a) === "已完成" ? 1 : 0) - (itemStatus(b) === "已完成" ? 1 : 0);
     if (statusDiff) return statusDiff;
     return String(a.period || "").localeCompare(String(b.period || ""), "zh-Hant");
+  }
+
+  function itemReminder(item) {
+    const status = itemStatus(item);
+    const latest = latestItemUpdate(item.itemId);
+    if (status === "已完成") {
+      return {
+        level: "normal",
+        cardLevel: "",
+        label: "已完成",
+        detail: latest ? `最近更新：${latest.date}` : "",
+      };
+    }
+    if (!latest) {
+      return {
+        level: "overdue",
+        cardLevel: "alert",
+        label: "尚未回報",
+        detail: "最近更新：尚無紀錄",
+      };
+    }
+    if (!isRecentRecord(latest.date, 7)) {
+      return {
+        level: "soon",
+        cardLevel: "soon",
+        label: "待回報",
+        detail: `最近更新：${latest.date} / ${displayPersonName(latest.reporter) || "未填更新人"}`,
+      };
+    }
+    return {
+      level: "review",
+      cardLevel: "review",
+      label: "本週已更新",
+      detail: `最近更新：${latest.date} / ${displayPersonName(latest.reporter) || "未填更新人"}`,
+    };
+  }
+
+  function itemReminderWeight(reminder) {
+    if (reminder.level === "overdue") return 3;
+    if (reminder.level === "soon") return 2;
+    if (reminder.level === "review") return 1;
+    return 0;
   }
 
   function workPersonMatches(value, person) {
@@ -1844,6 +2640,74 @@
     switchView("tasksView");
     selectItem(item.itemId);
     $("progressForm").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function openBlockedItemFromMyWork(item) {
+    openItemFromMyWork(item);
+    $("completeInput").value = "未完成";
+    $("progressInput").value = "";
+    $("progressInput").placeholder = "請簡短寫卡在哪裡、需要誰協助、下一步預計何時處理";
+    $("progressInput").focus();
+  }
+
+  async function quickReportItem(button, item, mode) {
+    const reporter = $("reporterInput").value.trim() || $("myWorkPersonInput").value;
+    if (!reporter) {
+      window.alert("請先在上方填寫填報人，或在我的工作選擇姓名。");
+      $("reporterInput").focus();
+      return;
+    }
+    if (!config.apiUrl) {
+      window.alert("目前尚未設定 Apps Script API URL，無法寫入快速回報。");
+      return;
+    }
+    const latest = latestItemUpdate(item.itemId);
+    const status = mode === "unchanged" ? statusOption(itemStatus(item)) : "進行中";
+    const progress = mode === "unchanged"
+      ? [
+        "無異動，延續前次進度。",
+        latest && latest.date ? `前次更新：${latest.date}` : "",
+        item.currentStatus ? `目前狀況：${item.currentStatus}` : "",
+      ].filter(Boolean).join("\n")
+      : [
+        "持續進行中。",
+        item.currentStatus || item.schedule || "",
+      ].filter(Boolean).join("\n");
+    const payload = {
+      action: "submitItemProgress",
+      itemId: item.itemId,
+      itemName: item.itemName,
+      reporter,
+      scheduleSummary: item.schedule || "",
+      progress,
+      status,
+      nextDate: "",
+      expense: "",
+      expenseDetail: "",
+      note: mode === "unchanged" ? "我的工作一鍵回報：無異動" : "我的工作一鍵回報：進行中",
+      voucher: "",
+    };
+    if (!confirmSubmission("請確認快速回報", [
+      ["工項", item.itemName],
+      ["填報人", reporter],
+      ["回報類型", mode === "unchanged" ? "無異動" : "進行中"],
+      ["完成狀態", payload.status],
+    ])) return;
+
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = "送出中";
+    try {
+      await postNoCors(config.apiUrl, payload);
+      await wait(900);
+      await loadData();
+      window.alert("已送出快速回報。");
+    } catch (error) {
+      window.alert(`快速回報失敗：${error.message}`);
+    } finally {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
   }
 
   function openCaseFromMyWork(record) {
@@ -2529,6 +3393,119 @@
     }
   }
 
+  async function submitCalendarEvent(event) {
+    event.preventDefault();
+    if (!config.apiUrl) {
+      renderCalendarMessage("目前尚未設定 Apps Script API URL，無法寫入工作行事曆。", "error");
+      return;
+    }
+    const reporter = $("reporterInput").value.trim();
+    if (!reporter) {
+      renderCalendarMessage("請先填寫上方填報人姓名。", "error");
+      $("reporterInput").focus();
+      return;
+    }
+    const isEditing = Boolean(state.editingCalendarEventId);
+    const payload = {
+      action: isEditing ? "editCalendarEvent" : "submitCalendarEvent",
+      eventId: state.editingCalendarEventId,
+      title: $("calendarTitleInput").value.trim(),
+      owner: getCalendarOwnerNames().join("、"),
+      date: $("calendarDateInput").value,
+      startTime: $("calendarStartInput").value,
+      endTime: $("calendarEndInput").value,
+      type: $("calendarTypeInput").value,
+      status: $("calendarStatusInput").value,
+      reminder: $("calendarReminderInput").value,
+      related: $("calendarRelatedInput").value.trim(),
+      note: $("calendarNoteInput").value.trim(),
+      attachment: $("calendarAttachmentInput").value.trim(),
+      reporter,
+    };
+    if (!payload.owner) {
+      renderCalendarMessage("請填寫負責同仁。", "error");
+      $("calendarOwnerOtherInput").focus();
+      return;
+    }
+    if (!confirmSubmission(isEditing ? "請確認修改工作提醒" : "請確認新增工作提醒", [
+      isEditing ? ["提醒ID", payload.eventId] : null,
+      ["提醒標題", payload.title],
+      ["負責同仁", payload.owner],
+      ["日期", payload.date],
+      ["時間", [payload.startTime, payload.endTime].filter(Boolean).join("-") || "未填"],
+      ["提醒類型", payload.type],
+      ["狀態", payload.status],
+      ["建立人", reporter],
+    ].filter(Boolean))) return;
+    $("calendarSubmitButton").disabled = true;
+    renderCalendarMessage(isEditing ? "儲存中..." : "送出中...", "");
+    try {
+      await postNoCors(config.apiUrl, payload);
+      renderCalendarMessage(isEditing ? "已儲存修改。系統會重新讀取 Google Sheet。" : "已新增工作提醒。系統會重新讀取 Google Sheet。", "success");
+      $("calendarForm").reset();
+      $("calendarDateInput").value = payload.date || currentDateValue();
+      setCalendarOwners(splitNames(payload.owner));
+      $("calendarMonthInput").value = payload.date ? payload.date.slice(0, 7) : currentMonthValue();
+      state.selectedCalendarMonth = $("calendarMonthInput").value;
+      await wait(900);
+      await loadData();
+      closeCalendarModal();
+    } catch (error) {
+      renderCalendarMessage(`送出失敗：${error.message}`, "error");
+    } finally {
+      $("calendarSubmitButton").disabled = false;
+    }
+  }
+
+  async function deleteCalendarEvent(calendarEvent) {
+    if (!config.apiUrl) {
+      renderCalendarMessage("目前尚未設定 Apps Script API URL，無法刪除工作提醒。", "error");
+      return;
+    }
+    const reporter = $("reporterInput").value.trim();
+    if (!reporter) {
+      renderCalendarMessage("請先填寫上方填報人姓名。", "error");
+      $("reporterInput").focus();
+      return;
+    }
+    const eventId = calendarEvent && calendarEvent.eventId ? calendarEvent.eventId : state.editingCalendarEventId;
+    const target = state.filteredCalendarEvents.find((event) => event.eventId === eventId && canManageCalendarEvent(event))
+      || state.calendarEvents.find((event) => event.eventId === eventId && canManageCalendarEvent(event));
+    if (!target) {
+      renderCalendarMessage("只能刪除同仁自填的工作提醒。", "error");
+      return;
+    }
+    const title = target.title || $("calendarTitleInput").value.trim() || eventId;
+    if (!window.confirm([
+      `確定刪除「${title}」？`,
+      "",
+      `日期：${target.date || "未填"}`,
+      `負責同仁：${displayNames(target.owner) || target.owner || "未填"}`,
+      `提醒ID：${eventId}`,
+      "",
+      "刪除後會從工作行事曆移除這筆提醒，並留下刪除紀錄。",
+    ].join("\n"))) return;
+    $("calendarSubmitButton").disabled = true;
+    $("calendarDeleteButton").disabled = true;
+    renderCalendarMessage("刪除中...", "");
+    try {
+      await postNoCors(config.apiUrl, {
+        action: "deleteCalendarEvent",
+        eventId,
+        reporter,
+      });
+      renderCalendarMessage("已刪除工作提醒。系統會重新讀取 Google Sheet。", "success");
+      await wait(900);
+      await loadData();
+      closeCalendarModal();
+    } catch (error) {
+      renderCalendarMessage(`刪除失敗：${error.message}`, "error");
+    } finally {
+      $("calendarSubmitButton").disabled = false;
+      $("calendarDeleteButton").disabled = false;
+    }
+  }
+
   function fillCaseProgressForm(record) {
     $("caseProgressIdInput").value = record.caseId;
     $("caseProgressReporterInput").value = $("reporterInput").value.trim() || record.assignee || "";
@@ -2619,6 +3596,12 @@
     element.className = type || "";
   }
 
+  function renderCalendarMessage(message, type) {
+    const element = $("calendarMessage");
+    element.textContent = message;
+    element.className = type || "";
+  }
+
   async function copyManagementReport() {
     const text = $("managementReport").value;
     try {
@@ -2643,12 +3626,7 @@
   function postNoCors(url, payload) {
     const data = new FormData();
     Object.entries(payload).forEach(([key, value]) => data.append(key, value == null ? "" : value));
-    return fetch(url, {
-      method: "POST",
-      mode: "no-cors",
-      credentials: "include",
-      body: data,
-    });
+    return fetch(url, { method: "POST", mode: "no-cors", body: data });
   }
 
   function wait(ms) {
