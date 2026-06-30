@@ -2027,9 +2027,16 @@
       });
     });
 
+    const syncedConsultationIds = new Set(
+      state.calendarEvents
+        .filter((record) => record.type === "諮詢輔導")
+        .map((record) => record.related || String(record.eventId || "").replace(/^CAL-/, ""))
+        .filter(Boolean)
+    );
     state.consultations.forEach((record) => {
       const date = normalizeDateInput(record.date);
       if (!date || record.status === "取消") return;
+      if (syncedConsultationIds.has(record.sessionId)) return;
       events.push({
         eventId: record.sessionId,
         title: record.unitName || "諮詢輔導場次",
@@ -3393,13 +3400,14 @@
       ["負責同仁", payload.owner],
       ["狀態", payload.status],
       ["建立人", reporter],
+      ["同步行事曆", payload.status === "取消" ? "取消狀態會移除同步提醒" : "會依輔導日期同步登錄提醒"],
       isEditing ? ["原建立時間", state.editingConsultationOriginalCreatedAt || "未記錄"] : null,
     ].filter(Boolean))) return;
     $("consultationSubmitButton").disabled = true;
     renderConsultationMessage("送出中...", "");
     try {
       await postNoCors(config.apiUrl, payload);
-      renderConsultationMessage(isEditing ? "已儲存場次修改。系統會重新讀取 Google Sheet。" : "已送出諮詢輔導場次。系統會重新讀取 Google Sheet。", "success");
+      renderConsultationMessage(isEditing ? "已儲存場次修改，並同步更新工作行事曆提醒。系統會重新讀取 Google Sheet。" : "已送出諮詢輔導場次，並同步登錄工作行事曆提醒。系統會重新讀取 Google Sheet。", "success");
       $("consultationForm").reset();
       resetConsultationEdit();
       $("consultationMonthInput").value = payload.month || currentMonthValue();

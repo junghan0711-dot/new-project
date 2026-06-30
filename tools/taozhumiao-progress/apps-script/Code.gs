@@ -455,7 +455,8 @@ function submitConsultationSession_(params) {
     "",
   ]);
 
-  return { sessionId, updatedAt: timestamp };
+  const calendarEvent = syncConsultationCalendarEvent_(spreadsheet, sessionId, params, timestamp);
+  return { sessionId, updatedAt: timestamp, calendarEvent };
 }
 
 function editConsultationSession_(params) {
@@ -488,7 +489,104 @@ function editConsultationSession_(params) {
   setByHeader_(sheet, headers, row, "最後修改人", params.reporter || "");
   setByHeader_(sheet, headers, row, "最後修改時間", timestamp);
 
-  return { sessionId: params.sessionId, modifiedAt: timestamp };
+  const calendarEvent = syncConsultationCalendarEvent_(spreadsheet, params.sessionId, params, timestamp);
+  return { sessionId: params.sessionId, modifiedAt: timestamp, calendarEvent };
+}
+
+function syncConsultationCalendarEvent_(spreadsheet, sessionId, params, timestamp) {
+  const calendarSheet = ensureSheet_(spreadsheet, SHEETS.calendarEvents, CALENDAR_HEADERS);
+  const eventId = consultationCalendarEventId_(sessionId);
+  const row = findCalendarEventRow_(calendarSheet, eventId);
+  const shouldSync = shouldSyncConsultationCalendar_(params);
+
+  if (!shouldSync) {
+    if (row) {
+      const history = buildModificationContext_(spreadsheet, SHEETS.calendarEvents, eventId, params.reporter, timestamp, "syncConsultationCalendarEvent");
+      appendModificationHistory_(history, "刪除同步諮詢提醒", getByHeader_(calendarSheet, CALENDAR_HEADERS, row, "提醒標題") || eventId, "");
+      calendarSheet.deleteRow(row);
+    }
+    return { eventId, synced: false, deleted: Boolean(row) };
+  }
+
+  const values = consultationCalendarValues_(eventId, sessionId, params, timestamp, row);
+  if (!row) {
+    calendarSheet.appendRow(values);
+    return { eventId, synced: true, created: true };
+  }
+
+  const headers = calendarSheet.getRange(1, 1, 1, calendarSheet.getLastColumn()).getValues()[0];
+  const history = buildModificationContext_(spreadsheet, SHEETS.calendarEvents, eventId, params.reporter, timestamp, "syncConsultationCalendarEvent");
+  setByHeaderWithHistory_(calendarSheet, headers, row, "提醒標題", values[1], history);
+  setByHeaderWithHistory_(calendarSheet, headers, row, "負責同仁", values[2], history);
+  setByHeaderWithHistory_(calendarSheet, headers, row, "日期", values[3], history);
+  setByHeaderWithHistory_(calendarSheet, headers, row, "開始時間", values[4], history);
+  setByHeaderWithHistory_(calendarSheet, headers, row, "結束時間", values[5], history);
+  setByHeaderWithHistory_(calendarSheet, headers, row, "提醒類型", values[6], history);
+  setByHeaderWithHistory_(calendarSheet, headers, row, "狀態", values[7], history);
+  setByHeaderWithHistory_(calendarSheet, headers, row, "提醒時間", values[8], history);
+  setByHeaderWithHistory_(calendarSheet, headers, row, "關聯工項/案件", values[9], history);
+  setByHeaderWithHistory_(calendarSheet, headers, row, "提醒內容/進度說明", values[10], history);
+  setByHeaderWithHistory_(calendarSheet, headers, row, "佐證資料連結", values[11], history);
+  if (!getByHeader_(calendarSheet, headers, row, "建立人")) {
+    setByHeader_(calendarSheet, headers, row, "建立人", params.reporter || "");
+  }
+  setByHeader_(calendarSheet, headers, row, "最後更新時間", timestamp);
+  setByHeader_(calendarSheet, headers, row, "最後修改人", params.reporter || "");
+  setByHeader_(calendarSheet, headers, row, "最後修改時間", timestamp);
+  return { eventId, synced: true, updated: true };
+}
+
+function shouldSyncConsultationCalendar_(params) {
+  if (!params.date || params.status === "取消") return false;
+  return Boolean(params.unitName || params.topic || params.note || params.location);
+}
+
+function consultationCalendarValues_(eventId, sessionId, params, timestamp, existingRow) {
+  return [
+    eventId,
+    consultationCalendarTitle_(params),
+    params.owner || params.reporter || "",
+    params.date || "",
+    params.startTime || "",
+    params.endTime || "",
+    "諮詢輔導",
+    consultationCalendarStatus_(params.status),
+    "當天",
+    sessionId,
+    consultationCalendarNote_(params),
+    params.attachment || "",
+    existingRow ? "" : params.reporter || "",
+    existingRow ? "" : timestamp,
+    timestamp,
+    existingRow ? params.reporter || "" : "",
+    existingRow ? timestamp : "",
+  ];
+}
+
+function consultationCalendarEventId_(sessionId) {
+  return "CAL-" + String(sessionId || "").replace(/^CAL-/, "");
+}
+
+function consultationCalendarTitle_(params) {
+  return [params.unitName || "諮詢輔導場次", params.topic || ""].filter(Boolean).join(" / ");
+}
+
+function consultationCalendarStatus_(status) {
+  if (status === "已完成") return "已完成";
+  if (status === "延期") return "延期";
+  return "待辦";
+}
+
+function consultationCalendarNote_(params) {
+  return [
+    params.location ? "地點：" + params.location : "",
+    params.teacher ? "輔導老師：" + params.teacher : "",
+    params.branchStaff ? "分署人員：" + params.branchStaff : "",
+    params.unitStaff ? "單位人員：" + params.unitStaff : "",
+    params.relatedStaff ? "相關人員：" + params.relatedStaff : "",
+    params.topic ? "輔導主題：" + params.topic : "",
+    params.note || "",
+  ].filter(Boolean).join("\n");
 }
 
 function submitCaseTracking_(params) {
