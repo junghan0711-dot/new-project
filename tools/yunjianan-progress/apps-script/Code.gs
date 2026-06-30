@@ -109,6 +109,8 @@ const CALENDAR_HEADERS = [
   "建立人",
   "建立時間",
   "最後更新時間",
+  "最後修改人",
+  "最後修改時間",
 ];
 const MODIFICATION_HISTORY_HEADERS = [
   "修改ID",
@@ -321,6 +323,16 @@ function doPost(e) {
       const result = submitCalendarEvent_(params);
       return json_({ ok: true, result });
     }
+    if (params.action === "editCalendarEvent") {
+      checkReporter_(params.reporter);
+      const result = editCalendarEvent_(params);
+      return json_({ ok: true, result });
+    }
+    if (params.action === "deleteCalendarEvent") {
+      checkReporter_(params.reporter);
+      const result = deleteCalendarEvent_(params);
+      return json_({ ok: true, result });
+    }
     if (params.action !== "submitProgress") {
       return json_({ ok: false, error: "Unknown action" });
     }
@@ -356,9 +368,57 @@ function submitCalendarEvent_(params) {
     params.reporter || "",
     timestamp,
     timestamp,
+    "",
+    "",
   ]);
 
   return { eventId, updatedAt: timestamp };
+}
+
+function editCalendarEvent_(params) {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ensureSheet_(spreadsheet, SHEETS.calendarEvents, CALENDAR_HEADERS);
+  const eventId = params.eventId || "";
+  const row = findCalendarEventRow_(sheet, eventId);
+  if (!row) throw new Error("找不到提醒ID：" + eventId);
+
+  const timestamp = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const history = buildModificationContext_(spreadsheet, SHEETS.calendarEvents, eventId, params.reporter, timestamp, "editCalendarEvent");
+
+  setByHeaderWithHistory_(sheet, headers, row, "提醒標題", params.title || "", history);
+  setByHeaderWithHistory_(sheet, headers, row, "負責同仁", params.owner || "", history);
+  setByHeaderWithHistory_(sheet, headers, row, "日期", params.date || "", history);
+  setByHeaderWithHistory_(sheet, headers, row, "開始時間", params.startTime || "", history);
+  setByHeaderWithHistory_(sheet, headers, row, "結束時間", params.endTime || "", history);
+  setByHeaderWithHistory_(sheet, headers, row, "提醒類型", params.type || "工作提醒", history);
+  setByHeaderWithHistory_(sheet, headers, row, "狀態", params.status || "待辦", history);
+  setByHeaderWithHistory_(sheet, headers, row, "提醒時間", params.reminder || "當天", history);
+  setByHeaderWithHistory_(sheet, headers, row, "關聯工項/案件", params.related || "", history);
+  setByHeaderWithHistory_(sheet, headers, row, "提醒內容/進度說明", params.note || "", history);
+  setByHeaderWithHistory_(sheet, headers, row, "佐證資料連結", params.attachment || "", history);
+  setByHeader_(sheet, headers, row, "最後更新時間", timestamp);
+  setByHeader_(sheet, headers, row, "最後修改人", params.reporter || "");
+  setByHeader_(sheet, headers, row, "最後修改時間", timestamp);
+
+  return { eventId, updatedAt: timestamp };
+}
+
+function deleteCalendarEvent_(params) {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ensureSheet_(spreadsheet, SHEETS.calendarEvents, CALENDAR_HEADERS);
+  const eventId = params.eventId || "";
+  const row = findCalendarEventRow_(sheet, eventId);
+  if (!row) throw new Error("找不到提醒ID：" + eventId);
+
+  const timestamp = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const title = getByHeader_(sheet, headers, row, "提醒標題");
+  const history = buildModificationContext_(spreadsheet, SHEETS.calendarEvents, eventId, params.reporter, timestamp, "deleteCalendarEvent");
+  appendModificationHistory_(history, "刪除提醒", title || eventId, "");
+  sheet.deleteRow(row);
+
+  return { eventId, deletedAt: timestamp };
 }
 
 function submitConsultationSession_(params) {
@@ -965,6 +1025,14 @@ function findSessionRow_(sheet, sessionId) {
   const values = sheet.getRange(1, 1, sheet.getLastRow(), 1).getDisplayValues();
   for (let i = 1; i < values.length; i++) {
     if (values[i][0] === sessionId) return i + 1;
+  }
+  return 0;
+}
+
+function findCalendarEventRow_(sheet, eventId) {
+  const values = sheet.getRange(1, 1, sheet.getLastRow(), 1).getDisplayValues();
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] === eventId) return i + 1;
   }
   return 0;
 }

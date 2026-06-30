@@ -27,6 +27,8 @@
     editingCaseUpdateOriginalDate: "",
     editingConsultationSessionId: "",
     editingConsultationOriginalCreatedAt: "",
+    editingCalendarEventId: "",
+    editingCalendarOriginalDate: "",
     selectedItemId: "",
     selectedSheetName: "",
     selectedCalendarMonth: "",
@@ -80,6 +82,7 @@
     $("consultationStatusFilter").addEventListener("change", applyConsultationFilters);
     $("consultationSearchInput").addEventListener("input", applyConsultationFilters);
     $("calendarForm").addEventListener("submit", submitCalendarEvent);
+    $("calendarDeleteButton").addEventListener("click", deleteCalendarEvent);
     $("calendarOwnerOtherInput").addEventListener("input", syncCalendarOwnerInput);
     $("calendarDateInput").addEventListener("change", () => updateCalendarDialogDateText($("calendarDateInput").value));
     document.querySelectorAll("[data-calendar-close]").forEach((element) => {
@@ -321,6 +324,8 @@
       reporter: record.reporter || record["建立人"] || "",
       createdAt: record.createdAt || record["建立時間"] || "",
       updatedAt: record.updatedAt || record["最後更新時間"] || "",
+      modifiedBy: record.modifiedBy || record["最後修改人"] || "",
+      modifiedAt: record.modifiedAt || record["最後修改時間"] || "",
       source: record.source || "manual",
     };
   }
@@ -827,6 +832,8 @@
         "建立人",
         "建立時間",
         "最後更新時間",
+        "最後修改人",
+        "最後修改時間",
       ], state.calendarEvents.map((record) => [
         record.eventId,
         record.title,
@@ -843,6 +850,8 @@
         displayPersonName(record.reporter),
         record.createdAt,
         record.updatedAt,
+        displayPersonName(record.modifiedBy),
+        record.modifiedAt,
       ])),
     ];
     return [...liveSheets, ...originalSheets.map((sheet) => ({
@@ -2034,14 +2043,45 @@
   function openCalendarModal(date) {
     const selectedDate = date || currentDateValue();
     const reporter = $("reporterInput").value.trim();
+    state.editingCalendarEventId = "";
+    state.editingCalendarOriginalDate = "";
     $("calendarForm").reset();
     $("calendarDateInput").value = selectedDate;
     setCalendarOwners(reporter ? [displayPersonName(reporter)] : []);
     $("calendarTypeInput").value = "工作提醒";
     $("calendarStatusInput").value = "待辦";
     $("calendarReminderInput").value = "當天";
+    $("calendarDialogTitle").textContent = "新增工作提醒";
+    $("calendarSubmitButton").textContent = "新增提醒";
+    $("calendarDeleteButton").hidden = true;
     renderCalendarMessage("", "");
     updateCalendarDialogDateText(selectedDate);
+    $("calendarModal").hidden = false;
+    document.body.classList.add("calendar-modal-open");
+    requestAnimationFrame(() => $("calendarTitleInput").focus());
+  }
+
+  function openCalendarEditModal(calendarEvent) {
+    if (!canManageCalendarEvent(calendarEvent)) return;
+    state.editingCalendarEventId = calendarEvent.eventId || "";
+    state.editingCalendarOriginalDate = calendarEvent.date || "";
+    $("calendarForm").reset();
+    $("calendarTitleInput").value = calendarEvent.title || "";
+    setCalendarOwners(splitNames(calendarEvent.owner));
+    $("calendarDateInput").value = calendarEvent.date || currentDateValue();
+    $("calendarTypeInput").value = calendarEvent.type || "工作提醒";
+    $("calendarStartInput").value = calendarEvent.startTime || "";
+    $("calendarEndInput").value = calendarEvent.endTime || "";
+    $("calendarStatusInput").value = calendarEvent.status || "待辦";
+    $("calendarReminderInput").value = calendarEvent.reminder || "當天";
+    $("calendarRelatedInput").value = calendarEvent.related || "";
+    $("calendarNoteInput").value = calendarEvent.note || "";
+    $("calendarAttachmentInput").value = calendarEvent.attachment || "";
+    $("calendarDialogTitle").textContent = "編輯工作提醒";
+    $("calendarSubmitButton").textContent = "儲存修改";
+    $("calendarDeleteButton").hidden = false;
+    renderCalendarMessage("", "");
+    updateCalendarDialogDateText($("calendarDateInput").value);
     $("calendarModal").hidden = false;
     document.body.classList.add("calendar-modal-open");
     requestAnimationFrame(() => $("calendarTitleInput").focus());
@@ -2051,10 +2091,16 @@
     $("calendarModal").hidden = true;
     document.body.classList.remove("calendar-modal-open");
     $("calendarSubmitButton").disabled = false;
+    $("calendarDeleteButton").disabled = false;
+  }
+
+  function canManageCalendarEvent(calendarEvent) {
+    return calendarEvent && calendarEvent.source === "manual" && calendarEvent.eventId;
   }
 
   function updateCalendarDialogDateText(date) {
-    const text = date ? `新增 ${formatCalendarDateLabel(date)} 的工作提醒。` : "選擇日期後填寫提醒內容。";
+    const action = state.editingCalendarEventId ? "編輯" : "新增";
+    const text = date ? `${action} ${formatCalendarDateLabel(date)} 的工作提醒。` : "選擇日期後填寫提醒內容。";
     $("calendarDialogDateText").textContent = text;
   }
 
@@ -2220,12 +2266,30 @@
       event.related ? `關聯：${event.related}` : "",
       event.reporter ? `建立/回報：${displayPersonName(event.reporter)}` : "",
       event.createdAt ? `建立時間：${event.createdAt}` : "",
+      event.modifiedAt ? `最後修改：${event.modifiedAt}` : "",
     ].filter(Boolean).join(" / ");
     meta.appendChild(text);
 
     card.appendChild(header);
     card.appendChild(body);
     card.appendChild(meta);
+    if (canManageCalendarEvent(event)) {
+      const actions = document.createElement("div");
+      actions.className = "calendar-agenda-actions";
+      const editButton = document.createElement("button");
+      editButton.type = "button";
+      editButton.className = "button compact";
+      editButton.textContent = "編輯";
+      editButton.addEventListener("click", () => openCalendarEditModal(event));
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.className = "button compact danger";
+      deleteButton.textContent = "刪除";
+      deleteButton.addEventListener("click", () => deleteCalendarEvent(event));
+      actions.appendChild(editButton);
+      actions.appendChild(deleteButton);
+      card.appendChild(actions);
+    }
     return card;
   }
 
@@ -3329,8 +3393,10 @@
       $("reporterInput").focus();
       return;
     }
+    const isEditing = Boolean(state.editingCalendarEventId);
     const payload = {
-      action: "submitCalendarEvent",
+      action: isEditing ? "editCalendarEvent" : "submitCalendarEvent",
+      eventId: state.editingCalendarEventId,
       title: $("calendarTitleInput").value.trim(),
       owner: getCalendarOwnerNames().join("、"),
       date: $("calendarDateInput").value,
@@ -3349,7 +3415,8 @@
       $("calendarOwnerOtherInput").focus();
       return;
     }
-    if (!confirmSubmission("請確認新增工作提醒", [
+    if (!confirmSubmission(isEditing ? "請確認修改工作提醒" : "請確認新增工作提醒", [
+      isEditing ? ["提醒ID", payload.eventId] : null,
       ["提醒標題", payload.title],
       ["負責同仁", payload.owner],
       ["日期", payload.date],
@@ -3357,12 +3424,12 @@
       ["提醒類型", payload.type],
       ["狀態", payload.status],
       ["建立人", reporter],
-    ])) return;
+    ].filter(Boolean))) return;
     $("calendarSubmitButton").disabled = true;
-    renderCalendarMessage("送出中...", "");
+    renderCalendarMessage(isEditing ? "儲存中..." : "送出中...", "");
     try {
       await postNoCors(config.apiUrl, payload);
-      renderCalendarMessage("已新增工作提醒。系統會重新讀取 Google Sheet。", "success");
+      renderCalendarMessage(isEditing ? "已儲存修改。系統會重新讀取 Google Sheet。" : "已新增工作提醒。系統會重新讀取 Google Sheet。", "success");
       $("calendarForm").reset();
       $("calendarDateInput").value = payload.date || currentDateValue();
       setCalendarOwners(splitNames(payload.owner));
@@ -3375,6 +3442,47 @@
       renderCalendarMessage(`送出失敗：${error.message}`, "error");
     } finally {
       $("calendarSubmitButton").disabled = false;
+    }
+  }
+
+  async function deleteCalendarEvent(calendarEvent) {
+    if (!config.apiUrl) {
+      renderCalendarMessage("目前尚未設定 Apps Script API URL，無法刪除工作提醒。", "error");
+      return;
+    }
+    const reporter = $("reporterInput").value.trim();
+    if (!reporter) {
+      renderCalendarMessage("請先填寫上方填報人姓名。", "error");
+      $("reporterInput").focus();
+      return;
+    }
+    const eventId = calendarEvent && calendarEvent.eventId ? calendarEvent.eventId : state.editingCalendarEventId;
+    const target = state.filteredCalendarEvents.find((event) => event.eventId === eventId && canManageCalendarEvent(event))
+      || state.calendarEvents.find((event) => event.eventId === eventId && canManageCalendarEvent(event));
+    if (!target) {
+      renderCalendarMessage("只能刪除同仁自填的工作提醒。", "error");
+      return;
+    }
+    const title = target.title || $("calendarTitleInput").value.trim() || eventId;
+    if (!window.confirm(`確定刪除「${title}」？\n\n刪除後會從工作行事曆移除這筆提醒。`)) return;
+    $("calendarSubmitButton").disabled = true;
+    $("calendarDeleteButton").disabled = true;
+    renderCalendarMessage("刪除中...", "");
+    try {
+      await postNoCors(config.apiUrl, {
+        action: "deleteCalendarEvent",
+        eventId,
+        reporter,
+      });
+      renderCalendarMessage("已刪除工作提醒。系統會重新讀取 Google Sheet。", "success");
+      await wait(900);
+      await loadData();
+      closeCalendarModal();
+    } catch (error) {
+      renderCalendarMessage(`刪除失敗：${error.message}`, "error");
+    } finally {
+      $("calendarSubmitButton").disabled = false;
+      $("calendarDeleteButton").disabled = false;
     }
   }
 
