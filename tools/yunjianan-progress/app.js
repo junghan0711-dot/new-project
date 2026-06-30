@@ -45,6 +45,7 @@
     榮漢哥: "Hank",
     邱委: "Hank",
   };
+  const calendarAdminNames = new Set(["Hank", "邱榮漢", "榮漢", "榮漢哥", "邱委"]);
 
   function init() {
     $("sheetLink").href = embedded.sourceUrl || config.sheetUrl || "#";
@@ -113,6 +114,7 @@
       if (calendarOwnerInput && !calendarOwnerInput.value.trim()) {
         setCalendarOwners([displayPersonName(event.target.value.trim())]);
       }
+      if (state.selectedCalendarMonth) renderCalendar();
     });
     $("caseReporterInput").value = $("reporterInput").value;
     $("caseProgressReporterInput").value = $("reporterInput").value;
@@ -2095,7 +2097,17 @@
   }
 
   function canManageCalendarEvent(calendarEvent) {
-    return calendarEvent && calendarEvent.source === "manual" && calendarEvent.eventId;
+    if (!calendarEvent || calendarEvent.source !== "manual" || !calendarEvent.eventId) return false;
+    const actor = calendarActorName($("reporterInput").value.trim());
+    if (!actor) return false;
+    if ([...calendarAdminNames].map(calendarActorName).includes(actor)) return true;
+    const creator = calendarActorName(calendarEvent.reporter);
+    const owners = splitNames(calendarEvent.owner).map(calendarActorName);
+    return actor === creator || owners.includes(actor);
+  }
+
+  function calendarActorName(value) {
+    return cleanPersonName(displayPersonName(value));
   }
 
   function updateCalendarDialogDateText(date) {
@@ -3464,7 +3476,15 @@
       return;
     }
     const title = target.title || $("calendarTitleInput").value.trim() || eventId;
-    if (!window.confirm(`確定刪除「${title}」？\n\n刪除後會從工作行事曆移除這筆提醒。`)) return;
+    if (!window.confirm([
+      `確定刪除「${title}」？`,
+      "",
+      `日期：${target.date || "未填"}`,
+      `負責同仁：${displayNames(target.owner) || target.owner || "未填"}`,
+      `提醒ID：${eventId}`,
+      "",
+      "刪除後會從工作行事曆移除這筆提醒，並留下刪除紀錄。",
+    ].join("\n"))) return;
     $("calendarSubmitButton").disabled = true;
     $("calendarDeleteButton").disabled = true;
     renderCalendarMessage("刪除中...", "");

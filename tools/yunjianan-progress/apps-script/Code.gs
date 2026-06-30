@@ -11,6 +11,7 @@ const SHEETS = {
   modificationHistory: "修改歷程",
 };
 const ALLOWED_REPORTERS = [];
+const CALENDAR_ADMIN_REPORTERS = ["Hank", "邱榮漢", "榮漢", "榮漢哥", "邱委"];
 const UPDATE_HEADERS = [
   "更新ID",
   "任務ID",
@@ -384,6 +385,7 @@ function editCalendarEvent_(params) {
 
   const timestamp = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  assertCanModifyCalendarEvent_(sheet, headers, row, params.reporter);
   const history = buildModificationContext_(spreadsheet, SHEETS.calendarEvents, eventId, params.reporter, timestamp, "editCalendarEvent");
 
   setByHeaderWithHistory_(sheet, headers, row, "提醒標題", params.title || "", history);
@@ -413,6 +415,7 @@ function deleteCalendarEvent_(params) {
 
   const timestamp = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  assertCanModifyCalendarEvent_(sheet, headers, row, params.reporter);
   const title = getByHeader_(sheet, headers, row, "提醒標題");
   const history = buildModificationContext_(spreadsheet, SHEETS.calendarEvents, eventId, params.reporter, timestamp, "deleteCalendarEvent");
   appendModificationHistory_(history, "刪除提醒", title || eventId, "");
@@ -1035,6 +1038,25 @@ function findCalendarEventRow_(sheet, eventId) {
     if (values[i][0] === eventId) return i + 1;
   }
   return 0;
+}
+
+function assertCanModifyCalendarEvent_(sheet, headers, row, reporter) {
+  const actor = normalizeCalendarActor_(reporter);
+  if (!actor) throw new Error("請先填寫填報人姓名");
+  if (CALENDAR_ADMIN_REPORTERS.map(normalizeCalendarActor_).indexOf(actor) >= 0) return;
+
+  const creator = normalizeCalendarActor_(getByHeader_(sheet, headers, row, "建立人"));
+  const owners = splitNames_(getByHeader_(sheet, headers, row, "負責同仁")).map(normalizeCalendarActor_);
+  if (actor === creator || owners.indexOf(actor) >= 0) return;
+
+  throw new Error("只有提醒建立人、負責同仁或管理者可以修改/刪除這筆工作提醒");
+}
+
+function normalizeCalendarActor_(value) {
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, "")
+    .replace(/[（(].*?[）)]/g, "");
 }
 
 function nextCaseId_(sheet) {
