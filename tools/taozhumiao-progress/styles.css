@@ -1380,6 +1380,38 @@ textarea:focus {
   min-width: 0;
 }
 
+.calendar-months {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.calendar-month-section {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.calendar-month-heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 2px;
+}
+
+.calendar-month-heading strong {
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.calendar-month-heading span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(84px, 1fr));
