@@ -45,6 +45,7 @@
     榮漢哥: "Hank",
     邱委: "Hank",
   };
+  const calendarVisibleMonthCount = 7;
   const calendarAdminNames = new Set(["Hank", "邱榮漢", "榮漢", "榮漢哥", "邱委"]);
 
   function init() {
@@ -1898,12 +1899,13 @@
 
   function applyCalendarFilters() {
     const month = $("calendarMonthInput").value || currentMonthValue();
+    const visibleMonths = new Set(calendarVisibleMonths(month));
     const person = $("calendarPersonFilter").value;
     const type = $("calendarTypeFilter").value;
     const query = $("calendarSearchInput").value.trim().toLowerCase();
     state.selectedCalendarMonth = month;
     state.filteredCalendarEvents = buildCalendarEvents().filter((event) => {
-      const matchesMonth = !month || String(event.date || "").startsWith(month);
+      const matchesMonth = visibleMonths.has(String(event.date || "").slice(0, 7));
       const matchesPerson = !person || workPersonMatches(event.owner, person);
       const matchesType = !type || event.type === type;
       const haystack = [
@@ -2128,7 +2130,7 @@
     const container = $("calendarMetrics");
     container.innerHTML = "";
     [
-      ["本月提醒", events.length],
+      [`${calendarVisibleMonthCount} 個月提醒`, events.length],
       ["已逾期", metrics.overdue],
       ["今天", metrics.today],
       ["7 日內", metrics.next7],
@@ -2156,16 +2158,39 @@
   }
 
   function renderCalendarGrid(events) {
-    const grid = $("calendarGrid");
-    grid.innerHTML = "";
-    ["日", "一", "二", "三", "四", "五", "六"].forEach((label) => {
-      const head = document.createElement("div");
-      head.className = "calendar-weekday";
-      head.textContent = label;
-      grid.appendChild(head);
-    });
+    const container = $("calendarGrid");
+    container.innerHTML = "";
+    calendarVisibleMonths().forEach((month, index) => {
+      const section = document.createElement("section");
+      section.className = "calendar-month-section";
+      if (index === 0) section.id = "calendar-start-month";
 
-    const month = state.selectedCalendarMonth || currentMonthValue();
+      const monthEvents = events.filter((event) => String(event.date || "").startsWith(month));
+      const title = document.createElement("div");
+      title.className = "calendar-month-heading";
+      const label = document.createElement("strong");
+      label.textContent = `${formatMonthLabel(month)}${month === currentMonthValue() ? "（當月）" : ""}`;
+      const count = document.createElement("span");
+      count.textContent = `${monthEvents.length} 筆提醒`;
+      title.appendChild(label);
+      title.appendChild(count);
+      section.appendChild(title);
+
+      const grid = document.createElement("div");
+      grid.className = "calendar-grid";
+      ["日", "一", "二", "三", "四", "五", "六"].forEach((weekday) => {
+        const head = document.createElement("div");
+        head.className = "calendar-weekday";
+        head.textContent = weekday;
+        grid.appendChild(head);
+      });
+      renderCalendarMonthDays(grid, events, month);
+      section.appendChild(grid);
+      container.appendChild(section);
+    });
+  }
+
+  function renderCalendarMonthDays(grid, events, month) {
     const [year, monthNumber] = month.split("-").map(Number);
     const firstDay = new Date(year, monthNumber - 1, 1);
     const daysInMonth = new Date(year, monthNumber, 0).getDate();
@@ -2223,7 +2248,7 @@
     if (!agendaEvents.length) {
       const empty = document.createElement("p");
       empty.className = "task-meta";
-      empty.textContent = "這個月份目前沒有符合條件的提醒。";
+      empty.textContent = "這段期間目前沒有符合條件的提醒。";
       list.appendChild(empty);
       return;
     }
@@ -3576,6 +3601,26 @@
 
   function currentMonthValue() {
     return currentDateValue().slice(0, 7);
+  }
+
+  function calendarVisibleMonths(startMonth = state.selectedCalendarMonth || currentMonthValue()) {
+    return Array.from({ length: calendarVisibleMonthCount }, (_, index) => addMonthsToMonthValue(startMonth, index));
+  }
+
+  function addMonthsToMonthValue(month, offset) {
+    const match = String(month || currentMonthValue()).match(/^(\d{4})-(\d{2})$/);
+    const base = match ? new Date(Number(match[1]), Number(match[2]) - 1, 1) : new Date();
+    return monthValue(new Date(base.getFullYear(), base.getMonth() + offset, 1));
+  }
+
+  function monthValue(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  }
+
+  function formatMonthLabel(month) {
+    const match = String(month || "").match(/^(\d{4})-(\d{2})$/);
+    if (!match) return month || "";
+    return `${match[1]} 年 ${Number(match[2])} 月`;
   }
 
   function renderCaseMessage(message, type) {
