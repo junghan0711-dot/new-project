@@ -319,6 +319,11 @@ function doPost(e) {
       const result = editConsultationSession_(params);
       return json_({ ok: true, result });
     }
+    if (params.action === "deleteConsultationSession") {
+      checkReporter_(params.reporter);
+      const result = deleteConsultationSession_(params);
+      return json_({ ok: true, result });
+    }
     if (params.action === "submitCalendarEvent") {
       checkReporter_(params.reporter);
       const result = submitCalendarEvent_(params);
@@ -493,6 +498,26 @@ function editConsultationSession_(params) {
   return { sessionId: params.sessionId, modifiedAt: timestamp, calendarEvent };
 }
 
+function deleteConsultationSession_(params) {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ensureSheet_(spreadsheet, SHEETS.consultations, CONSULTATION_HEADERS);
+  const timestamp = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
+  const row = findSessionRow_(sheet, params.sessionId);
+  if (!row) throw new Error("找不到場次ID：" + params.sessionId);
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  assertCanModifyConsultationSession_(sheet, headers, row, params.reporter);
+  const unitName = getByHeader_(sheet, headers, row, "單位名稱");
+  const date = getByHeader_(sheet, headers, row, "輔導日期");
+  const history = buildModificationContext_(spreadsheet, SHEETS.consultations, params.sessionId, params.reporter, timestamp, "deleteConsultationSession");
+  appendModificationHistory_(history, "刪除場次", [unitName, date].filter(Boolean).join(" / ") || params.sessionId, "");
+
+  const calendarEvent = deleteConsultationCalendarEvent_(spreadsheet, params.sessionId, params.reporter, timestamp);
+  sheet.deleteRow(row);
+
+  return { sessionId: params.sessionId, deletedAt: timestamp, calendarEvent };
+}
+
 function syncConsultationCalendarEvent_(spreadsheet, sessionId, params, timestamp) {
   const calendarSheet = ensureSheet_(spreadsheet, SHEETS.calendarEvents, CALENDAR_HEADERS);
   const eventId = consultationCalendarEventId_(sessionId);
@@ -534,6 +559,18 @@ function syncConsultationCalendarEvent_(spreadsheet, sessionId, params, timestam
   setByHeader_(calendarSheet, headers, row, "最後修改人", params.reporter || "");
   setByHeader_(calendarSheet, headers, row, "最後修改時間", timestamp);
   return { eventId, synced: true, updated: true };
+}
+
+function deleteConsultationCalendarEvent_(spreadsheet, sessionId, reporter, timestamp) {
+  const calendarSheet = ensureSheet_(spreadsheet, SHEETS.calendarEvents, CALENDAR_HEADERS);
+  const eventId = consultationCalendarEventId_(sessionId);
+  const row = findCalendarEventRow_(calendarSheet, eventId);
+  if (!row) return { eventId, deleted: false };
+
+  const history = buildModificationContext_(spreadsheet, SHEETS.calendarEvents, eventId, reporter, timestamp, "deleteConsultationSession");
+  appendModificationHistory_(history, "刪除同步諮詢提醒", getByHeader_(calendarSheet, CALENDAR_HEADERS, row, "提醒標題") || eventId, "");
+  calendarSheet.deleteRow(row);
+  return { eventId, deleted: true };
 }
 
 function shouldSyncConsultationCalendar_(params) {
@@ -1148,6 +1185,18 @@ function assertCanModifyCalendarEvent_(sheet, headers, row, reporter) {
   if (actor === creator || owners.indexOf(actor) >= 0) return;
 
   throw new Error("只有提醒建立人、負責同仁或管理者可以修改/刪除這筆工作提醒");
+}
+
+function assertCanModifyConsultationSession_(sheet, headers, row, reporter) {
+  const actor = normalizeCalendarActor_(reporter);
+  if (!actor) throw new Error("請先填寫填報人姓名");
+  if (CALENDAR_ADMIN_REPORTERS.map(normalizeCalendarActor_).indexOf(actor) >= 0) return;
+
+  const creator = normalizeCalendarActor_(getByHeader_(sheet, headers, row, "建立人"));
+  const owners = splitNames_(getByHeader_(sheet, headers, row, "負責同仁")).map(normalizeCalendarActor_);
+  if (actor === creator || owners.indexOf(actor) >= 0) return;
+
+  throw new Error("只有場次建立人、負責同仁或管理者可以刪除這筆諮詢輔導場次");
 }
 
 function normalizeCalendarActor_(value) {

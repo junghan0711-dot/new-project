@@ -64,6 +64,7 @@
     $("cancelCaseEditButton").addEventListener("click", cancelCaseEdit);
     $("cancelCaseProgressEditButton").addEventListener("click", cancelCaseProgressEdit);
     $("cancelConsultationEditButton").addEventListener("click", cancelConsultationEdit);
+    $("consultationDeleteButton").addEventListener("click", deleteConsultationSession);
     $("caseForm").addEventListener("submit", submitCaseTracking);
     $("caseProgressForm").addEventListener("submit", submitCaseProgress);
     $("consultationForm").addEventListener("submit", submitConsultationSession);
@@ -1197,6 +1198,7 @@
     $("consultationEditText").textContent = `正在編輯 ${record.sessionId}，原建立時間：${state.editingConsultationOriginalCreatedAt || "未記錄"}。儲存修改不會改變原本建立時間。`;
     $("consultationEditBanner").classList.remove("hidden");
     $("cancelConsultationEditButton").classList.remove("hidden");
+    $("consultationDeleteButton").classList.remove("hidden");
     $("consultationSubmitButton").textContent = "儲存修改";
     switchView("consultationView");
     $("consultationForm").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1215,6 +1217,8 @@
     $("consultationEditText").textContent = "";
     $("consultationEditBanner").classList.add("hidden");
     $("cancelConsultationEditButton").classList.add("hidden");
+    $("consultationDeleteButton").classList.add("hidden");
+    $("consultationDeleteButton").disabled = false;
     $("consultationSubmitButton").textContent = "送出場次";
   }
 
@@ -3419,6 +3423,56 @@
       renderConsultationMessage(`送出失敗：${error.message}`, "error");
     } finally {
       $("consultationSubmitButton").disabled = false;
+    }
+  }
+
+  async function deleteConsultationSession() {
+    if (!config.apiUrl) {
+      renderConsultationMessage("目前尚未設定 Apps Script API URL，無法刪除諮詢輔導場次。", "error");
+      return;
+    }
+    const reporter = displayPersonName($("reporterInput").value.trim());
+    if (!reporter) {
+      renderConsultationMessage("請先填寫上方填報人姓名。", "error");
+      $("reporterInput").focus();
+      return;
+    }
+    const sessionId = state.editingConsultationSessionId;
+    const target = state.consultations.find((record) => record.sessionId === sessionId);
+    if (!sessionId || !target) {
+      renderConsultationMessage("請先從諮詢輔導列表選擇要刪除的場次。", "error");
+      return;
+    }
+    if (!window.confirm([
+      `確定刪除「${target.unitName || sessionId}」？`,
+      "",
+      `場次ID：${sessionId}`,
+      `輔導日期：${target.date || "未填"}`,
+      `負責同仁：${target.owner || "未填"}`,
+      "",
+      "刪除後會從諮詢輔導場次表移除，並同步移除該場次的工作行事曆提醒。",
+    ].join("\n"))) return;
+    $("consultationSubmitButton").disabled = true;
+    $("consultationDeleteButton").disabled = true;
+    renderConsultationMessage("刪除中...", "");
+    try {
+      await postNoCors(config.apiUrl, {
+        action: "deleteConsultationSession",
+        sessionId,
+        reporter,
+      });
+      renderConsultationMessage("已刪除諮詢輔導場次，並同步移除工作行事曆提醒。系統會重新讀取 Google Sheet。", "success");
+      $("consultationForm").reset();
+      resetConsultationEdit();
+      $("consultationMonthInput").value = currentMonthValue();
+      $("consultationDateInput").value = currentDateValue();
+      await wait(900);
+      await loadData();
+    } catch (error) {
+      renderConsultationMessage(`刪除失敗：${error.message}`, "error");
+    } finally {
+      $("consultationSubmitButton").disabled = false;
+      $("consultationDeleteButton").disabled = false;
     }
   }
 
