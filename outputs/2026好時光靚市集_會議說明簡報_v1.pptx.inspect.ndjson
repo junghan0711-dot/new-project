@@ -1,0 +1,167 @@
+{"kind":"deck","id":"pr/0pvan1","name":"Deck"}
+{"kind":"layout","layoutId":"a2b5f30e-b38b-476c-8236-ec85dd2434c5","name":"Master","type":"master"}
+{"kind":"layout","layoutId":"e4e755e0-bcbb-46f6-aef7-94af636fcf52","name":"Title Slide","type":"title"}
+{"kind":"slide","id":"sl/qpjj69","slide":1,"title":"2026好時光・靚市集","textShapes":5}
+{"kind":"textbox","id":"sh/il0rqd4v","slide":1,"text":"2026好時光・靚市集","textPreview":"2026好時光・靚市集","textChars":11,"textLines":1,"bbox":[80,108,880,70]}
+{"kind":"textbox","id":"sh/tcj6tova","slide":1,"text":"活動執行架構與會議說明","textPreview":"活動執行架構與會議說明","textChars":11,"textLines":1,"bbox":[84,190,760,46]}
+{"kind":"textbox","id":"sh/0rqd4vmt","slide":1,"text":"台南市藍晒圖文創園區｜2026年10月3日","textPreview":"台南市藍晒圖文創園區｜2026年10月3日","textChars":21,"textLines":1,"bbox":[84,268,720,34]}
+{"kind":"textbox","id":"sh/byhgn29g","slide":1,"text":"今天要讓大家看懂\n\n1. 整體怎麼分工\n2. 時程怎麼推進\n3. 會議後要補什麼\n4. 活動當天怎麼控場","textPreview":"今天要讓大家看懂 |  | 1. 整體怎麼分工 | 2. 時程怎麼推進 | 3. 會議後要補什麼 | 4. 活動當天怎麼控場","textChars":52,"textLines":6,"bbox":[850,95,300,360]}
+{"kind":"shape","id":"sh/idonyd0z","slide":1,"bbox":[80,575,520,3]}
+{"kind":"textbox","id":"sh/t47y1kre","slide":1,"text":"核心原則：所有資訊回到總控表，同仁依任務、負責人、期限推進。","textPreview":"核心原則：所有資訊回到總控表，同仁依任務、負責人、期限推進。","textChars":30,"textLines":1,"bbox":[80,594,900,32]}
+{"kind":"notes","id":"nt/qpjj69","slide":1,"text":""}
+{"kind":"slide","id":"sl/hnc1b0","slide":2,"title":"這不是一張表，而是一套活動作戰系統","textShapes":10}
+{"kind":"textbox","id":"sh/yxobm58z","slide":2,"text":"這不是一張表，而是一套活動作戰系統","textPreview":"這不是一張表，而是一套活動作戰系統","textChars":17,"textLines":1,"bbox":[72,48,900,54]}
+{"kind":"textbox","id":"sh/5o7qpg3e","slide":2,"text":"總控表負責追蹤；這份簡報負責讓大家先看懂怎麼運作。","textPreview":"總控表負責追蹤；這份簡報負責讓大家先看懂怎麼運作。","textChars":25,"textLines":1,"bbox":[72,104,930,42]}
+{"kind":"textbox","id":"sh/g3ex0nux","slide":2,"text":"活動總控\n單一版本","textPreview":"活動總控 | 單一版本","textChars":9,"textLines":2,"bbox":[502,250,276,112]}
+{"kind":"textbox","id":"sh/r65wjudg","slide":2,"text":"場地配置\n攤位・動線・電力","textPreview":"場地配置 | 攤位・動線・電力","textChars":13,"textLines":2,"bbox":[108,185,245,88]}
+{"kind":"textbox","id":"sh/ylc7u54z","slide":2,"text":"參與單位\n名單・需求・攤商須知","textPreview":"參與單位 | 名單・需求・攤商須知","textChars":15,"textLines":2,"bbox":[108,392,245,88]}
+{"kind":"textbox","id":"sh/9cvixcze","slide":2,"text":"宣傳行銷\n素材・投放・媒體","textPreview":"宣傳行銷 | 素材・投放・媒體","textChars":13,"textLines":2,"bbox":[468,132,245,88]}
+{"kind":"textbox","id":"sh/gr2p8nqx","slide":2,"text":"舞台活動\n流程・主持・表演","textPreview":"舞台活動 | 流程・主持・表演","textChars":13,"textLines":2,"bbox":[468,445,245,88]}
+{"kind":"textbox","id":"sh/rytsvu9k","slide":2,"text":"人力服務\n分工・服務台・培訓","textPreview":"人力服務 | 分工・服務台・培訓","textChars":14,"textLines":2,"bbox":[828,185,245,88]}
+{"kind":"textbox","id":"sh/yd0z6103","slide":2,"text":"行政風險\n預算・保險・應變","textPreview":"行政風險 | 預算・保險・應變","textChars":13,"textLines":2,"bbox":[828,392,245,88]}
+{"kind":"shape","id":"sh/wb2hwfyx","slide":2,"bbox":[353,229,149,77]}
+{"kind":"shape","id":"sh/lwval87e","slide":2,"bbox":[353,306,149,130]}
+{"kind":"shape","id":"sh/e9cvixcz","slide":2,"bbox":[478,176,259,130]}
+{"kind":"shape","id":"sh/3q5o7qpg","slide":2,"bbox":[478,306,259,183]}
+{"kind":"shape","id":"sh/w3m94fu1","slide":2,"bbox":[778,229,50,77]}
+{"kind":"shape","id":"sh/loj2t83i","slide":2,"bbox":[778,306,50,130]}
+{"kind":"textbox","id":"sh/ex0nuxc3","slide":2,"text":"會議時先對齊這六條工作流，接著才回到任務清單逐項分派。","textPreview":"會議時先對齊這六條工作流，接著才回到任務清單逐項分派。","textChars":27,"textLines":1,"bbox":[126,600,1020,34]}
+{"kind":"notes","id":"nt/hnc1b0","slide":2,"text":""}
+{"kind":"slide","id":"sl/jqfuqp","slide":3,"title":"四期推進，把活動從概念推到結案","textShapes":15}
+{"kind":"textbox","id":"sh/9s36hcrm","slide":3,"text":"四期推進，把活動從概念推到結案","textPreview":"四期推進，把活動從概念推到結案","textChars":15,"textLines":1,"bbox":[72,48,900,54]}
+{"kind":"textbox","id":"sh/y1kre1w7","slide":3,"text":"每一期都有清楚目標、交付物與主責組，不讓工作只停在討論。","textPreview":"每一期都有清楚目標、交付物與主責組，不讓工作只停在討論。","textChars":28,"textLines":1,"bbox":[72,104,930,42]}
+{"kind":"shape","id":"sh/rmhk3q5o","slide":3,"bbox":[78,214,245,275]}
+{"kind":"textbox","id":"sh/gfmlkjm1","slide":3,"text":"第一期\n籌備啟動","textPreview":"第一期 | 籌備啟動","textChars":8,"textLines":2,"bbox":[100,235,200,64]}
+{"kind":"textbox","id":"sh/90je9cvi","slide":3,"text":"7/1-7/14","textPreview":"7/1-7/14","textChars":8,"textLines":1,"bbox":[120,312,160,30]}
+{"kind":"textbox","id":"sh/yd0z6103","slide":3,"text":"預算、分工、場勘、保險、招商、主視覺","textPreview":"預算、分工、場勘、保險、招商、主視覺","textChars":18,"textLines":1,"bbox":[102,370,198,78]}
+{"kind":"shape","id":"sh/rytsvu9k","slide":3,"bbox":[367,214,245,275]}
+{"kind":"textbox","id":"sh/gr2p8nqx","slide":3,"text":"第二期\n宣傳造勢","textPreview":"第二期 | 宣傳造勢","textChars":8,"textLines":2,"bbox":[389,235,200,64]}
+{"kind":"textbox","id":"sh/9cvixcze","slide":3,"text":"7/15-8/31","textPreview":"7/15-8/31","textChars":9,"textLines":1,"bbox":[409,312,160,30]}
+{"kind":"textbox","id":"sh/tovahoza","slide":3,"text":"素材、攤位、證件、獎品、工讀生、戶外廣告","textPreview":"素材、攤位、證件、獎品、工讀生、戶外廣告","textChars":20,"textLines":1,"bbox":[391,370,198,78]}
+{"kind":"shape","id":"sh/032lszqt","slide":3,"bbox":[656,214,245,275]}
+{"kind":"textbox","id":"sh/bi9s36hc","slide":3,"text":"第三期\n決戰執行","textPreview":"第三期 | 決戰執行","textChars":8,"textLines":2,"bbox":[678,235,200,64]}
+{"kind":"textbox","id":"sh/ixczed8v","slide":3,"text":"9/1-10/3","textPreview":"9/1-10/3","textChars":8,"textLines":1,"bbox":[698,312,160,30]}
+{"kind":"textbox","id":"sh/p0bi9s36","slide":3,"text":"物料、配置定稿、工作手冊、培訓、當日控場","textPreview":"物料、配置定稿、工作手冊、培訓、當日控場","textChars":20,"textLines":1,"bbox":[680,370,198,78]}
+{"kind":"shape","id":"sh/0fepkzup","slide":3,"bbox":[945,214,245,275]}
+{"kind":"textbox","id":"sh/bulwval8","slide":3,"text":"第四期\n收尾結案","textPreview":"第四期 | 收尾結案","textChars":8,"textLines":2,"bbox":[967,235,200,64]}
+{"kind":"textbox","id":"sh/i9s36hcr","slide":3,"text":"10/4-10/23","textPreview":"10/4-10/23","textChars":10,"textLines":1,"bbox":[987,312,160,30]}
+{"kind":"textbox","id":"sh/t47y1kre","slide":3,"text":"媒體素材、社群曝光、核銷、成果報告、檢討","textPreview":"媒體素材、社群曝光、核銷、成果報告、檢討","textChars":20,"textLines":1,"bbox":[969,370,198,78]}
+{"kind":"shape","id":"sh/0je9cvix","slide":3,"bbox":[323,351.5,44,0]}
+{"kind":"shape","id":"sh/g7adsji5","slide":3,"bbox":[612,351.5,44,0]}
+{"kind":"shape","id":"sh/9s36hcrm","slide":3,"bbox":[901,351.5,44,0]}
+{"kind":"textbox","id":"sh/y1kre1w7","slide":3,"text":"今天會議的重點在第一期：先把人、圖、表單、視覺、保險定下來。","textPreview":"今天會議的重點在第一期：先把人、圖、表單、視覺、保險定下來。","textChars":30,"textLines":1,"bbox":[120,575,1040,36]}
+{"kind":"notes","id":"nt/jqfuqp","slide":3,"text":""}
+{"kind":"slide","id":"sl/ensfm0","slide":4,"title":"會議決議要變成任務，才會真的往前走","textShapes":8}
+{"kind":"textbox","id":"sh/r65wjudg","slide":4,"text":"會議決議要變成任務，才會真的往前走","textPreview":"會議決議要變成任務，才會真的往前走","textChars":17,"textLines":1,"bbox":[72,48,900,54]}
+{"kind":"textbox","id":"sh/gr2p8nqx","slide":4,"text":"所有討論都進入同一條流轉路徑：決議、派工、交付、檢核、更新。","textPreview":"所有討論都進入同一條流轉路徑：決議、派工、交付、檢核、更新。","textChars":30,"textLines":1,"bbox":[72,104,930,42]}
+{"kind":"textbox","id":"sh/9cvixcze","slide":4,"text":"會議決議\n確認要做什麼","textPreview":"會議決議 | 確認要做什麼","textChars":11,"textLines":2,"bbox":[95,260,170,104]}
+{"kind":"textbox","id":"sh/yxobm58z","slide":4,"text":"指派負責人\n一件事一個主責","textPreview":"指派負責人 | 一件事一個主責","textChars":13,"textLines":2,"bbox":[320,260,170,104]}
+{"kind":"textbox","id":"sh/nih4byhg","slide":4,"text":"交付物\n圖面、名單、素材、表單","textPreview":"交付物 | 圖面、名單、素材、表單","textChars":15,"textLines":2,"bbox":[545,260,170,104]}
+{"kind":"textbox","id":"sh/g3ex0nux","slide":4,"text":"檢核\n總控表更新狀態","textPreview":"檢核 | 總控表更新狀態","textChars":10,"textLines":2,"bbox":[770,260,170,104]}
+{"kind":"textbox","id":"sh/5o7qpg3e","slide":4,"text":"現場執行\n照 Run Sheet 控場","textPreview":"現場執行 | 照 Run Sheet 控場","textChars":19,"textLines":2,"bbox":[995,260,170,104]}
+{"kind":"shape","id":"sh/y1kre1w7","slide":4,"bbox":[265,312,55,0]}
+{"kind":"shape","id":"sh/rmhk3q5o","slide":4,"bbox":[490,312,55,0]}
+{"kind":"shape","id":"sh/fa9w3m94","slide":4,"bbox":[715,312,55,0]}
+{"kind":"shape","id":"sh/qpg3ex0n","slide":4,"bbox":[940,312,55,0]}
+{"kind":"shape","id":"sh/xczed8v6","slide":4,"bbox":[72,500,8,44]}
+{"kind":"textbox","id":"sh/8v6psfil","slide":4,"text":"會議後沒有主責、期限、交付物，就不算完成決議。","textPreview":"會議後沒有主責、期限、交付物，就不算完成決議。","textChars":23,"textLines":1,"bbox":[94,506,880,36]}
+{"kind":"notes","id":"nt/ensfm0","slide":4,"text":""}
+{"kind":"slide","id":"sl/pd793g","slide":5,"title":"六個工作組對應六種交付物","textShapes":15}
+{"kind":"textbox","id":"sh/0rqd4vmt","slide":5,"text":"六個工作組對應六種交付物","textPreview":"六個工作組對應六種交付物","textChars":12,"textLines":1,"bbox":[72,48,900,54]}
+{"kind":"textbox","id":"sh/b6xkf6dc","slide":5,"text":"分工不是只填人名，而是每組都要交出可檢查的成果。","textPreview":"分工不是只填人名，而是每組都要交出可檢查的成果。","textChars":24,"textLines":1,"bbox":[72,104,930,42]}
+{"kind":"textbox","id":"sh/il0rqd4v","slide":5,"text":"專案統籌","textPreview":"專案統籌","textChars":4,"textLines":1,"bbox":[112,160,190,48]}
+{"kind":"textbox","id":"sh/t47y1kre","slide":5,"text":"總控表、會議節奏、跨組協調","textPreview":"總控表、會議節奏、跨組協調","textChars":13,"textLines":1,"bbox":[335,168,760,34]}
+{"kind":"textbox","id":"sh/0je9cvix","slide":5,"text":"活動組","textPreview":"活動組","textChars":3,"textLines":1,"bbox":[112,232,190,48]}
+{"kind":"textbox","id":"sh/byhgn29g","slide":5,"text":"場地配置圖、撤場清點、電力動線","textPreview":"場地配置圖、撤場清點、電力動線","textChars":15,"textLines":1,"bbox":[335,240,760,34]}
+{"kind":"textbox","id":"sh/idonyd0z","slide":5,"text":"招商組","textPreview":"招商組","textChars":3,"textLines":1,"bbox":[112,304,190,48]}
+{"kind":"textbox","id":"sh/p0bi9s36","slide":5,"text":"單位名單、攤位需求、攤商須知","textPreview":"單位名單、攤位需求、攤商須知","textChars":14,"textLines":1,"bbox":[335,312,760,34]}
+{"kind":"textbox","id":"sh/0fepkzup","slide":5,"text":"行銷設計","textPreview":"行銷設計","textChars":4,"textLines":1,"bbox":[112,376,190,48]}
+{"kind":"textbox","id":"sh/itgfmlkj","slide":5,"text":"主視覺、社群素材、廣告投放","textPreview":"主視覺、社群素材、廣告投放","textChars":13,"textLines":1,"bbox":[335,384,760,34]}
+{"kind":"textbox","id":"sh/7ed8bat4","slide":5,"text":"舞台服務","textPreview":"舞台服務","textChars":4,"textLines":1,"bbox":[112,448,190,48]}
+{"kind":"textbox","id":"sh/0z61032l","slide":5,"text":"Run Sheet、主持稿、兌換流程","textPreview":"Run Sheet、主持稿、兌換流程","textChars":18,"textLines":1,"bbox":[335,456,760,34]}
+{"kind":"textbox","id":"sh/pkzupwb2","slide":5,"text":"行政風險","textPreview":"行政風險","textChars":4,"textLines":1,"bbox":[112,520,190,48]}
+{"kind":"textbox","id":"sh/ih4byhgn","slide":5,"text":"預算付款、保險、緊急應變","textPreview":"預算付款、保險、緊急應變","textChars":12,"textLines":1,"bbox":[335,528,760,34]}
+{"kind":"textbox","id":"sh/72x4nap4","slide":5,"text":"這張投影片可以直接拿來開會點名：每一組今天都要回報自己的缺口。","textPreview":"這張投影片可以直接拿來開會點名：每一組今天都要回報自己的缺口。","textChars":31,"textLines":1,"bbox":[128,624,1000,28]}
+{"kind":"notes","id":"nt/pd793g","slide":5,"text":""}
+{"kind":"slide","id":"sl/247hca","slide":6,"title":"活動當天用一條指揮流程控場","textShapes":9}
+{"kind":"textbox","id":"sh/pg3ex0nu","slide":6,"text":"活動當天用一條指揮流程控場","textPreview":"活動當天用一條指揮流程控場","textChars":13,"textLines":1,"bbox":[72,48,900,54]}
+{"kind":"textbox","id":"sh/epkzupwb","slide":6,"text":"當天所有人看 Run Sheet，但現場回報要集中到總協調，不要多頭指揮。","textPreview":"當天所有人看 Run Sheet，但現場回報要集中到總協調，不要多頭指揮。","textChars":37,"textLines":1,"bbox":[72,104,930,42]}
+{"kind":"textbox","id":"sh/7adsji5s","slide":6,"text":"總指揮\n重大事件決策","textPreview":"總指揮 | 重大事件決策","textChars":10,"textLines":2,"bbox":[500,150,280,88]}
+{"kind":"textbox","id":"sh/w7mp0bi9","slide":6,"text":"總協調\n現場調度中心","textPreview":"總協調 | 現場調度中心","textChars":10,"textLines":2,"bbox":[500,290,280,88]}
+{"kind":"shape","id":"sh/psfil0rq","slide":6,"bbox":[640,238,0,52]}
+{"kind":"textbox","id":"sh/e1w7mp0b","slide":6,"text":"舞台組\n主持・表演・儀式","textPreview":"舞台組 | 主持・表演・儀式","textChars":12,"textLines":2,"bbox":[110,455,210,82]}
+{"kind":"textbox","id":"sh/7mp0bi9s","slide":6,"text":"服務台\n兌換・摸彩・詢問","textPreview":"服務台 | 兌換・摸彩・詢問","textChars":12,"textLines":2,"bbox":[375,455,210,82]}
+{"kind":"textbox","id":"sh/wfyxobm5","slide":6,"text":"貴賓媒體\n接待・巡禮・聯訪","textPreview":"貴賓媒體 | 接待・巡禮・聯訪","textChars":13,"textLines":2,"bbox":[640,455,210,82]}
+{"kind":"textbox","id":"sh/l0rqd4vm","slide":6,"text":"機動/攤位\n人流・撤場・回報","textPreview":"機動/攤位 | 人流・撤場・回報","textChars":14,"textLines":2,"bbox":[905,455,210,82]}
+{"kind":"shape","id":"sh/hk3q5o7q","slide":6,"bbox":[215,378,425,77]}
+{"kind":"shape","id":"sh/oza1gvy9","slide":6,"bbox":[480,378,160,77]}
+{"kind":"shape","id":"sh/zed8v6ps","slide":6,"bbox":[640,378,105,77]}
+{"kind":"shape","id":"sh/6xkf6dcb","slide":6,"bbox":[640,378,370,77]}
+{"kind":"textbox","id":"sh/hwfyxobm","slide":6,"text":"原則：狀況先回報組長，組長回報總協調，只有重大事件才上到總指揮。","textPreview":"原則：狀況先回報組長，組長回報總協調，只有重大事件才上到總指揮。","textChars":32,"textLines":1,"bbox":[145,615,990,30]}
+{"kind":"notes","id":"nt/247hca","slide":6,"text":""}
+{"kind":"slide","id":"sl/m8895t","slide":7,"title":"10月2日到10月3日，要照時間線逐段確認","textShapes":26}
+{"kind":"textbox","id":"sh/vahoza1g","slide":7,"text":"10月2日到10月3日，要照時間線逐段確認","textPreview":"10月2日到10月3日，要照時間線逐段確認","textChars":21,"textLines":1,"bbox":[72,48,900,54]}
+{"kind":"textbox","id":"sh/ovahoza1","slide":7,"text":"場佈、進場、彩排、開幕、促銷、撤場，都要有主責與確認物。","textPreview":"場佈、進場、彩排、開幕、促銷、撤場，都要有主責與確認物。","textChars":28,"textLines":1,"bbox":[72,104,930,42]}
+{"kind":"shape","id":"sh/dg7adsji","slide":7,"bbox":[95,349,1040,4]}
+{"kind":"shape","id":"sh/6hcrmhk3","slide":7,"bbox":[103,334,34,34]}
+{"kind":"textbox","id":"sh/z25kb6xk","slide":7,"text":"10/2","textPreview":"10/2","textChars":4,"textLines":1,"bbox":[73,207,95,24]}
+{"kind":"textbox","id":"sh/onyd0z61","slide":7,"text":"場佈與設備測試","textPreview":"場佈與設備測試","textChars":7,"textLines":1,"bbox":[50,234,140,30]}
+{"kind":"textbox","id":"sh/d8v6psfi","slide":7,"text":"場地增租、舞台、音響、物料","textPreview":"場地增租、舞台、音響、物料","textChars":13,"textLines":1,"bbox":[43,266,152,46]}
+{"kind":"shape","id":"sh/6dcbulwv","slide":7,"bbox":[251,334,34,34]}
+{"kind":"textbox","id":"sh/vy90je9c","slide":7,"text":"09:00","textPreview":"09:00","textChars":5,"textLines":1,"bbox":[221,382,95,24]}
+{"kind":"textbox","id":"sh/nuxc3ylc","slide":7,"text":"會場設備","textPreview":"會場設備","textChars":4,"textLines":1,"bbox":[198,410,140,30]}
+{"kind":"textbox","id":"sh/y90je9cv","slide":7,"text":"桌椅、電力、識別標示","textPreview":"桌椅、電力、識別標示","textChars":10,"textLines":1,"bbox":[191,442,152,46]}
+{"kind":"shape","id":"sh/5wjudg7a","slide":7,"bbox":[399,334,34,34]}
+{"kind":"textbox","id":"sh/gbq1oryt","slide":7,"text":"10:00","textPreview":"10:00","textChars":5,"textLines":1,"bbox":[369,207,95,24]}
+{"kind":"textbox","id":"sh/n29gr2p8","slide":7,"text":"單位進場","textPreview":"單位進場","textChars":4,"textLines":1,"bbox":[346,234,140,30]}
+{"kind":"textbox","id":"sh/yhgn29gr","slide":7,"text":"報到、攤位引導、資料袋","textPreview":"報到、攤位引導、資料袋","textChars":11,"textLines":1,"bbox":[339,266,152,46]}
+{"kind":"shape","id":"sh/58z25kb6","slide":7,"bbox":[547,334,34,34]}
+{"kind":"textbox","id":"sh/gn29gr2p","slide":7,"text":"12:00","textPreview":"12:00","textChars":5,"textLines":1,"bbox":[517,382,95,24]}
+{"kind":"textbox","id":"sh/neloj2t8","slide":7,"text":"舞台彩排","textPreview":"舞台彩排","textChars":4,"textLines":1,"bbox":[494,410,140,30]}
+{"kind":"textbox","id":"sh/ytsvu9kn","slide":7,"text":"主持稿、表演、啟動儀式","textPreview":"主持稿、表演、啟動儀式","textChars":11,"textLines":1,"bbox":[487,442,152,46]}
+{"kind":"shape","id":"sh/2x4nap4r","slide":7,"bbox":[695,334,34,34]}
+{"kind":"textbox","id":"sh/vixczed8","slide":7,"text":"14:00","textPreview":"14:00","textChars":5,"textLines":1,"bbox":[665,207,95,24]}
+{"kind":"textbox","id":"sh/k3q5o7qp","slide":7,"text":"市集開始","textPreview":"市集開始","textChars":4,"textLines":1,"bbox":[642,234,140,30]}
+{"kind":"textbox","id":"sh/donyd0z6","slide":7,"text":"開場、致詞、聯訪、巡禮","textPreview":"開場、致詞、聯訪、巡禮","textChars":11,"textLines":1,"bbox":[635,266,152,46]}
+{"kind":"shape","id":"sh/6psfil0r","slide":7,"bbox":[843,334,34,34]}
+{"kind":"textbox","id":"sh/val87ed8","slide":7,"text":"15:00","textPreview":"15:00","textChars":5,"textLines":1,"bbox":[813,382,95,24]}
+{"kind":"textbox","id":"sh/kre1w7mp","slide":7,"text":"活動推進","textPreview":"活動推進","textChars":4,"textLines":1,"bbox":[790,410,140,30]}
+{"kind":"textbox","id":"sh/dcbulwva","slide":7,"text":"表演、即享贈、攤位廣播","textPreview":"表演、即享贈、攤位廣播","textChars":11,"textLines":1,"bbox":[783,442,152,46]}
+{"kind":"shape","id":"sh/2lszqtcj","slide":7,"bbox":[991,334,34,34]}
+{"kind":"textbox","id":"sh/v6psfil0","slide":7,"text":"18:15","textPreview":"18:15","textChars":5,"textLines":1,"bbox":[961,207,95,24]}
+{"kind":"textbox","id":"sh/h4byhgn2","slide":7,"text":"最終摸彩","textPreview":"最終摸彩","textChars":4,"textLines":1,"bbox":[938,234,140,30]}
+{"kind":"textbox","id":"sh/sji5snel","slide":7,"text":"獎品、簽收、服務台控管","textPreview":"獎品、簽收、服務台控管","textChars":11,"textLines":1,"bbox":[931,266,152,46]}
+{"kind":"shape","id":"sh/3ylc7u54","slide":7,"bbox":[1139,334,34,34]}
+{"kind":"textbox","id":"sh/adsji5sn","slide":7,"text":"19:00","textPreview":"19:00","textChars":5,"textLines":1,"bbox":[1109,382,95,24]}
+{"kind":"textbox","id":"sh/lszqtcj6","slide":7,"text":"撤場復原","textPreview":"撤場復原","textChars":4,"textLines":1,"bbox":[1086,410,140,30]}
+{"kind":"textbox","id":"sh/s72x4nap","slide":7,"text":"清點、垃圾、押金退回","textPreview":"清點、垃圾、押金退回","textChars":10,"textLines":1,"bbox":[1079,442,152,46]}
+{"kind":"notes","id":"nt/m8895t","slide":7,"text":""}
+{"kind":"slide","id":"sl/uconk2","slide":8,"title":"今天會議先決定五件事","textShapes":17}
+{"kind":"textbox","id":"sh/ih4byhgn","slide":8,"text":"今天會議先決定五件事","textPreview":"今天會議先決定五件事","textChars":10,"textLines":1,"bbox":[72,48,900,54]}
+{"kind":"textbox","id":"sh/p8nqxs72","slide":8,"text":"只要這五件事定下來，總控表就能開始變成真正的執行工具。","textPreview":"只要這五件事定下來，總控表就能開始變成真正的執行工具。","textChars":27,"textLines":1,"bbox":[72,104,930,42]}
+{"kind":"textbox","id":"sh/0nuxc3yl","slide":8,"text":"1","textPreview":"1","textChars":1,"textLines":1,"bbox":[120,160,52,52]}
+{"kind":"textbox","id":"sh/7ed8bat4","slide":8,"text":"補齊人員分工","textPreview":"補齊人員分工","textChars":6,"textLines":1,"bbox":[200,157,320,32]}
+{"kind":"textbox","id":"sh/itgfmlkj","slide":8,"text":"總指揮、總協調、各組組長與代理人","textPreview":"總指揮、總協調、各組組長與代理人","textChars":16,"textLines":1,"bbox":[540,162,560,28]}
+{"kind":"textbox","id":"sh/pkzupwb2","slide":8,"text":"2","textPreview":"2","textChars":1,"textLines":1,"bbox":[120,242,52,52]}
+{"kind":"textbox","id":"sh/0z61032l","slide":8,"text":"確認表單回覆","textPreview":"確認表單回覆","textChars":6,"textLines":1,"bbox":[200,239,320,32]}
+{"kind":"textbox","id":"sh/7qpg3ex0","slide":8,"text":"參與單位名單、設備需求、攤位需求","textPreview":"參與單位名單、設備需求、攤位需求","textChars":16,"textLines":1,"bbox":[540,244,560,28]}
+{"kind":"textbox","id":"sh/i5sneloj","slide":8,"text":"3","textPreview":"3","textChars":1,"textLines":1,"bbox":[120,324,52,52]}
+{"kind":"textbox","id":"sh/0nuxc3yl","slide":8,"text":"定場地配置V1","textPreview":"定場地配置V1","textChars":7,"textLines":1,"bbox":[200,321,320,32]}
+{"kind":"textbox","id":"sh/p8nqxs72","slide":8,"text":"舞台、攤位、服務台、卸貨與救護點","textPreview":"舞台、攤位、服務台、卸貨與救護點","textChars":16,"textLines":1,"bbox":[540,326,560,28]}
+{"kind":"textbox","id":"sh/ih4byhgn","slide":8,"text":"4","textPreview":"4","textChars":1,"textLines":1,"bbox":[120,406,52,52]}
+{"kind":"textbox","id":"sh/72x4nap4","slide":8,"text":"定主視覺路線","textPreview":"定主視覺路線","textChars":6,"textLines":1,"bbox":[200,403,320,32]}
+{"kind":"textbox","id":"sh/0z61032l","slide":8,"text":"設計師、啟動儀式、輸出物清單","textPreview":"設計師、啟動儀式、輸出物清單","textChars":14,"textLines":1,"bbox":[540,408,560,28]}
+{"kind":"textbox","id":"sh/pkzupwb2","slide":8,"text":"5","textPreview":"5","textChars":1,"textLines":1,"bbox":[120,488,52,52]}
+{"kind":"textbox","id":"sh/itgfmlkj","slide":8,"text":"定安全與財務","textPreview":"定安全與財務","textChars":6,"textLines":1,"bbox":[200,485,320,32]}
+{"kind":"textbox","id":"sh/7ed8bat4","slide":8,"text":"保險、押金、尾款、夜間看管","textPreview":"保險、押金、尾款、夜間看管","textChars":13,"textLines":1,"bbox":[540,490,560,28]}
+{"kind":"notes","id":"nt/uconk2","slide":8,"text":""}
+{"kind":"slide","id":"sl/t8dh4q","slide":9,"title":"會後的工作方式","textShapes":6}
+{"kind":"textbox","id":"sh/j6tovaho","slide":9,"text":"會後的工作方式","textPreview":"會後的工作方式","textChars":7,"textLines":1,"bbox":[82,78,780,62]}
+{"kind":"textbox","id":"sh/crmhk3q5","slide":9,"text":"大家不是各自記待辦，而是一起維護同一份總控表。","textPreview":"大家不是各自記待辦，而是一起維護同一份總控表。","textChars":23,"textLines":1,"bbox":[86,160,900,36]}
+{"kind":"textbox","id":"sh/1cfa9w3m","slide":9,"text":"12_任務清單匯入\n同仁逐項更新進度","textPreview":"12_任務清單匯入 | 同仁逐項更新進度","textChars":18,"textLines":2,"bbox":[120,290,265,96]}
+{"kind":"textbox","id":"sh/uxc3ylc7","slide":9,"text":"02_總控甘特\n主管看關鍵期限","textPreview":"02_總控甘特 | 主管看關鍵期限","textChars":15,"textLines":2,"bbox":[500,290,265,96]}
+{"kind":"textbox","id":"sh/ji5snelo","slide":9,"text":"11_會議待辦\n每次會議追決議","textPreview":"11_會議待辦 | 每次會議追決議","textChars":15,"textLines":2,"bbox":[880,290,265,96]}
+{"kind":"shape","id":"sh/c3ylc7u5","slide":9,"bbox":[385,338,115,0]}
+{"kind":"shape","id":"sh/1kre1w7m","slide":9,"bbox":[765,338,115,0]}
+{"kind":"textbox","id":"sh/q5o7qpg3","slide":9,"text":"下一次會議只看三件事：逾期、待確認、需要主管決策。","textPreview":"下一次會議只看三件事：逾期、待確認、需要主管決策。","textChars":25,"textLines":1,"bbox":[166,540,960,40]}
+{"kind":"notes","id":"nt/t8dh4q","slide":9,"text":""}
