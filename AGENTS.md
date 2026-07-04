@@ -8,7 +8,8 @@
 - 桃竹苗多元就業開發方案相關工作所需資料，必須連到 Google Drive 搜尋對應資料後，再進行後續處理。
 - 政府計畫文件、簡報、心智圖、圖片素材與輸出檔可依用途放在 `docs/`、`outputs/` 或專案專屬資料夾。
 - 使用者要新增內部管理工具、專案儀表板或可上線小系統時，放在 `tools/<tool-name>/`。
-- 使用者說「開工」時，讀工作筆記、檢查 git 狀態、建議下一步，不主動 pull。
+- 使用者說「開工」時，讀工作筆記（先看「交辦區」有無 Claude 交辦的事項）、檢查 git 狀態、建議下一步，不主動 pull。
+- 多 AI 協作：與 Claude 無固定分工，任何工作都可承接，成果一律依回存原則彙整回 `2026 Data base`。要交辦對方或留給下個工作階段的事寫進工作筆記「交辦區」；commit 訊息開頭註明 `[codex]`；同一時間只讓一個 AI 修改 `2026 Data base`；改了 `.scripts/` 排程要同步更新該 vault 的 `知識庫/工具設定-本機自動化總覽.md`。
 - 使用者說「收工」時，更新工作筆記、commit、push；不要加入本機設定或敏感檔案。
 - Firebase 專案是 `my-teaching-tools-ea0ed`，Firestore 規則在 `firestore.rules`。
 - Obsidian 工作筆記在 `/Users/junghanchiu/Library/Mobile Documents/iCloud~md~obsidian/Documents/New project/工作筆記.md`。
