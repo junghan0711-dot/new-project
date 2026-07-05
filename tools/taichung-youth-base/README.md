@@ -15,6 +15,7 @@
 ## 目前第一版內容
 
 - 總覽：整體風險、近期 Drive 動態、本週空間回報、工項狀態。
+- 雙基地分流：將光復新村與審計新村分成兩張管理卡，分別呈現空間數、Drive 來源、月報佐證焦點、合約對照與下一步檢查。
 - Drive 更新：列出核心來源、更新時間與敏感資料提醒。
 - 月報佐證：依 `成果報告資料整理` 01-23 類建立檢核視圖。
 - 工項進度：依 `勞工局新創基地_工作執行進度表.xlsx` 摘要工項。
@@ -30,6 +31,9 @@
 - 合約資料夾：`https://drive.google.com/drive/folders/1nlUYx03E6GctEoCXiNVaNsaZRGqS2bjd`
 - 合約 Google Doc：`https://docs.google.com/document/d/1NUn3uuM5y4Qent2MwA6jAB3QA59Sd9JH9EFyXi6UP4M`
 - 每週空間回報：`https://docs.google.com/spreadsheets/d/1k7hU4dBymaM31XNDWD5fbiHOlHlF3Xjfxh0ooAgvTaA`
+- 光復新村街頭藝人演出申請表：`https://docs.google.com/forms/d/1Xc5cQpjZzaOrda2rhsa9RQ0p48p4Yd-nz_d_Jtbel34`
+- 光復新村街頭藝人演出申請表回覆：`https://docs.google.com/spreadsheets/d/1K1NMdTd1iQAvo_KGalh7YiYRK4feSvuefSwgat8ROAo`
+- 審查會相關：`https://drive.google.com/drive/folders/1YEdKIFfwVk5VSv7XgHEO9dTxdkfXkFWZ`
 - 工項進度表：`https://docs.google.com/spreadsheets/d/1te31KWIfonRdR-zBQcC-ejfIr5hYWeli`
 - 修繕費用表：`https://docs.google.com/spreadsheets/d/1pEacGjwdO_esmTOr2MuALYuUOEz7MHFE`
 - 成果報告資料整理：`https://drive.google.com/drive/folders/114qmRGC4XnNNkQF0dnKhTL4hgWTsh7L9`
@@ -56,4 +60,4 @@ window.TAICHUNG_YOUTH_BASE_CONFIG = {
 };
 ```
 
-目前尚未部署 Apps Script，也尚未建立正式中控 Google Sheet。
+目前尚未部署 Apps Script，也尚未建立正式中控 Google Sheet。索引器已預留光復/審計/共用分類，並會把每週空間回報中的「與某日同」解析成實際數值，避免主管頁顯示 0。

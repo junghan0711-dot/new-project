@@ -419,6 +419,83 @@ textarea {
   gap: 12px;
 }
 
+.base-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.base-card {
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 15px;
+  background: #ffffff;
+}
+
+.base-card.guangfu {
+  border-top: 4px solid var(--brand);
+}
+
+.base-card.shenji {
+  border-top: 4px solid var(--accent);
+}
+
+.base-stats .stat strong {
+  font-size: 20px;
+}
+
+.base-columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.mini-list {
+  display: grid;
+  gap: 8px;
+}
+
+.mini-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 8px;
+  align-items: start;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: #fbfcfc;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.mini-item span {
+  font-size: 13px;
+  font-weight: 780;
+}
+
+.mini-item small {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.next-checks {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: #f8faf9;
+}
+
+.next-checks p {
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .budget-bar {
   display: grid;
   gap: 8px;
@@ -502,6 +579,7 @@ textarea {
   .status-strip,
   .overview-grid,
   .space-grid,
+  .base-grid,
   .case-grid,
   .evidence-grid {
     grid-template-columns: 1fr;
@@ -518,6 +596,7 @@ textarea {
 
   .table-row,
   .source-item,
+  .base-columns,
   .contract-columns {
     grid-template-columns: 1fr;
   }

@@ -78,6 +78,7 @@
       sources: remote.sources && remote.sources.length ? remote.sources : base.sources,
       workItems: remote.workItems && remote.workItems.length ? remote.workItems : base.workItems,
       evidenceCategories: remote.evidenceCategories && remote.evidenceCategories.length ? remote.evidenceCategories : base.evidenceCategories,
+      baseOverview: remote.baseOverview && remote.baseOverview.length ? remote.baseOverview : base.baseOverview,
       contract: remote.contract || base.contract,
       contractRequirements: remote.contractRequirements && remote.contractRequirements.length ? remote.contractRequirements : base.contractRequirements,
       spaceReport: remote.spaceReport || base.spaceReport,
@@ -95,6 +96,7 @@
     renderWorkStatus();
     renderDriveSources();
     renderEvidence();
+    renderBaseOverview();
     renderCategoryFilter();
     renderWorkItems();
     renderSpaceDetail();
@@ -259,6 +261,79 @@
     `).join("");
   }
 
+  function renderBaseOverview() {
+    const bases = state.data.baseOverview || [];
+    const report = state.data.spaceReport || {};
+    const evidence = state.data.evidenceCategories || [];
+    const requirements = state.data.contractRequirements || [];
+    $("baseOverviewUpdated").textContent = `空間週次：${report.week || "-"}`;
+    $("baseOverview").innerHTML = bases.map((base) => {
+      const space = report[base.spaceKey] || {};
+      const focusedEvidence = (base.evidenceFocus || []).map((name) => evidence.find((item) => item.name === name) || { name, status: "watch", note: "待由 Drive 子資料夾更新狀態。" });
+      const focusedContracts = (base.contractFocus || []).map((id) => requirements.find((item) => item.id === id)).filter(Boolean);
+      const sources = base.sourceFocus || [];
+      return `
+        <article class="base-card ${escapeAttr(base.id || "")}">
+          <div class="item-title">
+            <div>
+              <h3>${escapeHtml(base.name)}</h3>
+              <p class="subtle">${escapeHtml(base.summary || "")}</p>
+            </div>
+            ${pill(base.status || "watch")}
+          </div>
+          <div class="stat-grid base-stats">
+            <div class="stat"><span>可進駐</span><strong>${escapeHtml(String(space.available || 0))}</strong></div>
+            <div class="stat"><span>現進駐</span><strong>${escapeHtml(String(space.occupied || 0))}</strong></div>
+            <div class="stat"><span>未進駐</span><strong>${escapeHtml(String(space.vacant || 0))}</strong></div>
+            <div class="stat"><span>空缺空間</span><strong>${escapeHtml(space.vacantUnits || "-")}</strong></div>
+          </div>
+          <div class="base-columns">
+            <div>
+              <span class="field-label">Drive 來源</span>
+              <div class="mini-list">
+                ${sources.map((source) => `
+                  <a class="mini-item" href="${escapeAttr(source.url)}" target="_blank" rel="noreferrer">
+                    <span>${escapeHtml(source.name)}</span>
+                    ${pill(source.status || "watch")}
+                    <small>${escapeHtml(source.note || "")}</small>
+                  </a>
+                `).join("") || `<p class="subtle">尚未設定專屬來源。</p>`}
+              </div>
+            </div>
+            <div>
+              <span class="field-label">本月佐證焦點</span>
+              <div class="mini-list">
+                ${focusedEvidence.map((item) => `
+                  <div class="mini-item">
+                    <span>${escapeHtml(item.name)}</span>
+                    ${pill(item.status || "watch")}
+                    <small>${escapeHtml(item.note || "")}</small>
+                  </div>
+                `).join("")}
+              </div>
+            </div>
+            <div>
+              <span class="field-label">合約對照</span>
+              <div class="mini-list">
+                ${focusedContracts.map((item) => `
+                  <div class="mini-item">
+                    <span>${escapeHtml(item.id)}｜${escapeHtml(item.title)}</span>
+                    ${pill(item.status)}
+                    <small>${escapeHtml(item.due)}｜${escapeHtml(item.evidence)}</small>
+                  </div>
+                `).join("")}
+              </div>
+            </div>
+          </div>
+          <div class="next-checks">
+            <span class="field-label">下一步檢查</span>
+            ${(base.nextChecks || []).map((item) => `<p>${escapeHtml(item)}</p>`).join("")}
+          </div>
+        </article>
+      `;
+    }).join("");
+  }
+
   function renderCategoryFilter() {
     const select = $("categoryFilter");
     const current = select.value;
@@ -302,6 +377,7 @@
           <div class="stat"><span>現進駐</span><strong>${escapeHtml(String(item.occupied || 0))}</strong></div>
           <div class="stat"><span>未進駐</span><strong>${escapeHtml(String(item.vacant || 0))}</strong></div>
           <div class="stat"><span>空間</span><strong>${escapeHtml(item.vacantUnits || "-")}</strong></div>
+          <div class="stat"><span>參訪</span><strong>${escapeHtml(item.visits || "-")}</strong></div>
         </div>
       </article>
     `).join("");
@@ -391,6 +467,7 @@
     const alerts = collectAlerts();
     const evidence = data.evidenceCategories || [];
     const contractRisks = (data.contractRequirements || []).filter((item) => item.status === "risk");
+    const bases = data.baseOverview || [];
     const missingEvidence = evidence.filter((item) => item.status !== "ok").slice(0, 8);
     const budget = data.repairBudget || {};
     const report = data.spaceReport || {};
@@ -402,6 +479,12 @@
       `修繕經費：總經費 ${formatMoney(budget.total || 0)}，已用 ${formatMoney(budget.spent || 0)}，剩餘 ${formatMoney(budget.balance || 0)}`,
       `月報佐證：${evidence.filter((item) => item.status === "ok").length}/${evidence.length} 類目前標示正常`,
       `合約風險：${contractRisks.length} 項需優先確認`,
+      "",
+      "雙基地分流：",
+      ...bases.map((base) => {
+        const space = report[base.spaceKey] || {};
+        return `${base.name}：進駐 ${space.occupied || 0}/${space.available || 0}，空缺 ${space.vacant || 0}（${space.vacantUnits || "-"}）；${base.nextChecks && base.nextChecks[0] ? base.nextChecks[0] : base.summary || ""}`;
+      }),
       "",
       "優先追蹤：",
       ...alerts.slice(0, 6).map((item, index) => `${index + 1}. [${statusLabels[item.status] || item.status}] ${item.title}：${item.text}`),

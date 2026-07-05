@@ -42,6 +42,7 @@
 
       <nav class="tabs" aria-label="檢視">
         <button class="tab-button active" type="button" data-view="overviewView">總覽</button>
+        <button class="tab-button" type="button" data-view="baseView">雙基地分流</button>
         <button class="tab-button" type="button" data-view="driveView">Drive 更新</button>
         <button class="tab-button" type="button" data-view="evidenceView">月報佐證</button>
         <button class="tab-button" type="button" data-view="workView">工項進度</button>
@@ -82,6 +83,16 @@
             </div>
             <div id="workStatusList" class="compact-list"></div>
           </div>
+        </section>
+      </section>
+
+      <section id="baseView" class="view">
+        <section class="panel">
+          <div class="section-heading">
+            <h2>光復新村 / 審計新村分流</h2>
+            <span id="baseOverviewUpdated">-</span>
+          </div>
+          <div id="baseOverview" class="base-grid"></div>
         </section>
       </section>
 

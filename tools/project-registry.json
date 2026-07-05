@@ -75,6 +75,7 @@
         "evidenceChecklist": true,
         "workItemSummary": true,
         "spaceOperations": true,
+        "baseSeparation": true,
         "repairBudget": true,
         "caseWatchlist": true,
         "contractMapping": true,
