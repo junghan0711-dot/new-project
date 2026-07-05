@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>中部青創基地營運總控台</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23166b5c'/%3E%3Cpath d='M14 42h36v6H14zM18 18h12v18H18zM34 14h12v22H34z' fill='white'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">中部辦公室｜臺中青創基地</p>
+        <h1>營運總控台</h1>
+      </div>
+      <div class="top-actions">
+        <a id="driveLink" class="button ghost" href="#" target="_blank" rel="noreferrer">Drive</a>
+        <button id="copySummaryButton" class="button" type="button">複製摘要</button>
+        <button id="refreshButton" class="button primary" type="button">重新整理</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="status-strip" aria-label="整體狀態">
+        <div class="metric">
+          <span>整體狀態</span>
+          <strong id="overallStatus">讀取中</strong>
+        </div>
+        <div class="metric">
+          <span>月報佐證</span>
+          <strong id="evidenceStatus">0/0</strong>
+        </div>
+        <div class="metric">
+          <span>修繕剩餘</span>
+          <strong id="repairBalance">$0</strong>
+        </div>
+        <div class="metric">
+          <span>資料模式</span>
+          <strong id="dataMode">快照</strong>
+        </div>
+      </section>
+
+      <nav class="tabs" aria-label="檢視">
+        <button class="tab-button active" type="button" data-view="overviewView">總覽</button>
+        <button class="tab-button" type="button" data-view="driveView">Drive 更新</button>
+        <button class="tab-button" type="button" data-view="evidenceView">月報佐證</button>
+        <button class="tab-button" type="button" data-view="workView">工項進度</button>
+        <button class="tab-button" type="button" data-view="spaceView">空間營運</button>
+        <button class="tab-button" type="button" data-view="repairView">修繕經費</button>
+        <button class="tab-button" type="button" data-view="casesView">案件列管</button>
+        <button class="tab-button" type="button" data-view="summaryView">主管摘要</button>
+      </nav>
+
+      <section id="overviewView" class="view active">
+        <section class="overview-grid">
+          <div class="panel priority-panel">
+            <div class="section-heading">
+              <h2>需要注意</h2>
+              <span id="alertCount">0 項</span>
+            </div>
+            <div id="alertList" class="alert-list"></div>
+          </div>
+          <div class="panel">
+            <div class="section-heading">
+              <h2>近期 Drive 動態</h2>
+              <span id="latestDriveDate">-</span>
+            </div>
+            <div id="recentDriveList" class="compact-list"></div>
+          </div>
+          <div class="panel">
+            <div class="section-heading">
+              <h2>本週空間回報</h2>
+              <span id="spaceWeek">-</span>
+            </div>
+            <div id="spaceSnapshot" class="stat-grid"></div>
+          </div>
+          <div class="panel">
+            <div class="section-heading">
+              <h2>工項狀態</h2>
+              <span id="workStatusCount">0 項</span>
+            </div>
+            <div id="workStatusList" class="compact-list"></div>
+          </div>
+        </section>
+      </section>
+
+      <section id="driveView" class="view">
+        <section class="panel">
+          <div class="section-heading">
+            <h2>Drive 來源監控</h2>
+            <label class="inline-filter">
+              <span>顯示</span>
+              <select id="driveStatusFilter">
+                <option value="">全部</option>
+                <option value="ok">正常</option>
+                <option value="watch">注意</option>
+                <option value="risk">風險</option>
+              </select>
+            </label>
+          </div>
+          <div id="driveSourceList" class="source-list"></div>
+        </section>
+      </section>
+
+      <section id="evidenceView" class="view">
+        <section class="panel">
+          <div class="section-heading">
+            <h2>月報佐證檢核</h2>
+            <span id="evidenceMonth">本月</span>
+          </div>
+          <div id="evidenceList" class="evidence-grid"></div>
+        </section>
+      </section>
+
+      <section id="workView" class="view">
+        <section class="panel">
+          <div class="section-heading">
+            <h2>工項進度</h2>
+            <label class="inline-filter">
+              <span>分類</span>
+              <select id="categoryFilter">
+                <option value="">全部</option>
+              </select>
+            </label>
+          </div>
+          <div id="workItemList" class="table-list"></div>
+        </section>
+      </section>
+
+      <section id="spaceView" class="view">
+        <section class="panel">
+          <div class="section-heading">
+            <h2>空間營運</h2>
+            <span>審計新村 / 光復新村</span>
+          </div>
+          <div id="spaceDetail" class="space-grid"></div>
+        </section>
+      </section>
+
+      <section id="repairView" class="view">
+        <section class="panel">
+          <div class="section-heading">
+            <h2>修繕與經費</h2>
+            <span id="repairUpdated">-</span>
+          </div>
+          <div id="repairSummary" class="budget-bar"></div>
+          <div id="repairList" class="table-list"></div>
+        </section>
+      </section>
+
+      <section id="casesView" class="view">
+        <section class="panel">
+          <div class="section-heading">
+            <h2>案件列管</h2>
+            <span id="caseCount">0 件</span>
+          </div>
+          <div id="caseList" class="case-grid"></div>
+        </section>
+      </section>
+
+      <section id="summaryView" class="view">
+        <section class="panel">
+          <div class="section-heading">
+            <h2>主管摘要</h2>
+            <span id="summaryGeneratedAt">-</span>
+          </div>
+          <textarea id="managerSummary" rows="18" readonly></textarea>
+        </section>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="./config.js"></script>
+    <script src="./data.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

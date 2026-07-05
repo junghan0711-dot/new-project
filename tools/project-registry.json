@@ -62,6 +62,26 @@
       }
     },
     {
+      "id": "taichung-youth-base",
+      "name": "中部青創基地營運總控台",
+      "office": "中部",
+      "type": "drive-dashboard",
+      "status": "draft",
+      "toolDir": "tools/taichung-youth-base",
+      "pageUrl": "https://junghan0711-dot.github.io/new-project/tools/taichung-youth-base/",
+      "driveRootUrl": "https://drive.google.com/drive/folders/0AN_42cvSSGfMUk9PVA",
+      "features": {
+        "driveMonitoring": true,
+        "evidenceChecklist": true,
+        "workItemSummary": true,
+        "spaceOperations": true,
+        "repairBudget": true,
+        "caseWatchlist": true,
+        "managerSummary": true,
+        "writeBack": false
+      }
+    },
+    {
       "id": "company-dashboard",
       "name": "公司專案總控台",
       "office": "總控台",
