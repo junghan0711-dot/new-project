@@ -3,6 +3,13 @@ const EVIDENCE_FOLDER_ID = "114qmRGC4XnNNkQF0dnKhTL4hgWTsh7L9";
 const SPACE_REPORT_SPREADSHEET_ID = "1k7hU4dBymaM31XNDWD5fbiHOlHlF3Xjfxh0ooAgvTaA";
 const DASHBOARD_SOURCES = [
   {
+    name: "勞工局契約書_內容+頁碼_v2",
+    id: "1NUn3uuM5y4Qent2MwA6jAB3QA59Sd9JH9EFyXi6UP4M",
+    type: "Google Doc / PDF",
+    url: "https://docs.google.com/document/d/1NUn3uuM5y4Qent2MwA6jAB3QA59Sd9JH9EFyXi6UP4M/edit",
+    sensitive: false,
+  },
+  {
     name: "青創基地每週空間回報",
     id: "1k7hU4dBymaM31XNDWD5fbiHOlHlF3Xjfxh0ooAgvTaA",
     type: "Google Sheet",

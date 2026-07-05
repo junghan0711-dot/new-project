@@ -78,6 +78,8 @@
       sources: remote.sources && remote.sources.length ? remote.sources : base.sources,
       workItems: remote.workItems && remote.workItems.length ? remote.workItems : base.workItems,
       evidenceCategories: remote.evidenceCategories && remote.evidenceCategories.length ? remote.evidenceCategories : base.evidenceCategories,
+      contract: remote.contract || base.contract,
+      contractRequirements: remote.contractRequirements && remote.contractRequirements.length ? remote.contractRequirements : base.contractRequirements,
       spaceReport: remote.spaceReport || base.spaceReport,
       repairBudget: remote.repairBudget || base.repairBudget,
       cases: remote.cases && remote.cases.length ? remote.cases : base.cases,
@@ -98,6 +100,7 @@
     renderSpaceDetail();
     renderRepairs();
     renderCases();
+    renderContract();
     renderManagerSummary();
   }
 
@@ -144,7 +147,14 @@
         title: item.title,
         text: item.note,
       }));
-    return [...caseAlerts, ...workAlerts, ...sourceAlerts].slice(0, 12);
+    const contractAlerts = (data.contractRequirements || [])
+      .filter((item) => item.status === "risk")
+      .map((item) => ({
+        status: item.status,
+        title: item.title,
+        text: `${item.due}｜${item.requirement}`,
+      }));
+    return [...contractAlerts, ...caseAlerts, ...workAlerts, ...sourceAlerts].slice(0, 12);
   }
 
   function renderAlerts() {
@@ -336,10 +346,51 @@
     `).join("");
   }
 
+  function renderContract() {
+    const contract = state.data.contract || {};
+    const requirements = state.data.contractRequirements || [];
+    $("contractCount").textContent = `${requirements.length} 項`;
+    $("contractMeta").innerHTML = `
+      <div class="stat-grid">
+        <div class="stat"><span>案名</span><strong>${escapeHtml(contract.title || "-")}</strong></div>
+        <div class="stat"><span>契約金額</span><strong>${formatMoney(contract.amount || 0)}</strong></div>
+        <div class="stat"><span>履約期間</span><strong>${escapeHtml(contract.period || "-")}</strong></div>
+        <div class="stat"><span>機關</span><strong>${escapeHtml(contract.agency || "-")}</strong></div>
+      </div>
+      <p class="subtle contract-note">合約原文留在 Drive 權限內；公開頁只顯示履約摘要、期限、佐證與風險。</p>
+    `;
+    $("contractList").innerHTML = requirements.map((item) => `
+      <article class="contract-item">
+        <div class="item-title">
+          <div>
+            <h3>${escapeHtml(item.id)}｜${escapeHtml(item.title)}</h3>
+            <p class="subtle">${escapeHtml(item.source)}｜${escapeHtml(item.category)}｜期限：${escapeHtml(item.due)}</p>
+          </div>
+          ${pill(item.status)}
+        </div>
+        <div class="contract-columns">
+          <div>
+            <span class="field-label">合約要求</span>
+            <p>${escapeHtml(item.requirement)}</p>
+          </div>
+          <div>
+            <span class="field-label">必要佐證</span>
+            <p>${escapeHtml(item.evidence)}</p>
+          </div>
+          <div>
+            <span class="field-label">對應頁籤</span>
+            <p>${escapeHtml(item.dashboardMapping)}</p>
+          </div>
+        </div>
+      </article>
+    `).join("");
+  }
+
   function renderManagerSummary() {
     const data = state.data;
     const alerts = collectAlerts();
     const evidence = data.evidenceCategories || [];
+    const contractRisks = (data.contractRequirements || []).filter((item) => item.status === "risk");
     const missingEvidence = evidence.filter((item) => item.status !== "ok").slice(0, 8);
     const budget = data.repairBudget || {};
     const report = data.spaceReport || {};
@@ -350,9 +401,13 @@
       `空間回報：最新 ${report.week || "-"}，進駐 ${((report.total || {}).occupied || 0)}，空缺 ${((report.total || {}).vacant || 0)}，下次回報 ${report.nextDue || "-"}`,
       `修繕經費：總經費 ${formatMoney(budget.total || 0)}，已用 ${formatMoney(budget.spent || 0)}，剩餘 ${formatMoney(budget.balance || 0)}`,
       `月報佐證：${evidence.filter((item) => item.status === "ok").length}/${evidence.length} 類目前標示正常`,
+      `合約風險：${contractRisks.length} 項需優先確認`,
       "",
       "優先追蹤：",
       ...alerts.slice(0, 6).map((item, index) => `${index + 1}. [${statusLabels[item.status] || item.status}] ${item.title}：${item.text}`),
+      "",
+      "合約履約重點：",
+      ...(data.contractRequirements || []).slice(0, 6).map((item, index) => `${index + 1}. ${item.title}（${item.due}）：${item.evidence}`),
       "",
       "本月佐證待確認：",
       ...missingEvidence.map((item, index) => `${index + 1}. ${item.name}`),

@@ -429,6 +429,48 @@ textarea {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.contract-meta {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.contract-note {
+  padding: 0 2px;
+}
+
+.contract-list {
+  display: grid;
+  gap: 12px;
+}
+
+.contract-item {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  background: #ffffff;
+}
+
+.contract-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(180px, 0.7fr);
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.contract-columns p {
+  color: var(--ink);
+  font-size: 14px;
+}
+
 .toast {
   position: fixed;
   right: 18px;
@@ -475,7 +517,8 @@ textarea {
   }
 
   .table-row,
-  .source-item {
+  .source-item,
+  .contract-columns {
     grid-template-columns: 1fr;
   }
 }

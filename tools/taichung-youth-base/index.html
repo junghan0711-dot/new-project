@@ -48,6 +48,7 @@
         <button class="tab-button" type="button" data-view="spaceView">空間營運</button>
         <button class="tab-button" type="button" data-view="repairView">修繕經費</button>
         <button class="tab-button" type="button" data-view="casesView">案件列管</button>
+        <button class="tab-button" type="button" data-view="contractView">合約對照</button>
         <button class="tab-button" type="button" data-view="summaryView">主管摘要</button>
       </nav>
 
@@ -155,6 +156,17 @@
             <span id="caseCount">0 件</span>
           </div>
           <div id="caseList" class="case-grid"></div>
+        </section>
+      </section>
+
+      <section id="contractView" class="view">
+        <section class="panel">
+          <div class="section-heading">
+            <h2>合約履約對照</h2>
+            <span id="contractCount">0 項</span>
+          </div>
+          <div id="contractMeta" class="contract-meta"></div>
+          <div id="contractList" class="contract-list"></div>
         </section>
       </section>
 

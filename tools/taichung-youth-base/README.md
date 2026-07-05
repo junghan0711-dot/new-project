@@ -21,11 +21,14 @@
 - 空間營運：依 `青創基地每週空間回報` 顯示審計/光復進駐與空缺。
 - 修繕經費：依 `摘星計畫區房舍修繕費用統計表.xlsx` 顯示已用與剩餘。
 - 案件列管：先放合約、月報格式、空間申請、競爭型補助、座談反映事項等管理提醒。
+- 合約對照：依勞工局契約與邀標書摘要付款條件、月報、期中/期末、活動、保全清潔等履約要求。
 - 主管摘要：可一鍵複製成週會或月報用文字。
 
 ## 主要 Drive 來源
 
 - 根目錄：`https://drive.google.com/drive/folders/0AN_42cvSSGfMUk9PVA`
+- 合約資料夾：`https://drive.google.com/drive/folders/1nlUYx03E6GctEoCXiNVaNsaZRGqS2bjd`
+- 合約 Google Doc：`https://docs.google.com/document/d/1NUn3uuM5y4Qent2MwA6jAB3QA59Sd9JH9EFyXi6UP4M`
 - 每週空間回報：`https://docs.google.com/spreadsheets/d/1k7hU4dBymaM31XNDWD5fbiHOlHlF3Xjfxh0ooAgvTaA`
 - 工項進度表：`https://docs.google.com/spreadsheets/d/1te31KWIfonRdR-zBQcC-ejfIr5hYWeli`
 - 修繕費用表：`https://docs.google.com/spreadsheets/d/1pEacGjwdO_esmTOr2MuALYuUOEz7MHFE`
