@@ -72,19 +72,27 @@
   }
 
   function mergeData(base, remote) {
+    const hasRemoteSpace = hasValidSpaceReport(remote.spaceReport);
     return {
       ...base,
       ...remote,
       sources: remote.sources && remote.sources.length ? remote.sources : base.sources,
       workItems: remote.workItems && remote.workItems.length ? remote.workItems : base.workItems,
       evidenceCategories: remote.evidenceCategories && remote.evidenceCategories.length ? remote.evidenceCategories : base.evidenceCategories,
-      baseOverview: remote.baseOverview && remote.baseOverview.length ? remote.baseOverview : base.baseOverview,
+      baseOverview: remote.baseOverview && remote.baseOverview.length && hasRemoteSpace ? remote.baseOverview : base.baseOverview,
       contract: remote.contract || base.contract,
       contractRequirements: remote.contractRequirements && remote.contractRequirements.length ? remote.contractRequirements : base.contractRequirements,
-      spaceReport: remote.spaceReport || base.spaceReport,
+      spaceReport: hasRemoteSpace ? remote.spaceReport : base.spaceReport,
       repairBudget: remote.repairBudget || base.repairBudget,
       cases: remote.cases && remote.cases.length ? remote.cases : base.cases,
     };
+  }
+
+  function hasValidSpaceReport(report) {
+    if (!report || report.error) return false;
+    const guangfu = report.guangfu || {};
+    const shenji = report.shenji || {};
+    return Boolean(report.week && (guangfu.available || guangfu.occupied || shenji.available || shenji.occupied));
   }
 
   function renderAll() {

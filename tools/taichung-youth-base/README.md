@@ -51,13 +51,21 @@
 
 ## 後端部署方式
 
-`apps-script/Code.gs` 是索引器草稿，預計部署為 Web App 後填入 `config.js`：
+`apps-script/Code.gs` 是 Drive 索引器，已建立 Apps Script Web App 並寫入 `config.js`：
 
 ```js
 window.TAICHUNG_YOUTH_BASE_CONFIG = {
-  apiUrl: "https://script.google.com/macros/s/<deployment-id>/exec",
+  apiUrl: "https://script.google.com/macros/s/AKfycbxqXRN3oe2DfPZ6AFruu92bTL5b60PlgwsNdpMeGYMzOWv6hm0HLCF1_RSrDyNtU7KS/exec",
   driveRootUrl: "https://drive.google.com/drive/folders/0AN_42cvSSGfMUk9PVA",
 };
 ```
 
-目前尚未部署 Apps Script，也尚未建立正式中控 Google Sheet。索引器已預留光復/審計/共用分類，並會把每週空間回報中的「與某日同」解析成實際數值，避免主管頁顯示 0。
+Apps Script 專案：
+
+- Script ID：`1zZZ7eLW14BRvcPg9nAHSpZF587ZwIXspmt0IA0_pmSXfX5OUYwoBbccT`
+- Deployment ID：`AKfycbxqXRN3oe2DfPZ6AFruu92bTL5b60PlgwsNdpMeGYMzOWv6hm0HLCF1_RSrDyNtU7KS`
+- 目前版本：v3，`health` 與 Drive 來源可回傳 JSON。
+
+索引器已預留光復/審計/共用分類，並會把每週空間回報中的「與某日同」解析成實際數值，避免主管頁顯示 0。若 `spaceReport` 因試算表權限尚未完成而回傳錯誤，前端會保留快照空間數，不覆蓋成 0。
+
+待完成：Apps Script 仍需在編輯器手動執行一次 `authorize` 並允許試算表權限，讓 `SpreadsheetApp.openById` 可讀取每週空間回報。

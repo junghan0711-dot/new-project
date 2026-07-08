@@ -81,6 +81,15 @@
         "contractMapping": true,
         "managerSummary": true,
         "writeBack": false
+      },
+      "appsScript": {
+        "scriptId": "1zZZ7eLW14BRvcPg9nAHSpZF587ZwIXspmt0IA0_pmSXfX5OUYwoBbccT",
+        "deploymentId": "AKfycbxqXRN3oe2DfPZ6AFruu92bTL5b60PlgwsNdpMeGYMzOWv6hm0HLCF1_RSrDyNtU7KS",
+        "webAppUrl": "https://script.google.com/macros/s/AKfycbxqXRN3oe2DfPZ6AFruu92bTL5b60PlgwsNdpMeGYMzOWv6hm0HLCF1_RSrDyNtU7KS/exec",
+        "executeAs": "USER_DEPLOYING",
+        "access": "ANYONE_ANONYMOUS",
+        "status": "partial",
+        "note": "health and Drive metadata return JSON; SpreadsheetApp scope still needs manual authorize for spaceReport."
       }
     },
     {

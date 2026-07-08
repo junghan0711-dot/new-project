@@ -129,6 +129,22 @@ function listData_() {
   };
 }
 
+function authorize() {
+  return authorize_();
+}
+
+function authorize_() {
+  const root = DriveApp.getFolderById(DRIVE_ROOT_ID);
+  const evidence = DriveApp.getFolderById(EVIDENCE_FOLDER_ID);
+  const spreadsheet = SpreadsheetApp.openById(SPACE_REPORT_SPREADSHEET_ID);
+  return {
+    ok: true,
+    driveRootName: root.getName(),
+    evidenceFolderName: evidence.getName(),
+    spaceReportName: spreadsheet.getName(),
+  };
+}
+
 function listDashboardSources_() {
   return DASHBOARD_SOURCES.map((source) => {
     const updated = getDriveItemUpdated_(source.id);
@@ -192,6 +208,7 @@ function readSpaceReport_() {
       total: parseTotalCell_(totalText, visitText),
     };
   } catch (error) {
+    fallback.error = error.message;
     return fallback;
   }
 }
@@ -248,7 +265,10 @@ function classifyBase_(name) {
 
 function findLatestSpaceRowIndex_(rows) {
   for (let i = rows.length - 1; i >= 0; i -= 1) {
-    if (rows[i][0] && (rows[i][1] || rows[i][2] || rows[i][3] || rows[i][4])) return i;
+    if (!rows[i][0]) continue;
+    const guangfu = parseSpaceCell_(resolveSpaceValue_(rows, i, 1, {}));
+    const shenji = parseSpaceCell_(resolveSpaceValue_(rows, i, 2, {}));
+    if (guangfu.available || guangfu.occupied || shenji.available || shenji.occupied) return i;
   }
   return -1;
 }
