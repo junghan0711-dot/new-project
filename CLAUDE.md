@@ -27,6 +27,11 @@
 4. 依案名讀對應 `專案-*.md`。
 5. 只有需要查證內容或產製交付文件時，才讀專案附件資料夾；不要主動搬移、複製或整理 `2026 Data base` 的大型附件。
 
+### 雲嘉南辦公室最新資料來源
+- 雲嘉南辦公室共用 Google Drive：`https://drive.google.com/drive/folders/1jNaw1lhRfH8_wK_a6Y716rVwbvI02VVD`
+- 同仁會持續更新該資料夾；凡處理雲嘉南辦公室、多元就業開發方案、多元培力、活動、市集、月報、報支、收發文或相關交付事項，必須先連線檢查此 Drive 的最新目錄、檔案與修改狀態，再對照 `2026 Data base` 與本機產製副本。
+- Google Drive 為動態權威來源；本機同步檔與既有輸出只作為快照。若內容不一致，以 Drive 最新版本為判斷基礎，並標明查核時間及差異，涉及覆寫或重大決策時先請使用者確認。
+
 ## Firebase
 - 專案 ID：`my-teaching-tools-ea0ed`
 - Firestore database：`(default)`
