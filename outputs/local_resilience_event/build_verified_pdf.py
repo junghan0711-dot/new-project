@@ -12,9 +12,10 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import SimpleDocTemplate, Paragraph as P, Spacer, Table as RT, TableStyle, PageBreak, KeepTogether
 from xml.sax.saxutils import escape
+import os
 
-DOCX = "/Users/junghanchiu/Documents/New project/outputs/local_resilience_event/地方韌性跨域共創發表會_行前參考指南_20260715.docx"
-OUT = "/Users/junghanchiu/Documents/New project/outputs/local_resilience_event/地方韌性跨域共創發表會_行前參考指南_20260715.pdf"
+DOCX = os.environ.get("SOURCE_DOCX", "/Users/junghanchiu/Documents/New project/outputs/local_resilience_event/地方韌性跨域共創發表會_行前參考指南_20260715.docx")
+OUT = os.environ.get("OUTPUT_PDF", "/Users/junghanchiu/Documents/New project/outputs/local_resilience_event/地方韌性跨域共創發表會_行前參考指南_20260715.pdf")
 FONT = "/System/Library/Fonts/STHeiti Medium.ttc"
 pdfmetrics.registerFont(TTFont("STHeiti", FONT, subfontIndex=0))
 
@@ -98,6 +99,6 @@ def footer(canvas, doc):
     canvas.restoreState()
 
 pdf = SimpleDocTemplate(OUT, pagesize=letter, leftMargin=inch, rightMargin=inch, topMargin=.72*inch, bottomMargin=.68*inch,
-                        title="地方韌性跨域共創發表會行前參考指南", author="Codex")
+                        title=os.environ.get("PDF_TITLE", "地方韌性跨域共創發表會行前參考指南"), author="Codex")
 pdf.build(story, onFirstPage=footer, onLaterPages=footer)
 print(OUT)

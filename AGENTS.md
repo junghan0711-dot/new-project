@@ -12,6 +12,9 @@
 - 使用者說「開工」時，讀工作筆記（先看「交辦區」有無 Claude 交辦的事項）、檢查 git 狀態、建議下一步，不主動 pull。
 - 多 AI 協作：與 Claude 無固定分工，任何工作都可承接，成果一律依回存原則彙整回 `2026 Data base`。要交辦對方或留給下個工作階段的事寫進工作筆記「交辦區」；commit 訊息開頭註明 `[codex]`；同一時間只讓一個 AI 修改 `2026 Data base`；改了 `.scripts/` 排程要同步更新該 vault 的 `知識庫/工具設定-本機自動化總覽.md`。
 - 使用者說「收工」時，更新工作筆記、commit、push；不要加入本機設定或敏感檔案。
+- 所有公司作業預設啟動「知識沉澱反射」，不必等待使用者另行要求：開始前先查 `/Users/junghanchiu/2026 Data base/知識庫/公司方法庫/index.md` 是否有可複用方法；完成後檢查是否可跨案重用、影響成本／品質／進度／客戶判斷、形成決策邏輯／風險規則／模板／SOP，或為既有方法提供新證據／反例。符合任兩項即主動建立或更新公司方法頁。
+- 知識分流：當次事實與決策回寫對應專案；跨案原則進 `知識庫/公司方法庫/`；可直接操作的格式進 `Templates/` 或 `創作庫/`，並以 wikilink 雙向串聯。未驗證內容標為「想法」或「試行」，不得直接稱為公司標準；重大規範變更或敏感事項先確認。
+- 新增或更新公司方法後，同步更新 `知識庫/index.md`、`知識庫/log.md`、方法頁成熟度與對應專案的 `related_knowledge`／進度紀錄。一次性、無複用價值的行政動作只記專案進度，不為形式製造知識頁。
 - Firebase 專案是 `my-teaching-tools-ea0ed`，Firestore 規則在 `firestore.rules`。
 - Obsidian 工作筆記在 `/Users/junghanchiu/Library/Mobile Documents/iCloud~md~obsidian/Documents/New project/工作筆記.md`。
 - 不要把 `2026 Data base` 的大型附件、`.claude/`、`.codex/`、`.scripts/`、`.env`、憑證、金鑰或 token 加入 git。
