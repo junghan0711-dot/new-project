@@ -1,0 +1,52 @@
+#!/bin/sh
+set -eu
+
+MAX_BYTES=10485760
+blocked=0
+
+staged_paths="$(mktemp)"
+trap 'rm -f "$staged_paths"' EXIT HUP INT TERM
+git diff --cached --name-only --diff-filter=ACMR >"$staged_paths"
+
+while IFS= read -r path; do
+  [ -n "$path" ] || continue
+
+  case "/$path/" in
+    */.claude/*|*/.codex/*|*/.scripts/*)
+      echo "拒絕提交本機 AI／自動化設定：$path" >&2
+      blocked=1
+      ;;
+  esac
+
+  lower_path="$(printf '%s' "$path" | tr '[:upper:]' '[:lower:]')"
+  case "$lower_path" in
+    .env|*/.env|*.pem|*.p12|*.key|*credential*|*service-account*.json|*gdrive_credentials.json)
+      echo "拒絕提交疑似憑證或金鑰檔：$path" >&2
+      blocked=1
+      ;;
+  esac
+
+  size="$(git cat-file -s ":$path" 2>/dev/null || printf '0')"
+  if [ "$size" -gt "$MAX_BYTES" ] && [ "${ALLOW_LARGE_FILES:-0}" != "1" ]; then
+    echo "拒絕提交超過 10 MiB 的檔案：$path" >&2
+    echo "若已確認可公開且必須進版控，可單次使用 ALLOW_LARGE_FILES=1 git commit。" >&2
+    blocked=1
+  fi
+done <"$staged_paths"
+
+secret_files="$(git grep --cached -I -l -E \
+  '-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----|OPENAI_API_KEY=[[:space:]]*sk-|sk-proj-[A-Za-z0-9_-]{20,}|\"private_key\"[[:space:]]*:[[:space:]]*\"-----BEGIN PRIVATE KEY-----' \
+  -- . ':(exclude).githooks/pre-commit' 2>/dev/null || true)"
+
+if [ -n "$secret_files" ]; then
+  echo "拒絕提交疑似密鑰內容，請檢查以下檔案：" >&2
+  printf '%s\n' "$secret_files" >&2
+  blocked=1
+fi
+
+if [ "$blocked" -ne 0 ]; then
+  echo "提交已中止；未修改暫存區內容。" >&2
+  exit 1
+fi
+
+exit 0

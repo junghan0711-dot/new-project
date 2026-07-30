@@ -24,3 +24,10 @@ package-lock.json
 
 # Generated presentation work directories
 outputs/manual-*/
+
+# Artifact QA and inspection intermediates
+outputs/**/*_工作檔/
+outputs/docx_qa*/
+outputs/**/*.inspect.ndjson
+outputs/*.inspect.ndjson
+tmp/
