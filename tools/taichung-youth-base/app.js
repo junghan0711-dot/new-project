@@ -56,8 +56,13 @@
           throw new Error((payload && payload.error) || "API 回傳失敗");
         }
         state.data = mergeData(embedded, payload);
-        state.mode = "已連線";
-        updateConnectionBanner("ok", "Drive 即時資料已連線", `資料產生時間：${formatDateTime(payload.generatedAt)}`);
+        const liveSpaceReport = hasValidSpaceReport(payload.spaceReport);
+        state.mode = liveSpaceReport ? "已連線" : "部分連線";
+        if (liveSpaceReport) {
+          updateConnectionBanner("ok", "Drive 即時資料已連線", `資料產生時間：${formatDateTime(payload.generatedAt)}`);
+        } else {
+          updateConnectionBanner("warning", "Drive 已連線，空間週報使用快照", `資料產生時間：${formatDateTime(payload.generatedAt)}；SpreadsheetApp 尚待授權。`);
+        }
       } else {
         state.data = embedded;
         state.mode = "快照";
