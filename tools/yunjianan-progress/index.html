@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>115 雲嘉南多元計畫進度填報</title>
-    <link rel="stylesheet" href="./styles.css?v=source-status-colors-20260629" />
+    <link rel="stylesheet" href="./styles.css?v=dashboard-refresh-20260808" />
   </head>
   <body>
     <header class="topbar">
@@ -17,6 +17,14 @@
         <button id="refreshButton" class="button" type="button">重新整理</button>
       </div>
     </header>
+
+    <section id="connectionBanner" class="connection-banner loading" aria-live="polite">
+      <span id="connectionState" class="connection-dot" aria-hidden="true"></span>
+      <div>
+        <strong id="connectionTitle">正在連接即時資料</strong>
+        <p id="connectionDetail">初次載入約需 10–15 秒，完成前數字會暫時顯示為 0。</p>
+      </div>
+    </section>
 
     <main class="layout">
       <section class="panel summary-panel" aria-label="進度摘要">
@@ -823,6 +831,6 @@
 
     <script src="./config.js?v=api-contacts-hidden-20260609"></script>
     <script src="./data.js"></script>
-    <script src="./app.js?v=source-status-colors-20260629"></script>
+    <script src="./app.js?v=dashboard-refresh-20260808"></script>
   </body>
 </html>

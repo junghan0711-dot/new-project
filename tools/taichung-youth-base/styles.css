@@ -79,6 +79,53 @@ h3 {
   gap: 10px;
 }
 
+.connection-banner {
+  width: min(1440px, calc(100% - 48px));
+  margin: 16px auto 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid #afd9d0;
+  border-radius: 8px;
+  background: #edf8f5;
+  color: var(--brand-dark);
+}
+
+.connection-banner p {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.connection-banner.warning {
+  border-color: #e6c77a;
+  background: var(--soft-warn);
+}
+
+.connection-banner.error {
+  border-color: #e4a79c;
+  background: var(--soft-risk);
+}
+
+.connection-dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 6px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--brand);
+  box-shadow: 0 0 0 4px rgba(22, 107, 92, 0.12);
+}
+
+.connection-banner.loading .connection-dot {
+  animation: connection-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes connection-pulse {
+  50% { opacity: 0.35; }
+}
+
 .button {
   min-height: 40px;
   border: 1px solid var(--brand);

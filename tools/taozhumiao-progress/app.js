@@ -33,6 +33,7 @@
     selectedSheetName: "",
     selectedCalendarMonth: "",
     loading: false,
+    duplicateCaseCount: 0,
   };
 
   const $ = (id) => document.getElementById(id);
@@ -140,6 +141,17 @@
     state.loading = isLoading;
     $("refreshButton").disabled = isLoading;
     $("refreshButton").textContent = isLoading ? "讀取中" : "重新整理";
+    if (isLoading) {
+      updateConnectionBanner("loading", "正在連接即時資料", "初次載入約需 10–15 秒，完成前數字會暫時顯示為 0。");
+    }
+  }
+
+  function updateConnectionBanner(status, title, detail) {
+    const banner = $("connectionBanner");
+    if (!banner) return;
+    banner.className = `connection-banner ${status}`;
+    $("connectionTitle").textContent = title;
+    $("connectionDetail").textContent = detail;
   }
 
   function jsonp(url) {
@@ -183,14 +195,18 @@
           sheets: payload.sheets || embedded.sheets || [],
         });
         $("dataMode").textContent = "已連線";
+        const qualityText = state.duplicateCaseCount ? `；已排除 ${state.duplicateCaseCount} 筆疑似重複案件` : "";
+        updateConnectionBanner("ok", "即時資料已連線", `資料時間：${latestDataTime()}${qualityText}`);
       } else {
         setData(embedded);
         $("dataMode").textContent = "完整快照";
+        updateConnectionBanner("warning", "目前使用完整快照", `快照時間：${latestDataTime()}；送出前請確認網路連線。`);
       }
       renderAll();
     } catch (error) {
       setData(embedded);
       $("dataMode").textContent = "快照備援";
+      updateConnectionBanner("error", "即時資料讀取失敗", `目前使用快照備援：${error.message}`);
       renderMessage(`讀取線上資料失敗，已使用完整快照：${error.message}`, "error");
       renderAll();
     } finally {
@@ -203,7 +219,9 @@
     state.tasks = (payload.tasks || []).map(normalizeTask);
     state.updates = payload.updates || [];
     state.expenses = payload.expenses || [];
-    state.cases = (payload.cases || []).map(normalizeCase);
+    const dedupedCases = dedupeCases((payload.cases || []).map(normalizeCase));
+    state.cases = dedupedCases.cases;
+    state.duplicateCaseCount = dedupedCases.duplicates.length;
     state.caseUpdates = mergeCaseUpdates(payload.caseUpdates || [], state.localCaseUpdates);
     state.consultations = (payload.consultations || []).map(normalizeConsultation);
     state.calendarEvents = (payload.calendarEvents || []).map(normalizeCalendarEvent);
@@ -288,6 +306,28 @@
       modifiedBy: displayPersonName(record.modifiedBy || record["最後修改人"] || ""),
       modifiedAt: record.modifiedAt || record["最後修改時間"] || "",
     };
+  }
+
+  function dedupeCases(cases) {
+    const seen = new Map();
+    const unique = [];
+    const duplicates = [];
+    cases.forEach((record) => {
+      const fingerprint = [record.title, record.assignee, record.instruction, record.deadline]
+        .map((value) => String(value || "").trim().replace(/\s+/g, " ").toLowerCase())
+        .join("|");
+      if (!fingerprint.replace(/\|/g, "")) {
+        unique.push(record);
+        return;
+      }
+      if (seen.has(fingerprint)) {
+        duplicates.push({ kept: seen.get(fingerprint).caseId, duplicate: record.caseId });
+        return;
+      }
+      seen.set(fingerprint, record);
+      unique.push(record);
+    });
+    return { cases: unique, duplicates };
   }
 
   function normalizeConsultation(record) {
@@ -380,6 +420,7 @@
       `資料更新時間：${latestDataTime()}`,
       `即時彙整 7 張 / 原始快照 ${state.originalSheetCount} 張`,
       `${state.items.length} 筆工項 / ${state.tasks.length} 筆明細`,
+      state.duplicateCaseCount ? `已排除 ${state.duplicateCaseCount} 筆疑似重複案件` : "資料未發現重複案件",
     ];
     $("sourceMeta").textContent = meta.join(" / ");
   }

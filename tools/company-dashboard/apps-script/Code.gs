@@ -426,9 +426,10 @@ function summarizeProject_(project) {
   const contacts = readRecords_(spreadsheet, SHEETS.contacts);
   const modificationHistory = readRecords_(spreadsheet, SHEETS.modificationHistory);
   const itemSummaries = items.map((item) => summarizeItem_(item, updates));
-  const caseSummaries = cases.map((record) => summarizeCase_(record, caseUpdates));
+  const dedupedCases = deduplicateCaseSummaries_(cases.map((record) => summarizeCase_(record, caseUpdates)));
+  const caseSummaries = dedupedCases.cases;
   const people = summarizePeople_(itemSummaries, updates);
-  const metrics = projectMetrics_(itemSummaries, updates, expenses, caseSummaries, consultations);
+  const metrics = projectMetrics_(itemSummaries, updates, expenses, caseSummaries, consultations, dedupedCases.duplicates.length);
   const status = projectStatus_(metrics);
 
   return {
@@ -441,7 +442,13 @@ function summarizeProject_(project) {
     metrics,
     people,
     followUps: projectFollowUps_(itemSummaries, caseSummaries),
-    issues: projectIssues_(itemSummaries, expenses, caseSummaries, consultations),
+    issues: projectIssues_(itemSummaries, expenses, caseSummaries, consultations).concat(
+      dedupedCases.duplicates.length ? [{
+        level: "warning",
+        title: "疑似重複案件已排除統計",
+        detail: dedupedCases.duplicates.map((item) => `${item.duplicate} 與 ${item.kept}`).join("、"),
+      }] : []
+    ),
     reviewItems: projectReviewItems_(caseSummaries),
     recentUpdates: recentUpdates_(updates),
     consultations: summarizeConsultations_(consultations),
@@ -449,6 +456,9 @@ function summarizeProject_(project) {
     modificationHistory: modificationHistory.map((record) => summarizeModification_(record)),
     workload: projectWorkload_(itemSummaries, caseSummaries, consultations),
     latestDataTime: latestDataTime_(itemSummaries, updates, cases, caseUpdates, consultations),
+    dataQuality: {
+      duplicateCases: dedupedCases.duplicates,
+    },
   };
 }
 
@@ -539,6 +549,7 @@ function emptyMetrics_() {
     expensesMissingVoucher: 0,
     consultations: 0,
     consultationsThisMonth: 0,
+    duplicateCases: 0,
   };
 }
 
@@ -632,6 +643,28 @@ function summarizeCase_(record, updates) {
   };
 }
 
+function deduplicateCaseSummaries_(cases) {
+  const seen = {};
+  const unique = [];
+  const duplicates = [];
+  cases.forEach((record) => {
+    const fingerprint = [record.title, record.assignee, record.deadline, record.progress]
+      .map((value) => String(value || "").trim().replace(/\s+/g, " ").toLowerCase())
+      .join("|");
+    if (!fingerprint.replace(/\|/g, "")) {
+      unique.push(record);
+      return;
+    }
+    if (seen[fingerprint]) {
+      duplicates.push({ kept: seen[fingerprint].caseId, duplicate: record.caseId });
+      return;
+    }
+    seen[fingerprint] = record;
+    unique.push(record);
+  });
+  return { cases: unique, duplicates };
+}
+
 function latestCaseUpdate_(caseId, updates) {
   let latest = {};
   updates.forEach((record, index) => {
@@ -650,7 +683,7 @@ function latestCaseUpdate_(caseId, updates) {
   return latest;
 }
 
-function projectMetrics_(items, updates, expenses, cases, consultations) {
+function projectMetrics_(items, updates, expenses, cases, consultations, duplicateCaseCount) {
   const openCases = cases.filter((record) => record.status !== "已完成");
   const expenseTotal = expenses.reduce((sum, record) => {
     const amount = Number(String(value_(record, ["金額"]) || "0").replace(/,/g, "")) || 0;
@@ -675,6 +708,7 @@ function projectMetrics_(items, updates, expenses, cases, consultations) {
     }).length,
     consultations: consultations.length,
     consultationsThisMonth: consultations.filter((record) => sameMonth_(value_(record, ["月份", "輔導日期"]))).length,
+    duplicateCases: Number(duplicateCaseCount || 0),
   };
 }
 

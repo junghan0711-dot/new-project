@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>中部青創基地營運總控台</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23166b5c'/%3E%3Cpath d='M14 42h36v6H14zM18 18h12v18H18zM34 14h12v22H34z' fill='white'/%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=dashboard-refresh-20260808" />
   </head>
   <body>
     <header class="topbar">
@@ -19,6 +19,14 @@
         <button id="refreshButton" class="button primary" type="button">重新整理</button>
       </div>
     </header>
+
+    <section id="connectionBanner" class="connection-banner loading" aria-live="polite">
+      <span class="connection-dot" aria-hidden="true"></span>
+      <div>
+        <strong id="connectionTitle">正在連接 Drive 即時資料</strong>
+        <p id="connectionDetail">初次載入約需 10–15 秒，完成前會先顯示本機快照。</p>
+      </div>
+    </section>
 
     <main class="layout">
       <section class="status-strip" aria-label="整體狀態">
@@ -195,6 +203,6 @@
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="./config.js"></script>
     <script src="./data.js"></script>
-    <script src="./app.js"></script>
+    <script src="./app.js?v=dashboard-refresh-20260808"></script>
   </body>
 </html>

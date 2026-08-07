@@ -66,7 +66,7 @@
       "name": "中部青創基地營運總控台",
       "office": "中部",
       "type": "drive-dashboard",
-      "status": "draft",
+      "status": "active",
       "toolDir": "tools/taichung-youth-base",
       "pageUrl": "https://junghan0711-dot.github.io/new-project/tools/taichung-youth-base/",
       "driveRootUrl": "https://drive.google.com/drive/folders/0AN_42cvSSGfMUk9PVA",
@@ -89,7 +89,7 @@
         "executeAs": "USER_DEPLOYING",
         "access": "ANYONE_ANONYMOUS",
         "status": "partial",
-        "note": "health and Drive metadata return JSON; SpreadsheetApp scope still needs manual authorize for spaceReport."
+        "note": "Drive metadata is connected and routine health checks are enabled; weekly space report still needs one-time SpreadsheetApp authorization."
       }
     },
     {

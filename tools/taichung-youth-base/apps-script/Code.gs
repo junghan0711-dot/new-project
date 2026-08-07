@@ -47,9 +47,9 @@ const DASHBOARD_SOURCES = [
   },
   {
     name: "摘星計畫區房舍修繕費用統計表.xlsx",
-    id: "1pEacGjwdO_esmTOr2MuALYuUOEz7MHFE",
+    id: "1SY5I6GRwkzCrsHTXso3PS1UXRtqn1SMo",
     type: "Excel",
-    url: "https://docs.google.com/spreadsheets/d/1pEacGjwdO_esmTOr2MuALYuUOEz7MHFE/edit",
+    url: "https://docs.google.com/spreadsheets/d/1SY5I6GRwkzCrsHTXso3PS1UXRtqn1SMo/edit",
     sensitive: false,
     base: "shared",
   },
@@ -195,7 +195,7 @@ function readSpaceReport_() {
     const rows = values.slice(1).filter((row) => row[0]);
     const latestIndex = findLatestSpaceRowIndex_(rows);
     const latest = latestIndex >= 0 ? rows[latestIndex] : [];
-    const next = rows.slice(latestIndex + 1).find((row) => row[0] && !row[1] && !row[2] && !row[3] && !row[4]) || [];
+    const next = rows.slice(latestIndex + 1).find((row) => parseSpaceWeekDate_(row[0])) || [];
     const guangfuText = latestIndex >= 0 ? resolveSpaceValue_(rows, latestIndex, 1, {}) : "";
     const shenjiText = latestIndex >= 0 ? resolveSpaceValue_(rows, latestIndex, 2, {}) : "";
     const totalText = latestIndex >= 0 ? resolveSpaceValue_(rows, latestIndex, 3, {}) : "";
@@ -264,13 +264,26 @@ function classifyBase_(name) {
 }
 
 function findLatestSpaceRowIndex_(rows) {
+  const endOfToday = new Date();
+  endOfToday.setHours(23, 59, 59, 999);
   for (let i = rows.length - 1; i >= 0; i -= 1) {
     if (!rows[i][0]) continue;
+    const weekDate = parseSpaceWeekDate_(rows[i][0]);
+    if (!weekDate || weekDate.getTime() > endOfToday.getTime()) continue;
     const guangfu = parseSpaceCell_(resolveSpaceValue_(rows, i, 1, {}));
     const shenji = parseSpaceCell_(resolveSpaceValue_(rows, i, 2, {}));
     if (guangfu.available || guangfu.occupied || shenji.available || shenji.occupied) return i;
   }
   return -1;
+}
+
+function parseSpaceWeekDate_(value) {
+  const token = normalizeDateToken_(value);
+  if (!token) return null;
+  const parts = token.split("/").map(Number);
+  if (parts.length !== 2 || !parts[0] || !parts[1]) return null;
+  const date = new Date(new Date().getFullYear(), parts[0] - 1, parts[1]);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function resolveSpaceValue_(rows, index, column, seen) {

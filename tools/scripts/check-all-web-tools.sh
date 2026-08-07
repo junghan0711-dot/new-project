@@ -27,10 +27,27 @@ check_apps_script_only() {
   echo "OK   $tool_dir Apps Script syntax and manifest"
 }
 
+check_drive_dashboard() {
+  local tool_dir="$1"
+  local page_url="$2"
+  local web_app_url="$3"
+  local code_file="$tool_dir/apps-script/Code.gs"
+  local temp_file
+  temp_file="$(mktemp /tmp/drive-dashboard-check.XXXXXX.js)"
+  cp "$code_file" "$temp_file"
+  "$node_bin" --check "$temp_file"
+  rm -f "$temp_file"
+  "$node_bin" --check "$tool_dir/app.js"
+  python3 -m json.tool "$tool_dir/apps-script/appsscript.json" >/dev/null
+  curl -fsSL --max-time 20 "$page_url" >/dev/null
+  curl -fsSL --max-time 25 "${web_app_url}?action=health&callback=cb" | grep -q '"ok":true'
+  echo "OK   $tool_dir page, JavaScript, manifest and API health"
+}
+
 python3 -m json.tool "$REGISTRY_FILE" >/dev/null
 echo "OK   $REGISTRY_FILE JSON syntax"
 
-while IFS=$'\t' read -r project_id project_type tool_dir page_url; do
+while IFS=$'\t' read -r project_id project_type tool_dir page_url web_app_url; do
   [[ -n "$project_id" ]] || continue
   echo
   echo "== $project_id =="
@@ -40,6 +57,9 @@ while IFS=$'\t' read -r project_id project_type tool_dir page_url; do
       ;;
     apps-script-dashboard)
       check_apps_script_only "$tool_dir"
+      ;;
+    drive-dashboard)
+      check_drive_dashboard "$tool_dir" "$page_url" "$web_app_url"
       ;;
     *)
       echo "WARN Unsupported project type for $project_id: $project_type"
@@ -60,6 +80,7 @@ for project in registry.get("projects", []):
         project.get("type", ""),
         project.get("toolDir", ""),
         project.get("pageUrl", ""),
+        project.get("appsScript", {}).get("webAppUrl", ""),
     ]))
 PY
 )

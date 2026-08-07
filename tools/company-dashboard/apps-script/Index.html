@@ -1125,6 +1125,7 @@
               </div>
               ${errorBlock}
               <p class="subtle">逾期 ${project.metrics.overdueCases} / 待查核 ${project.metrics.awaitingReview} / 憑證缺漏 ${project.metrics.expensesMissingVoucher}</p>
+              ${project.metrics.duplicateCases ? `<p class="notice">資料品質：已排除 ${project.metrics.duplicateCases} 筆疑似重複案件，原始列仍保留供確認。</p>` : ""}
               <div>
                 <a class="button" href="${project.pageUrl}" target="_blank" rel="noreferrer">開啟專案頁</a>
                 <a class="button" href="${project.spreadsheetUrl}" target="_blank" rel="noreferrer">開啟底表</a>

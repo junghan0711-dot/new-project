@@ -48,6 +48,7 @@
   async function loadData() {
     $("refreshButton").disabled = true;
     $("refreshButton").textContent = "讀取中";
+    updateConnectionBanner("loading", "正在連接 Drive 即時資料", "初次載入約需 10–15 秒，完成前會先顯示本機快照。");
     try {
       if (config.apiUrl) {
         const payload = await jsonp(`${config.apiUrl}?action=listData`);
@@ -56,19 +57,30 @@
         }
         state.data = mergeData(embedded, payload);
         state.mode = "已連線";
+        updateConnectionBanner("ok", "Drive 即時資料已連線", `資料產生時間：${formatDateTime(payload.generatedAt)}`);
       } else {
         state.data = embedded;
         state.mode = "快照";
+        updateConnectionBanner("warning", "目前使用本機快照", "尚未設定即時 API，請以 Drive 原始資料為準。");
       }
     } catch (error) {
       state.data = embedded;
       state.mode = "快照備援";
+      updateConnectionBanner("error", "即時資料讀取失敗", `目前使用快照備援：${error.message}`);
       showToast(`線上資料讀取失敗，改用快照：${error.message}`);
     } finally {
       renderAll();
       $("refreshButton").disabled = false;
       $("refreshButton").textContent = "重新整理";
     }
+  }
+
+  function updateConnectionBanner(status, title, detail) {
+    const banner = $("connectionBanner");
+    if (!banner) return;
+    banner.className = `connection-banner ${status}`;
+    $("connectionTitle").textContent = title;
+    $("connectionDetail").textContent = detail;
   }
 
   function mergeData(base, remote) {
