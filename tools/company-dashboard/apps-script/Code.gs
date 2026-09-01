@@ -1,5 +1,6 @@
 const ALLOWED_EMAILS = [
   "junghan0711@gmail.com",
+  "peiwen131@gmail.com",
 ];
 const REMINDER_EMAILS = [
   "junghan0711@gmail.com",
@@ -186,7 +187,9 @@ function createAssignment(payload) {
 }
 
 function notifyAssignment_(spreadsheet, project, assignment) {
-  const contacts = readRecords_(spreadsheet, SHEETS.contacts).map((record) => summarizeContact_(record));
+  const contacts = readRecords_(spreadsheet, SHEETS.contacts)
+    .map((record) => summarizeContact_(record))
+    .filter(isActiveContact_);
   const assignees = splitNames_(assignment.assignee);
   const matchedContacts = contacts.filter((contact) => assignees.some((assignee) => contactNameMatches_(contact.name, assignee)));
   const summary = {
@@ -423,7 +426,9 @@ function summarizeProject_(project) {
   const cases = readRecords_(spreadsheet, SHEETS.cases);
   const caseUpdates = readRecords_(spreadsheet, SHEETS.caseUpdates);
   const consultations = readRecords_(spreadsheet, SHEETS.consultations);
-  const contacts = readRecords_(spreadsheet, SHEETS.contacts);
+  const contacts = readRecords_(spreadsheet, SHEETS.contacts)
+    .map((record) => summarizeContact_(record))
+    .filter(isActiveContact_);
   const modificationHistory = readRecords_(spreadsheet, SHEETS.modificationHistory);
   const itemSummaries = items.map((item) => summarizeItem_(item, updates));
   const dedupedCases = deduplicateCaseSummaries_(cases.map((record) => summarizeCase_(record, caseUpdates)));
@@ -452,7 +457,7 @@ function summarizeProject_(project) {
     reviewItems: projectReviewItems_(caseSummaries),
     recentUpdates: recentUpdates_(updates),
     consultations: summarizeConsultations_(consultations),
-    contacts: contacts.map((record) => summarizeContact_(record)),
+    contacts,
     modificationHistory: modificationHistory.map((record) => summarizeModification_(record)),
     workload: projectWorkload_(itemSummaries, caseSummaries, consultations),
     latestDataTime: latestDataTime_(itemSummaries, updates, cases, caseUpdates, consultations),
@@ -516,6 +521,13 @@ function summarizeContact_(record) {
     lineUserId: value_(record, ["LINE User ID", "Line User ID"]),
     note: value_(record, ["備註"]),
   };
+}
+
+function isActiveContact_(contact) {
+  const statusText = [contact.unit, contact.title, contact.note]
+    .map((value) => String(value || ""))
+    .join(" ");
+  return statusText.indexOf("離任") < 0;
 }
 
 function summarizeModification_(record) {

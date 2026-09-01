@@ -7,6 +7,7 @@
 - 前端與後端都部署在 Google Apps Script Web App。
 - Apps Script 後端讀取各專案 Google Sheet。
 - `ALLOWED_EMAILS` 控制誰可以登入總控台。
+- 2026-09-02 起，雲嘉南 PM 陳佩妏（`peiwen131@gmail.com`）列入主管白名單，可使用主管查核、交辦與雲嘉南管理功能。
 - 各專案仍保留獨立 GitHub Pages 網頁，總控台只提供主管摘要與快速連結。
 
 ## 第一版資料來源

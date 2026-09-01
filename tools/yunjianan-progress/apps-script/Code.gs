@@ -11,7 +11,7 @@ const SHEETS = {
   modificationHistory: "修改歷程",
 };
 const ALLOWED_REPORTERS = [];
-const CALENDAR_ADMIN_REPORTERS = ["Hank", "邱榮漢", "榮漢", "榮漢哥", "邱委"];
+const CALENDAR_ADMIN_REPORTERS = ["Hank", "邱榮漢", "榮漢", "榮漢哥", "邱委", "佩妏", "陳佩妏"];
 const UPDATE_HEADERS = [
   "更新ID",
   "任務ID",
@@ -257,7 +257,16 @@ function listRecords_(sheetName) {
 }
 
 function listContacts_() {
-  return listRecords_(SHEETS.contacts).map(contactRecord_);
+  return listRecords_(SHEETS.contacts)
+    .filter(isActiveContact_)
+    .map(contactRecord_);
+}
+
+function isActiveContact_(record) {
+  const statusText = [record["單位"], record["職稱"], record["備註"]]
+    .map((value) => String(value || ""))
+    .join(" ");
+  return statusText.indexOf("離任") < 0;
 }
 
 function contactRecord_(record) {

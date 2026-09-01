@@ -47,7 +47,7 @@
     邱委: "Hank",
   };
   const calendarVisibleMonthCount = 7;
-  const calendarAdminNames = new Set(["Hank", "邱榮漢", "榮漢", "榮漢哥", "邱委"]);
+  const calendarAdminNames = new Set(["Hank", "邱榮漢", "榮漢", "榮漢哥", "邱委", "佩妏", "陳佩妏"]);
 
   function init() {
     $("sheetLink").href = embedded.sourceUrl || config.sheetUrl || "#";
