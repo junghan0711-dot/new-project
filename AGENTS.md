@@ -6,7 +6,7 @@
 
 - 工作桌：`/Users/junghanchiu/Documents/New project`
 - 公司正式資料庫：`/Users/junghanchiu/2026 Data base`
-- 工作筆記：`/Users/junghanchiu/Library/Mobile Documents/iCloud~md~obsidian/Documents/New project/工作筆記.md`
+- 工作筆記：`/Users/junghanchiu/2026 Data base/每日筆記/工作筆記.md`（2026-10-23 從 iCloud 搬入 vault，有 git 版本紀錄；收工時這個檔要到 vault 另外 commit）
 - 公開 GitHub repo：`junghan0711-dot/new-project`
 - 公司作業先讀 `2026 Data base/AGENTS.md`、`專案庫/index.md`、目標辦公室 `AGENTS.md`／`index.md`、對應 `專案-*.md`；只有查證或交付需要時才讀附件。
 - 桃竹苗多元就業開發方案與雲嘉南辦公室工作，必須先查對應 Google Drive 最新版本；Drive 與本機不一致時，以 Drive 為判斷基礎並標明查核時間，重大覆寫先確認。
